@@ -3,7 +3,7 @@ package pkg
 import (
 	"fmt"
 	"io"
-	"log"
+	llog "log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -21,7 +21,6 @@ import (
 
 type logger struct {
 	Prefix string
-	Logger *log.Logger
 }
 
 // RootCmd represents the base command when called without any subcommands
@@ -34,12 +33,13 @@ var RootCmd = &cobra.Command{
 var (
 	start   time.Time = time.Now()
 	logFile *os.File
-	l       *log.Logger
+	l       *llog.Logger
+	log     = llog.New(llog.Writer(), llog.Prefix(), llog.Flags())
 )
 
-func (l logger) Printf(format string, args ...interface{}) {
+func (lg logger) Printf(format string, args ...interface{}) {
 	for _, v := range strings.Split(fmt.Sprintf(format, args...), "\n") {
-		l.Logger.Printf("[%s] %s", l.Prefix, v)
+		l.Printf("[%s] %s", lg.Prefix, v)
 	}
 }
 
@@ -51,21 +51,33 @@ func measureTime() {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	initRootCmdFlags()
-
-	dir := filepath.Join(os.TempDir(), "cyclone")
-	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-	logFile, err = os.Create(filepath.Join(dir, time.Now().Format("20060102150405")+".log"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	l = log.New(logFile, log.Prefix(), log.Flags())
-	// no need to close the log: https://golang.org/pkg/runtime/#SetFinalizer
-
 	if err := RootCmd.Execute(); err != nil {
+		fmt.Fprintf(logFile, "Error: %s", err)
 		os.Exit(1)
+	}
+}
+
+func initLogger() {
+	if l == nil {
+		dir := filepath.Join(os.TempDir(), "cyclone")
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+		logFile, err = os.Create(filepath.Join(dir, time.Now().Format("20060102150405")+".log"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		// no need to close the log: https://golang.org/pkg/runtime/#SetFinalizer
+		l = llog.New(logFile, log.Prefix(), log.Flags())
+
+		if viper.GetBool("debug") {
+			// write log into stderr and log file
+			l.SetOutput(io.MultiWriter(log.Writer(), l.Writer()))
+		}
+
+		// write stderr logs into the log file
+		log.SetOutput(io.MultiWriter(log.Writer(), logFile))
 	}
 }
 
@@ -100,6 +112,8 @@ type Location struct {
 }
 
 func getSrcAndDst(az string) (Locations, error) {
+	initLogger()
+
 	var loc Locations
 
 	// source and destination parameters
@@ -191,21 +205,11 @@ func NewOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 		return nil, err
 	}
 
-	if viper.GetBool("debug") {
-		// write log into stdout and log file
-		switch l.Writer().(type) {
-		case *os.File:
-			l.SetOutput(io.MultiWriter(log.Writer(), l.Writer()))
-		}
-	}
-
 	// debug logger is enabled by default and writes logs into a cyclone temp dir
 	provider.HTTPClient = http.Client{
 		Transport: &client.RoundTripper{
-			Rt: &http.Transport{},
-			Logger: &logger{Prefix: loc.Origin,
-				Logger: l,
-			},
+			Rt:     &http.Transport{},
+			Logger: &logger{Prefix: loc.Origin},
 		},
 	}
 

@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"sort"
 
@@ -40,7 +39,7 @@ var serverWaitStatuses = []string{
 	string("BUILD"),
 }
 
-func createServerSpeed(server *servers.Server) {
+func createServerSpeed(server *serverExtended) {
 	t := server.Updated.Sub(server.Created)
 	log.Printf("Time to create a server: %s", t)
 }
@@ -603,6 +602,8 @@ var ServerCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to wait for %q target server: %s", dstServer.ID, err)
 		}
+
+		createServerSpeed(dstServer)
 
 		if dstImage != nil {
 			// image can still be in "TODO" state, we need to wait for "available" before defer func will delete it
