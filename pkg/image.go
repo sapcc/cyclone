@@ -269,7 +269,7 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient *gophercloud.S
 	}
 
 	if srcImg.Checksum != dstImg.Checksum {
-		return dstImg, fmt.Errorf("image was migrated, but the source checksum doesn't correspond the destination checksum: %d != %d", srcImg.Checksum, dstImg.Checksum)
+		return dstImg, fmt.Errorf("image was migrated, but the source checksum doesn't correspond the destination checksum: %s != %s", srcImg.Checksum, dstImg.Checksum)
 	}
 
 	if srcImg.Properties["os_hash_algo"] != dstImg.Properties["os_hash_algo"] {

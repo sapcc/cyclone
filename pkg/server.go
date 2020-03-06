@@ -395,7 +395,7 @@ func checkFlavor(srcServerClient, dstServerClient *gophercloud.ServiceClient, sr
 				}
 				flavorID, err := flavors.IDFromName(dstServerClient, flavor.Name)
 				if err != nil {
-					return "", fmt.Errorf("failed to find destination flavor name (%q): %s", toFlavor, err)
+					return "", fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 				}
 				*toFlavor = flavor.Name
 				return flavorID, nil
@@ -407,7 +407,7 @@ func checkFlavor(srcServerClient, dstServerClient *gophercloud.ServiceClient, sr
 
 	flavorID, err := flavors.IDFromName(dstServerClient, *toFlavor)
 	if err != nil {
-		return "", fmt.Errorf("failed to find destination flavor name (%q): %s", toFlavor, err)
+		return "", fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 	}
 
 	return flavorID, nil
