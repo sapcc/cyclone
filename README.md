@@ -10,7 +10,7 @@ Here comes cyclone (**C**loud **Clone** or cclone) to help you with this task. I
 
 ## Help
 
-The tool uses a Glance V2 [web-import](https://docs.openstack.org/api-ref/image/v2/?expanded=import-an-image-detail#import-an-image) method to clone images. This method allows Glance to download an image using a remote URL.
+The tool uses a Glance V2 [web-download](https://docs.openstack.org/glance/latest/admin/interoperable-image-import.html#image-import-methods) method to clone images. This method allows Glance to download an image using a remote URL.
 
 A remote URL can be generated using a Swift [Temporary URL](https://docs.openstack.org/swift/latest/api/temporary_url_middleware.html).
 
@@ -18,7 +18,7 @@ A volume migration is performed by converting a volume to an image and further i
 
 A volume migration within the same region is performed using a [Volume Transfer](https://docs.openstack.org/cinder/latest/cli/cli-manage-volumes.html#transfer-a-volume) method.
 
-The tool uses the same credentials from environment variables for the source and destination projects, but for the destination you can define different region, domain and project name. If an auth can be done on the source project, but not on the destination project, the tool will exit with an error.
+By default the tool uses the same credentials from environment variables for the source and destination projects, but for the destination you can define different region, domain and project name. It is also possible to override destination credentials via OpenStack environment variables with the `TO_` prefix or via CLI parameters.
 
 ~> **Note:** Be aware about the quota, especially the source project quota, when cloning a volume. It requires up to 3x of the source volume size Cinder (Block Storage) quota.
 
@@ -40,12 +40,17 @@ Available Commands:
   volume      Clone a volume
 
 Flags:
-  -d, --debug                print out request and response objects
-  -h, --help                 help for cyclone
-      --to-auth-url string   destination auth URL (if not provided, detected automatically from the source auth URL and destination region)
-      --to-domain string     destination domain
-      --to-project string    destination project
-      --to-region string     destination region
+  -d, --debug                                     print out request and response objects
+  -h, --help                                      help for cyclone
+      --to-application-credential-id string       destination application credential ID
+      --to-application-credential-name string     destination application credential name
+      --to-application-credential-secret string   destination application credential secret
+      --to-auth-url string                        destination auth URL (if not provided, detected automatically from the source auth URL and destination region)
+      --to-domain string                          destination domain
+      --to-password string                        destination username password
+      --to-project string                         destination project
+      --to-region string                          destination region
+      --to-username string                        destination username
 
 Use "cyclone [command] --help" for more information about a command.
 ```

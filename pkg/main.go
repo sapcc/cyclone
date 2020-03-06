@@ -88,11 +88,21 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("to-region", "", "", "destination region")
 	RootCmd.PersistentFlags().StringP("to-domain", "", "", "destination domain")
 	RootCmd.PersistentFlags().StringP("to-project", "", "", "destination project")
+	RootCmd.PersistentFlags().StringP("to-username", "", "", "destination username")
+	RootCmd.PersistentFlags().StringP("to-password", "", "", "destination username password")
+	RootCmd.PersistentFlags().StringP("to-application-credential-name", "", "", "destination application credential name")
+	RootCmd.PersistentFlags().StringP("to-application-credential-id", "", "", "destination application credential ID")
+	RootCmd.PersistentFlags().StringP("to-application-credential-secret", "", "", "destination application credential secret")
 	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 	viper.BindPFlag("to-auth-url", RootCmd.PersistentFlags().Lookup("to-auth-url"))
 	viper.BindPFlag("to-region", RootCmd.PersistentFlags().Lookup("to-region"))
 	viper.BindPFlag("to-domain", RootCmd.PersistentFlags().Lookup("to-domain"))
 	viper.BindPFlag("to-project", RootCmd.PersistentFlags().Lookup("to-project"))
+	viper.BindPFlag("to-username", RootCmd.PersistentFlags().Lookup("to-username"))
+	viper.BindPFlag("to-password", RootCmd.PersistentFlags().Lookup("to-password"))
+	viper.BindPFlag("to-application-credential-name", RootCmd.PersistentFlags().Lookup("to-application-credential-name"))
+	viper.BindPFlag("to-application-credential-id", RootCmd.PersistentFlags().Lookup("to-application-credential-id"))
+	viper.BindPFlag("to-application-credential-secret", RootCmd.PersistentFlags().Lookup("to-application-credential-secret"))
 }
 
 type Locations struct {
@@ -104,11 +114,16 @@ type Locations struct {
 }
 
 type Location struct {
-	AuthURL string
-	Region  string
-	Domain  string
-	Project string
-	Origin  string
+	AuthURL                     string
+	Region                      string
+	Domain                      string
+	Project                     string
+	Username                    string
+	Password                    string
+	ApplicationCredentialName   string
+	ApplicationCredentialID     string
+	ApplicationCredentialSecret string
+	Origin                      string
 }
 
 func getSrcAndDst(az string) (Locations, error) {
@@ -125,12 +140,22 @@ func getSrcAndDst(az string) (Locations, error) {
 		loc.Src.Domain = os.Getenv("OS_USER_DOMAIN_NAME")
 	}
 	loc.Src.Project = os.Getenv("OS_PROJECT_NAME")
+	loc.Src.Username = os.Getenv("OS_USERNAME")
+	loc.Src.Password = os.Getenv("OS_PASSWORD")
+	loc.Src.ApplicationCredentialName = os.Getenv("OS_APPLICATION_CREDENTIAL_NAME")
+	loc.Src.ApplicationCredentialID = os.Getenv("OS_APPLICATION_CREDENTIAL_ID")
+	loc.Src.ApplicationCredentialSecret = os.Getenv("OS_APPLICATION_CREDENTIAL_SECRET")
 
 	loc.Dst.Origin = "dst"
 	loc.Dst.Region = viper.GetString("to-region")
 	loc.Dst.AuthURL = viper.GetString("to-auth-url")
 	loc.Dst.Domain = viper.GetString("to-domain")
 	loc.Dst.Project = viper.GetString("to-project")
+	loc.Dst.Username = viper.GetString("to-username")
+	loc.Dst.Password = viper.GetString("to-password")
+	loc.Dst.ApplicationCredentialName = viper.GetString("to-application-credential-name")
+	loc.Dst.ApplicationCredentialID = viper.GetString("to-application-credential-id")
+	loc.Dst.ApplicationCredentialSecret = viper.GetString("to-application-credential-secret")
 
 	if loc.Dst.Project == "" {
 		loc.Dst.Project = loc.Src.Project
@@ -144,6 +169,14 @@ func getSrcAndDst(az string) (Locations, error) {
 		loc.Dst.Domain = loc.Src.Domain
 	}
 
+	if loc.Dst.Username == "" {
+		loc.Dst.Username = loc.Src.Username
+	}
+
+	if loc.Dst.Password == "" {
+		loc.Dst.Password = loc.Src.Password
+	}
+
 	if loc.Dst.AuthURL == "" {
 		// try to transform a source auth URL to a destination source URL
 		s := strings.Replace(loc.Src.AuthURL, loc.Src.Region, loc.Dst.Region, 1)
@@ -151,7 +184,7 @@ func getSrcAndDst(az string) (Locations, error) {
 			loc.Dst.AuthURL = s
 			log.Printf("Detected %q destination auth URL", loc.Dst.AuthURL)
 		} else {
-			return loc, fmt.Errorf("Failed to detect destination auth URL")
+			return loc, fmt.Errorf("Failed to detect destination auth URL, please specify --to-auth-url explicitly")
 		}
 	}
 
@@ -169,11 +202,21 @@ func getSrcAndDst(az string) (Locations, error) {
 }
 
 func NewOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
+	envPrefix := "OS_"
+	if loc.Origin == "dst" {
+		envPrefix = "TO_OS_"
+	}
 	ao, err := clientconfig.AuthOptions(&clientconfig.ClientOpts{
+		EnvPrefix: envPrefix,
 		AuthInfo: &clientconfig.AuthInfo{
-			AuthURL:     loc.AuthURL,
-			DomainName:  loc.Domain,
-			ProjectName: loc.Project,
+			AuthURL:                     loc.AuthURL,
+			Username:                    loc.Username,
+			Password:                    loc.Password,
+			DomainName:                  loc.Domain,
+			ProjectName:                 loc.Project,
+			ApplicationCredentialID:     loc.ApplicationCredentialID,
+			ApplicationCredentialName:   loc.ApplicationCredentialName,
+			ApplicationCredentialSecret: loc.ApplicationCredentialSecret,
 		},
 		RegionName: loc.Region,
 	})
