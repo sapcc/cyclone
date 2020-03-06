@@ -42,7 +42,7 @@ Available Commands:
 Flags:
   -d, --debug                print out request and response objects
   -h, --help                 help for cyclone
-      --to-auth-url string   destination keystone auth URL (if not provided, detected automatically from the source region and source auth URL)
+      --to-auth-url string   destination auth URL (if not provided, detected automatically from the source auth URL and destination region)
       --to-domain string     destination domain
       --to-project string    destination project
       --to-region string     destination region

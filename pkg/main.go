@@ -72,7 +72,7 @@ func Execute() {
 func initRootCmdFlags() {
 	// debug flag
 	RootCmd.PersistentFlags().BoolP("debug", "d", false, "print out request and response objects")
-	RootCmd.PersistentFlags().StringP("to-auth-url", "", "", "destination auth URL (if not provided, detected automatically from the source region and source auth URL)")
+	RootCmd.PersistentFlags().StringP("to-auth-url", "", "", "destination auth URL (if not provided, detected automatically from the source auth URL and destination region)")
 	RootCmd.PersistentFlags().StringP("to-region", "", "", "destination region")
 	RootCmd.PersistentFlags().StringP("to-domain", "", "", "destination domain")
 	RootCmd.PersistentFlags().StringP("to-project", "", "", "destination project")
