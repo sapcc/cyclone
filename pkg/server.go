@@ -153,16 +153,17 @@ func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcOb
 		return nil, fmt.Errorf("failed to create a %q server snapshot", srcServer.Name)
 	}
 
-	defer func() {
+	deleteSourceOnReturn := func() {
 		log.Printf("Removing source server snapshot image %q", imageID)
 		if err := images.Delete(srcImageClient, imageID).ExtractErr(); err != nil {
 			log.Printf("Error deleting source server snapshot: %s", err)
 		}
-	}()
+	}
 
 	var srcImage *images.Image
 	srcImage, err = waitForImage(srcImageClient, imageID, waitForImageSec)
 	if err != nil {
+		deleteSourceOnReturn()
 		return nil, fmt.Errorf("failed to wait for a %q server snapshot image: %s", imageID, err)
 	}
 
@@ -170,6 +171,9 @@ func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcOb
 		// if it is the same project, then there is no need to migrate
 		return srcImage, nil
 	}
+
+	// now we can delete the source image on return
+	defer deleteSourceOnReturn()
 
 	// TODO: use the actual source image name from the server properties
 	var dstImage *images.Image
@@ -600,7 +604,10 @@ var ServerCmd = &cobra.Command{
 
 		dstServer, err = waitForServer(dstServerClient, dstServer.ID, waitForServerSec)
 		if err != nil {
-			return fmt.Errorf("failed to wait for %q target server: %s", dstServer.ID, err)
+			// nil an error and don't delete the port
+			retErr := fmt.Errorf("failed to wait for %q target server: %s", dstServer.ID, err)
+			err = nil
+			return retErr
 		}
 
 		createServerSpeed(dstServer)

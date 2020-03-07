@@ -52,7 +52,9 @@ func measureTime() {
 func Execute() {
 	initRootCmdFlags()
 	if err := RootCmd.Execute(); err != nil {
-		fmt.Fprintf(logFile, "Error: %s", err)
+		if logFile != nil {
+			fmt.Fprintf(logFile, "Error: %s", err)
+		}
 		os.Exit(1)
 	}
 }
@@ -64,10 +66,17 @@ func initLogger() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		logFile, err = os.Create(filepath.Join(dir, time.Now().Format("20060102150405")+".log"))
+		fileName := time.Now().Format("20060102150405") + ".log"
+		logFile, err = os.Create(filepath.Join(dir, fileName))
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		err = os.Symlink(fileName, filepath.Join(dir, "latest.log"))
+		if err != nil {
+			log.Printf("Failed to create a log symlink: %s", err)
+		}
+
 		// no need to close the log: https://golang.org/pkg/runtime/#SetFinalizer
 		l = llog.New(logFile, log.Prefix(), log.Flags())
 

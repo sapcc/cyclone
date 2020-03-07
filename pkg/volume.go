@@ -475,10 +475,6 @@ var VolumeCmd = &cobra.Command{
 			return err
 		}
 
-		if loc.SameProject && toAZ == "" {
-			return fmt.Errorf("please specify a destination volume availability zone (--to-az)")
-		}
-
 		srcProvider, err := NewOpenStackClient(loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
