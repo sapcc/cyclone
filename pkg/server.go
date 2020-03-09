@@ -11,6 +11,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedserverattributes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -19,6 +20,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
+	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -332,10 +334,15 @@ func createServerPort(client *gophercloud.ServiceClient, networkName, subnetName
 	return port, nil
 }
 
-func createServerOpts(srcServer *serverExtended, flavorID, toAZ string, network servers.Network, dstVolumes []*volumes.Volume, dstImage *images.Image, bootableVolume bool) servers.CreateOptsBuilder {
+func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName, toAZ string, network servers.Network, dstVolumes []*volumes.Volume, dstImage *images.Image, bootableVolume bool) servers.CreateOptsBuilder {
+	serverName := toServerName
+	if serverName == "" {
+		// use original server name
+		serverName = srcServer.Name
+	}
 	var createOpts servers.CreateOptsBuilder
 	createOpts = &servers.CreateOpts{
-		Name:             srcServer.Name,
+		Name:             serverName,
 		FlavorRef:        flavorID,
 		AvailabilityZone: toAZ,
 		Networks: []servers.Network{
@@ -361,6 +368,13 @@ func createServerOpts(srcServer *serverExtended, flavorID, toAZ string, network 
 			blockDeviceOpts = append(blockDeviceOpts, bd)
 		}
 		createOpts.(*servers.CreateOpts).ImageRef = dstImage.ID
+	}
+
+	if keyName != "" {
+		createOpts = &keypairs.CreateOptsExt{
+			CreateOptsBuilder: createOpts,
+			KeyName:           keyName,
+		}
 	}
 
 	for i, v := range dstVolumes {
@@ -416,6 +430,27 @@ func checkFlavor(srcServerClient, dstServerClient *gophercloud.ServiceClient, sr
 	return flavorID, nil
 }
 
+func checKeyPair(client *gophercloud.ServiceClient, keyName string) error {
+	if keyName == "" {
+		return nil
+	}
+
+	return keypairs.List(client).EachPage(func(page pagination.Page) (bool, error) {
+		keyPairs, err := keypairs.ExtractKeyPairs(page)
+		if err != nil {
+			return false, err
+		}
+
+		for _, keyPair := range keyPairs {
+			if keyPair.Name == keyName {
+				return true, nil
+			}
+		}
+
+		return false, fmt.Errorf("%q key pair was not found", keyName)
+	})
+}
+
 // ServerCmd represents the server command
 var ServerCmd = &cobra.Command{
 	Use:   "server <name|id>",
@@ -428,6 +463,7 @@ var ServerCmd = &cobra.Command{
 		// migrate server
 		server := args[0]
 		toName := viper.GetString("to-server-name")
+		toKeyName := viper.GetString("to-key-name")
 		toFlavor := viper.GetString("to-flavor-name")
 		toNetworkName := viper.GetString("to-network-name")
 		toSubnetName := viper.GetString("to-subnet-name")
@@ -498,9 +534,6 @@ var ServerCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to wait for %q source server: %s", server, err)
 		}
-		if toName == "" {
-			toName = srcServer.Name
-		}
 
 		// check server flavors
 		flavorID, err := checkFlavor(srcServerClient, dstServerClient, srcServer, &toFlavor)
@@ -510,6 +543,12 @@ var ServerCmd = &cobra.Command{
 
 		// check availability zones
 		err = checkAvailabilityZone(dstServerClient, srcServer.AvailabilityZone, &toAZ, &loc)
+		if err != nil {
+			return err
+		}
+
+		// check destintation server keypair name
+		err = checKeyPair(dstServerClient, toKeyName)
 		if err != nil {
 			return err
 		}
@@ -595,7 +634,7 @@ var ServerCmd = &cobra.Command{
 			// TODO: defer delete volumes on failure?
 		}
 
-		createOpts := createServerOpts(srcServer, flavorID, toAZ, network, dstVolumes, dstImage, bootableVolume)
+		createOpts := createServerOpts(srcServer, toName, flavorID, toKeyName, toAZ, network, dstVolumes, dstImage, bootableVolume)
 		dstServer := new(serverExtended)
 		err = servers.Create(dstServerClient, createOpts).ExtractInto(dstServer)
 		if err != nil {
@@ -619,7 +658,7 @@ var ServerCmd = &cobra.Command{
 			}
 		}
 
-		log.Printf("Server cloned to %q (%q) using %s flavor to %q availability zone", toName, dstServer.ID, toFlavor, dstServer.AvailabilityZone)
+		log.Printf("Server cloned to %q (%q) using %s flavor to %q availability zone", dstServer.Name, dstServer.ID, toFlavor, dstServer.AvailabilityZone)
 		if port != nil {
 			log.Printf("The %q port in the %q subnet was created", port.ID, toSubnetName)
 		}
@@ -635,6 +674,7 @@ func init() {
 
 func initServerCmdFlags() {
 	ServerCmd.Flags().StringP("to-server-name", "", "", "destination server name")
+	ServerCmd.Flags().StringP("to-key-name", "", "", "destination server key name")
 	ServerCmd.Flags().StringP("to-flavor-name", "", "", "destination server flavor name")
 	ServerCmd.Flags().StringP("to-network-name", "", "", "destination server network name")
 	ServerCmd.Flags().StringP("to-subnet-name", "", "", "destination server subnet name")

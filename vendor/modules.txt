@@ -13,6 +13,7 @@ github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityz
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedserverattributes
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus
+github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach
 github.com/gophercloud/gophercloud/openstack/compute/v2/flavors
 github.com/gophercloud/gophercloud/openstack/compute/v2/images

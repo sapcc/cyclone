@@ -53,7 +53,7 @@ func Execute() {
 	initRootCmdFlags()
 	if err := RootCmd.Execute(); err != nil {
 		if logFile != nil {
-			fmt.Fprintf(logFile, "Error: %s", err)
+			fmt.Fprintf(logFile, "Error: %s\n", err)
 		}
 		os.Exit(1)
 	}
@@ -72,7 +72,12 @@ func initLogger() {
 			log.Fatal(err)
 		}
 
-		err = os.Symlink(fileName, filepath.Join(dir, "latest.log"))
+		symLink := filepath.Join(dir, "latest.log")
+		if _, err := os.Lstat(symLink); err == nil {
+			os.Remove(symLink)
+		}
+
+		err = os.Symlink(fileName, symLink)
 		if err != nil {
 			log.Printf("Failed to create a log symlink: %s", err)
 		}
