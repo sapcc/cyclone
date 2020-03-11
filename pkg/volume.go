@@ -169,7 +169,7 @@ func waitForVolume(client *gophercloud.ServiceClient, id string, secs uint) (*vo
 	return volume, err
 }
 
-func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, name, az string, loc Locations) (*volumes.Volume, error) {
+func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, name, az string, cloneViaSnapshot bool, loc Locations) (*volumes.Volume, error) {
 	volOpts := volumes.CreateOpts{
 		Name:        name,
 		Size:        srcVolume.Size,
@@ -177,43 +177,10 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 		VolumeType:  srcVolume.VolumeType,
 	}
 
-	// TODO: handle cloning to a different AZ
-	// backups restore don't work well so far, disable this for a while
-	// * slow
-	// * doesn't preserve original volume metadata
-	if false && !loc.SameAZ {
-		// clone via backup using swift storage
-		// TODO: support Bootable and VolumeImageMetadata, since these parameters are not transferred to a cloned volume
-		backupOpts := backups.CreateOpts{
-			VolumeID:    srcVolume.ID,
-			Description: fmt.Sprintf("Transition backup to clone a %q volume", srcVolume.ID),
-			Container:   fmt.Sprintf("%s_%d", srcVolume.ID, time.Now().Unix()),
-			Force:       true,
-		}
-		srcBackup, err := backups.Create(srcVolumeClient, backupOpts).Extract()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create a source volume backup: %s", err)
-		}
-		log.Printf("Intermediate backup %q created", srcBackup.ID)
+	if cloneViaSnapshot {
+		// clone via snapshot using cinder storage, because it was explicitly set
+		log.Printf("Cloning a %q volume using volume snapshot", srcVolume.ID)
 
-		defer func() {
-			if err := backups.Delete(srcVolumeClient, srcBackup.ID).ExtractErr(); err != nil {
-				log.Printf("failed to delete a transition backup: %s", err)
-			}
-		}()
-
-		srcBackup, err = waitForBackup(srcVolumeClient, srcBackup.ID, waitForBackupSec)
-		if err != nil {
-			return nil, fmt.Errorf("failed to wait for a backup: %s", err)
-		}
-
-		createBackupSpeed(srcObjectClient, srcBackup)
-
-		// restoring a volume backup supports non-original availability zone
-		volOpts.AvailabilityZone = az
-		volOpts.BackupID = srcBackup.ID
-	} else {
-		// clone via snapshot using cinder storage
 		snapshotOpts := snapshots.CreateOpts{
 			VolumeID:    srcVolume.ID,
 			Description: fmt.Sprintf("Transition snapshot to clone a %q volume", srcVolume.ID),
@@ -240,6 +207,51 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 		createSnapshotSpeed(srcSnapshot)
 
 		volOpts.SnapshotID = srcSnapshot.ID
+	} else {
+		if !loc.SameRegion || loc.SameAZ {
+			// clone the volume directly, because we don't care about the availability zone
+			volOpts.SourceVolID = srcVolume.ID
+		} else {
+			// clone via backup using swift storage
+
+			// save initial microversion
+			mv := srcVolumeClient.Microversion
+			srcVolumeClient.Microversion = "3.47"
+
+			defer func() {
+				// restore initial microversion
+				srcVolumeClient.Microversion = mv
+			}()
+
+			backupOpts := backups.CreateOpts{
+				VolumeID:    srcVolume.ID,
+				Description: fmt.Sprintf("Transition backup to clone a %q volume", srcVolume.ID),
+				Container:   fmt.Sprintf("%s_%d", srcVolume.ID, time.Now().Unix()),
+				Force:       true,
+			}
+			srcBackup, err := backups.Create(srcVolumeClient, backupOpts).Extract()
+			if err != nil {
+				return nil, fmt.Errorf("failed to create a source volume backup: %s", err)
+			}
+			log.Printf("Intermediate backup %q created", srcBackup.ID)
+
+			defer func() {
+				if err := backups.Delete(srcVolumeClient, srcBackup.ID).ExtractErr(); err != nil {
+					log.Printf("failed to delete a transition backup: %s", err)
+				}
+			}()
+
+			srcBackup, err = waitForBackup(srcVolumeClient, srcBackup.ID, waitForBackupSec)
+			if err != nil {
+				return nil, fmt.Errorf("failed to wait for a backup: %s", err)
+			}
+
+			createBackupSpeed(srcObjectClient, srcBackup)
+
+			// restoring a volume backup supports non-original availability zone
+			volOpts.AvailabilityZone = az
+			volOpts.BackupID = srcBackup.ID
+		}
 	}
 
 	var newVolume *volumes.Volume
@@ -248,6 +260,9 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 	if err != nil {
 		if volOpts.SnapshotID != "" {
 			return nil, fmt.Errorf("failed to create a source volume from a snapshot: %s", err)
+		}
+		if volOpts.SourceVolID != "" {
+			return nil, fmt.Errorf("failed to create a volume clone: %s", err)
 		}
 		return nil, fmt.Errorf("failed to create a source volume from a backup: %s", err)
 	}
@@ -270,8 +285,8 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 	return newVolume, nil
 }
 
-func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, toVolumeName string, az string, loc Locations) (*volumes.Volume, error) {
-	newVolume, err := cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, toVolumeName, az, loc)
+func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, toVolumeName string, az string, cloneViaSnapshot bool, loc Locations) (*volumes.Volume, error) {
+	newVolume, err := cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, toVolumeName, az, cloneViaSnapshot, loc)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +303,8 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageCli
 		}
 	}()
 
-	if loc.SameAZ {
+	if loc.SameAZ ||
+		newVolume.AvailabilityZone == az { // a volume was cloned via backup
 		if loc.SameProject {
 			// we're done
 			return newVolume, nil
@@ -383,8 +399,6 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageCli
 		}
 	}()
 
-	// TODO: surce and destination clients mess
-
 	// now we have to convert the destination image to a volume, bootable if it was bootable
 	volumeName := srcVolume.Name
 	if toVolumeName != "" {
@@ -468,6 +482,7 @@ var VolumeCmd = &cobra.Command{
 
 		toAZ := viper.GetString("to-az")
 		toName := viper.GetString("to-volume-name")
+		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
 
 		// source and destination parameters
 		loc, err := getSrcAndDst(toAZ)
@@ -527,7 +542,7 @@ var VolumeCmd = &cobra.Command{
 
 		defer measureTime()
 
-		dstVolume, err := migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, srcVolume, toName, toAZ, loc)
+		dstVolume, err := migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, srcVolume, toName, toAZ, cloneViaSnapshot, loc)
 		if err != nil {
 			return err
 		}
@@ -548,4 +563,5 @@ func initVolumeCmdFlags() {
 	VolumeCmd.Flags().StringP("to-volume-name", "", "", "destinamtion volume name")
 	VolumeCmd.Flags().StringP("container-format", "", "bare", "image container format, when source volume doesn't have this info")
 	VolumeCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
+	VolumeCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume via snapshot")
 }

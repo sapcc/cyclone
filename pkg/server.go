@@ -468,6 +468,7 @@ var ServerCmd = &cobra.Command{
 		toNetworkName := viper.GetString("to-network-name")
 		toSubnetName := viper.GetString("to-subnet-name")
 		toAZ := viper.GetString("to-az")
+		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
 
 		// source and destination parameters
 		loc, err := getSrcAndDst(toAZ)
@@ -620,7 +621,7 @@ var ServerCmd = &cobra.Command{
 				return fmt.Errorf("failed to wait for a %q volume: %s", v, err)
 			}
 
-			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, srcVolume, srcVolume.Name, toAZ, loc)
+			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, srcVolume, srcVolume.Name, toAZ, cloneViaSnapshot, loc)
 			if err != nil {
 				// if we don't fail here, then the resulting VM may not boot because of insuficient of volumes
 				return fmt.Errorf("Failed to clone the %q volume: %s", srcVolume.ID, err)
@@ -681,4 +682,5 @@ func initServerCmdFlags() {
 	ServerCmd.Flags().StringP("to-az", "", "", "destination availability zone")
 	ServerCmd.Flags().StringP("container-format", "", "bare", "image container format, when source volume doesn't have this info")
 	ServerCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
+	ServerCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume, attached to a server, via snapshot")
 }

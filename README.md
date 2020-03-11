@@ -20,9 +20,11 @@ A volume migration within the same region is performed using a [Volume Transfer]
 
 By default the tool uses the same credentials from environment variables for the source and destination projects, but for the destination you can define different region, domain and project name. It is also possible to override destination credentials via OpenStack environment variables with the `TO_` prefix or via CLI parameters.
 
-~> **Note:** Be aware about the quota, especially the source project quota, when cloning a volume. It requires up to 3x of the source volume size Cinder (Block Storage) quota.
+~> **Note:** Be aware about the quota, especially the source project quota, when cloning a volume. It requires up to 2x source volume size Cinder (Block Storage) quota. If a `--clone-via-snapshot` flag is specified, the quota requirement increases up to 3x source volume size.
 
-~> **Note:** It is strongly recommended to shut down the VM before you start a VM or its volumes migration.
+~> **Note:** Cloning a volume within the same region, but different availability zones requires an extra Swift storage quota. If you don't have an ability to use Swift in this case, you can specify a `--clone-via-snapshot` flag.
+
+~> **Note:** It is strongly recommended to shut down the VM before you start a migration of a VM or its volumes.
 
 ~> **Note:** By default cyclone writes all OpenStack request/response logs into a `cyclone` directory, located in System Temporary Directory. Define `-d` or `--debug` flag if you want to see these logs in console output.
 
