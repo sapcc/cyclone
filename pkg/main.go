@@ -44,8 +44,12 @@ func (lg logger) Printf(format string, args ...interface{}) {
 	}
 }
 
-func measureTime() {
-	log.Printf("Total execution time: %s", time.Now().Sub(start))
+func measureTime(caption ...string) {
+	if len(caption) == 0 {
+		log.Printf("Total execution time: %s", time.Now().Sub(start))
+	} else {
+		log.Printf(caption[0], time.Now().Sub(start))
+	}
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.

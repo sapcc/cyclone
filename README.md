@@ -35,6 +35,7 @@ Usage:
   cyclone [command]
 
 Available Commands:
+  backup      
   help        Help about any command
   image       Clone an image
   server      Clone a server
@@ -109,6 +110,39 @@ $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --to-az eu-de-2a
 ```sh
 $ source openrc-of-the-source-project
 $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
+```
+
+### Upload a local image file into a backup
+
+Backup upload is a resource demand command. More parallel threads will require more CPUs and RAM, i.e. 16 threads may require 16 CPUs and up to 5Gb of RAM, depending on the image size.
+Properties must be defined, when a backup supposed to be restored to a bootable volume.
+
+```sh
+$ cyclone backup upload my-file.vmdk --to-container-name swift-backup-container --timeout-backup=24h --timeout-volume=24h --volume-size=160 --threads=16 \
+  -p hw_vif_model=VirtualVmxnet3 \
+  -p vmware_ostype=sles12_64Guest \
+  -p hypervisor_type=vmware \
+  -p min_ram=1008 \
+  -p vmware_disktype=streamOptimized \
+  -p disk_format=vmdk \
+  -p hw_video_ram=16 \
+  -p vmware_adaptertype=paraVirtual \
+  -p container_format=bare \
+  -p min_disk=10 \
+  -p architecture=x86_64 \
+  -p hw_disk_bus=scsi
+```
+
+### Upload the remote Glance image into a backup
+
+```sh
+$ cyclone backup upload my-glance-image --to-container-name swift-backup-container --timeout-backup=24h --volume-size=160 --threads=16
+```
+
+### Create a new volume from an existing backup
+
+```sh
+$ cyclone backup restore my-backup --timeout-volume=24h
 ```
 
 ## Build

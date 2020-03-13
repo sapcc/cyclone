@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gophercloud/gophercloud"
@@ -12,7 +13,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/snapshots"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
-	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
 	volumes_utils "github.com/gophercloud/utils/openstack/blockstorage/v3/volumes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,7 +36,6 @@ var skipVolumeAttributes = []string{
 var (
 	waitForVolumeSec   float64
 	waitForSnapshotSec float64
-	waitForBackupSec   float64
 )
 
 func expandVolumeProperties(srcVolume *volumes.Volume) images.UpdateOpts {
@@ -86,7 +85,7 @@ func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs float64)
 			return true, nil
 		}
 
-		if snapshot.Status == "error" {
+		if strings.Contains(snapshot.Status, "error") {
 			return false, fmt.Errorf("intermediate snapshot status is %q", snapshot.Status)
 		}
 
@@ -95,46 +94,6 @@ func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs float64)
 	})
 
 	return snapshot, err
-}
-
-func createBackupSpeed(client *gophercloud.ServiceClient, backup *backups.Backup) {
-	if client != nil {
-		container, err := containers.Get(client, backup.Container, nil).Extract()
-		if err != nil {
-			log.Printf("Failed to detect a backup container size: %s", err)
-			return
-		}
-		t := backup.UpdatedAt.Sub(backup.CreatedAt)
-		log.Printf("Time to create a backup: %s", t)
-		size := float64(container.BytesUsed / (1024 * 1024))
-		log.Printf("Size of the backup: %.2f Mb", size)
-		log.Printf("Speed of the backup creation: %.2f Mb/sec", size/t.Seconds())
-	}
-}
-
-func waitForBackup(client *gophercloud.ServiceClient, id string, secs float64) (*backups.Backup, error) {
-	var backup *backups.Backup
-	var err error
-	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
-		backup, err = backups.Get(client, id).Extract()
-		if err != nil {
-			return false, err
-		}
-
-		log.Printf("Intermediate backup status: %s", backup.Status)
-		if backup.Status == "available" {
-			return true, nil
-		}
-
-		if backup.Status == "error" {
-			return false, fmt.Errorf("intermediate backup status is %q", backup.Status)
-		}
-
-		// continue status checks
-		return false, nil
-	})
-
-	return backup, err
 }
 
 func createVolumeSpeed(volume *volumes.Volume) {
@@ -161,7 +120,7 @@ func waitForVolume(client *gophercloud.ServiceClient, id string, secs float64) (
 			return true, nil
 		}
 
-		if volume.Status == "error" {
+		if strings.Contains(volume.Status, "error") {
 			return false, fmt.Errorf("volume status is %q", volume.Status)
 		}
 
