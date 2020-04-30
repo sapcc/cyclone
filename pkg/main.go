@@ -107,6 +107,11 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("to-application-credential-name", "", "", "destination application credential name")
 	RootCmd.PersistentFlags().StringP("to-application-credential-id", "", "", "destination application credential ID")
 	RootCmd.PersistentFlags().StringP("to-application-credential-secret", "", "", "destination application credential secret")
+	RootCmd.PersistentFlags().StringP("timeout-image", "", "1h", "timeout to wait for an image status")
+	RootCmd.PersistentFlags().StringP("timeout-volume", "", "1h", "timeout to wait for a volume status")
+	RootCmd.PersistentFlags().StringP("timeout-server", "", "1h", "timeout to wait for a server status")
+	RootCmd.PersistentFlags().StringP("timeout-snapshot", "", "1h", "timeout to wait for a snapshot status")
+	RootCmd.PersistentFlags().StringP("timeout-backup", "", "1h", "timeout to wait for a backup status")
 	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 	viper.BindPFlag("to-auth-url", RootCmd.PersistentFlags().Lookup("to-auth-url"))
 	viper.BindPFlag("to-region", RootCmd.PersistentFlags().Lookup("to-region"))
@@ -117,6 +122,11 @@ func initRootCmdFlags() {
 	viper.BindPFlag("to-application-credential-name", RootCmd.PersistentFlags().Lookup("to-application-credential-name"))
 	viper.BindPFlag("to-application-credential-id", RootCmd.PersistentFlags().Lookup("to-application-credential-id"))
 	viper.BindPFlag("to-application-credential-secret", RootCmd.PersistentFlags().Lookup("to-application-credential-secret"))
+	viper.BindPFlag("timeout-image", RootCmd.PersistentFlags().Lookup("timeout-image"))
+	viper.BindPFlag("timeout-volume", RootCmd.PersistentFlags().Lookup("timeout-volume"))
+	viper.BindPFlag("timeout-server", RootCmd.PersistentFlags().Lookup("timeout-server"))
+	viper.BindPFlag("timeout-snapshot", RootCmd.PersistentFlags().Lookup("timeout-snapshot"))
+	viper.BindPFlag("timeout-backup", RootCmd.PersistentFlags().Lookup("timeout-backup"))
 }
 
 type Locations struct {
@@ -138,6 +148,36 @@ type Location struct {
 	ApplicationCredentialID     string
 	ApplicationCredentialSecret string
 	Origin                      string
+}
+
+func parseTimeoutArg(arg string, dst *float64, errors *[]error) {
+	s := viper.GetString(arg)
+	v, err := time.ParseDuration(s)
+	if err != nil {
+		*errors = append(*errors, fmt.Errorf("failed to parse --%s value: %q", arg, s))
+		return
+	}
+	t := int(v.Seconds())
+	if t == 0 {
+		*errors = append(*errors, fmt.Errorf("--%s value cannot be zero: %d", arg, t))
+	}
+	if t < 0 {
+		*errors = append(*errors, fmt.Errorf("--%s value cannot be negative: %d", arg, t))
+	}
+	*dst = float64(t)
+}
+
+func parseTimeoutArgs() error {
+	var errors []error
+	parseTimeoutArg("timeout-image", &waitForImageSec, &errors)
+	parseTimeoutArg("timeout-volume", &waitForVolumeSec, &errors)
+	parseTimeoutArg("timeout-server", &waitForServerSec, &errors)
+	parseTimeoutArg("timeout-snapshot", &waitForSnapshotSec, &errors)
+	parseTimeoutArg("timeout-backup", &waitForBackupSec, &errors)
+	if len(errors) > 0 {
+		return fmt.Errorf("%q", errors)
+	}
+	return nil
 }
 
 func getSrcAndDst(az string) (Locations, error) {

@@ -30,8 +30,8 @@ import (
 )
 
 var (
-	waitForServerSec uint = 3600
-	waitForPortSec   uint = 60
+	waitForServerSec float64
+	waitForPortSec   float64 = 60
 )
 
 type serverExtended struct {
@@ -50,7 +50,7 @@ func createServerSpeed(server *serverExtended) {
 	log.Printf("Time to create a server: %s", t)
 }
 
-func waitForServer(client *gophercloud.ServiceClient, id string, secs uint) (*serverExtended, error) {
+func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (*serverExtended, error) {
 	var server serverExtended
 	var err error
 	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
@@ -87,7 +87,7 @@ func waitForServer(client *gophercloud.ServiceClient, id string, secs uint) (*se
 	return &server, err
 }
 
-func waitForPort(client *gophercloud.ServiceClient, id string, secs uint) (*ports.Port, error) {
+func waitForPort(client *gophercloud.ServiceClient, id string, secs float64) (*ports.Port, error) {
 	var port *ports.Port
 	var err error
 	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
@@ -461,6 +461,9 @@ var ServerCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Short: "Clone a server",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := parseTimeoutArgs(); err != nil {
+			return err
+		}
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {

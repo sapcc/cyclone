@@ -34,9 +34,9 @@ var skipVolumeAttributes = []string{
 }
 
 var (
-	waitForVolumeSec   uint = 3600
-	waitForSnapshotSec uint = 3600
-	waitForBackupSec   uint = 3600
+	waitForVolumeSec   float64
+	waitForSnapshotSec float64
+	waitForBackupSec   float64
 )
 
 func expandVolumeProperties(srcVolume *volumes.Volume) images.UpdateOpts {
@@ -72,7 +72,7 @@ func createSnapshotSpeed(snapshot *snapshots.Snapshot) {
 	log.Printf("Speed of the snapshot creation: %.2f Mb/sec", size/t.Seconds())
 }
 
-func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs uint) (*snapshots.Snapshot, error) {
+func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs float64) (*snapshots.Snapshot, error) {
 	var snapshot *snapshots.Snapshot
 	var err error
 	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
@@ -110,7 +110,7 @@ func createBackupSpeed(client *gophercloud.ServiceClient, backup *backups.Backup
 	log.Printf("Speed of the backup creation: %.2f Mb/sec", size/t.Seconds())
 }
 
-func waitForBackup(client *gophercloud.ServiceClient, id string, secs uint) (*backups.Backup, error) {
+func waitForBackup(client *gophercloud.ServiceClient, id string, secs float64) (*backups.Backup, error) {
 	var backup *backups.Backup
 	var err error
 	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
@@ -144,7 +144,7 @@ func createVolumeSpeed(volume *volumes.Volume) {
 	log.Printf("Speed of the volume creation: %.2f Mb/sec", size/t.Seconds())
 }
 
-func waitForVolume(client *gophercloud.ServiceClient, id string, secs uint) (*volumes.Volume, error) {
+func waitForVolume(client *gophercloud.ServiceClient, id string, secs float64) (*volumes.Volume, error) {
 	var volume *volumes.Volume
 	var err error
 	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
@@ -474,6 +474,9 @@ var VolumeCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Short: "Clone a volume",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := parseTimeoutArgs(); err != nil {
+			return err
+		}
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {

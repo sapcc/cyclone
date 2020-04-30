@@ -18,8 +18,8 @@ import (
 )
 
 var (
-	waitForImageSec uint = 3600
-	swiftTempURLTTL int  = 10 // 10 seconds is enough
+	waitForImageSec float64
+	swiftTempURLTTL int = 10 // 10 seconds is enough
 )
 
 var imageWaitStatuses = []string{
@@ -36,7 +36,7 @@ func createImageSpeed(image *images.Image) {
 	log.Printf("Speed of the image creation: %.2f Mb/sec", size/t.Seconds())
 }
 
-func waitForImageTask(client *gophercloud.ServiceClient, id string, secs uint) (*images.Image, error) {
+func waitForImageTask(client *gophercloud.ServiceClient, id string, secs float64) (*images.Image, error) {
 	// initial image status
 	img, err := images.Get(client, id).Extract()
 	if err != nil {
@@ -119,7 +119,7 @@ func waitForImageTask(client *gophercloud.ServiceClient, id string, secs uint) (
 	return img, err
 }
 
-func waitForImage(client *gophercloud.ServiceClient, id string, secs uint) (*images.Image, error) {
+func waitForImage(client *gophercloud.ServiceClient, id string, secs float64) (*images.Image, error) {
 	var image *images.Image
 	var err error
 	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
@@ -289,6 +289,9 @@ var ImageCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Short: "Clone an image",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if err := parseTimeoutArgs(); err != nil {
+			return err
+		}
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {

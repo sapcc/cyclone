@@ -44,6 +44,11 @@ Available Commands:
 Flags:
   -d, --debug                                     print out request and response objects
   -h, --help                                      help for cyclone
+      --timeout-backup string                     timeout to wait for a backup status (default "1h")
+      --timeout-image string                      timeout to wait for an image status (default "1h")
+      --timeout-server string                     timeout to wait for a server status (default "1h")
+      --timeout-snapshot string                   timeout to wait for a snapshot status (default "1h")
+      --timeout-volume string                     timeout to wait for a volume status (default "1h")
       --to-application-credential-id string       destination application credential ID
       --to-application-credential-name string     destination application credential name
       --to-application-credential-secret string   destination application credential secret
