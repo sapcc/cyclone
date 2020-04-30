@@ -92,6 +92,15 @@ $ source openrc-of-the-source-project
 $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --to-az eu-de-2a
 ```
 
+### Clone a server with a local storage to a server with bootable Cinder storage
+
+`--bootable-volume 16` will create a 16 GiB bootable volume from the source VM snapshot and create a new VM using this volume.
+
+```sh
+$ source openrc-of-the-source-project
+$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
+```
+
 ## Build
 
 ```sh
