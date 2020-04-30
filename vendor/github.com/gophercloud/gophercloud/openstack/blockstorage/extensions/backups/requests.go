@@ -61,22 +61,25 @@ func Create(client *gophercloud.ServiceClient, opts CreateOptsBuilder) (r Create
 		r.Err = err
 		return
 	}
-	_, r.Err = client.Post(createURL(client), b, &r.Body, &gophercloud.RequestOpts{
+	resp, err := client.Post(createURL(client), b, &r.Body, &gophercloud.RequestOpts{
 		OkCodes: []int{202},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
 // Delete will delete the existing Backup with the provided ID.
 func Delete(client *gophercloud.ServiceClient, id string) (r DeleteResult) {
-	_, r.Err = client.Delete(deleteURL(client, id), nil)
+	resp, err := client.Delete(deleteURL(client, id), nil)
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
 // Get retrieves the Backup with the provided ID. To extract the Backup
 // object from the response, call the Extract method on the GetResult.
 func Get(client *gophercloud.ServiceClient, id string) (r GetResult) {
-	_, r.Err = client.Get(getURL(client, id), &r.Body, nil)
+	resp, err := client.Get(getURL(client, id), &r.Body, nil)
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
@@ -177,9 +180,10 @@ func Update(client *gophercloud.ServiceClient, id string, opts UpdateOptsBuilder
 		r.Err = err
 		return
 	}
-	_, r.Err = client.Put(updateURL(client, id), b, &r.Body, &gophercloud.RequestOpts{
+	resp, err := client.Put(updateURL(client, id), b, &r.Body, &gophercloud.RequestOpts{
 		OkCodes: []int{200},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }
 
@@ -208,8 +212,43 @@ func RestoreFromBackup(client *gophercloud.ServiceClient, id string, opts Restor
 		r.Err = err
 		return
 	}
-	_, r.Err = client.Post(restoreURL(client, id), b, &r.Body, &gophercloud.RequestOpts{
+	resp, err := client.Post(restoreURL(client, id), b, &r.Body, &gophercloud.RequestOpts{
 		OkCodes: []int{202},
 	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
+	return
+}
+
+// Export will export a Backup information. To extract the Backup export record
+// object from the response, call the Extract method on the ExportResult.
+func Export(client *gophercloud.ServiceClient, id string) (r ExportResult) {
+	resp, err := client.Get(exportURL(client, id), &r.Body, nil)
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
+	return
+}
+
+// ImportOpts contains options for importing a Backup. This object is passed to
+// the backups.ImportBackup function.
+type ImportOpts BackupRecord
+
+// ToBackupImportMap assembles a request body based on the contents of a
+// ImportOpts.
+func (opts ImportOpts) ToBackupImportMap() (map[string]interface{}, error) {
+	return gophercloud.BuildRequestBody(opts, "backup-record")
+}
+
+// Import will import a Backup data to a backup based on the values in
+// ImportOpts. To extract the Backup object from the response, call the
+// Extract method on the ImportResult.
+func Import(client *gophercloud.ServiceClient, opts ImportOpts) (r ImportResult) {
+	b, err := opts.ToBackupImportMap()
+	if err != nil {
+		r.Err = err
+		return
+	}
+	resp, err := client.Post(importURL(client), b, &r.Body, &gophercloud.RequestOpts{
+		OkCodes: []int{201},
+	})
+	_, r.Header, r.Err = gophercloud.ParseResponse(resp, err)
 	return
 }

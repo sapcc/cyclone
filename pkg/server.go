@@ -21,6 +21,10 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
+	flavors_utils "github.com/gophercloud/utils/openstack/compute/v2/flavors"
+	servers_utils "github.com/gophercloud/utils/openstack/compute/v2/servers"
+	networks_utils "github.com/gophercloud/utils/openstack/networking/v2/networks"
+	subnets_utils "github.com/gophercloud/utils/openstack/networking/v2/subnets"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -241,7 +245,7 @@ func getPortOpts(client *gophercloud.ServiceClient, networkName, subnetName stri
 	}
 
 	if networkName != "" {
-		networkID, err := networks.IDFromName(client, networkName)
+		networkID, err := networks_utils.IDFromName(client, networkName)
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +295,7 @@ func getPortOpts(client *gophercloud.ServiceClient, networkName, subnetName stri
 		return createOpts, nil
 	}
 
-	subnetID, err := subnets.IDFromName(client, subnetName)
+	subnetID, err := subnets_utils.IDFromName(client, subnetName)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +414,7 @@ func checkFlavor(srcServerClient, dstServerClient *gophercloud.ServiceClient, sr
 				if err != nil {
 					return "", fmt.Errorf("failed to get an info about the source server flavor: %s", err)
 				}
-				flavorID, err := flavors.IDFromName(dstServerClient, flavor.Name)
+				flavorID, err := flavors_utils.IDFromName(dstServerClient, flavor.Name)
 				if err != nil {
 					return "", fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 				}
@@ -422,7 +426,7 @@ func checkFlavor(srcServerClient, dstServerClient *gophercloud.ServiceClient, sr
 		}
 	}
 
-	flavorID, err := flavors.IDFromName(dstServerClient, *toFlavor)
+	flavorID, err := flavors_utils.IDFromName(dstServerClient, *toFlavor)
 	if err != nil {
 		return "", fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 	}
@@ -502,7 +506,7 @@ var ServerCmd = &cobra.Command{
 		}
 
 		// resolve server name to an ID
-		if v, err := servers.IDFromName(srcServerClient, server); err == nil {
+		if v, err := servers_utils.IDFromName(srcServerClient, server); err == nil {
 			server = v
 		}
 
@@ -576,7 +580,7 @@ var ServerCmd = &cobra.Command{
 				}
 			}()
 		} else {
-			networkID, err = networks.IDFromName(dstNetworkClient, toNetworkName)
+			networkID, err = networks_utils.IDFromName(dstNetworkClient, toNetworkName)
 			if err != nil {
 				return err
 			}

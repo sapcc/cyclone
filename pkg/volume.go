@@ -13,6 +13,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
 	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
+	volumes_utils "github.com/gophercloud/utils/openstack/blockstorage/v3/volumes"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -511,7 +512,7 @@ var VolumeCmd = &cobra.Command{
 		}
 
 		// resolve volume name to an ID
-		if v, err := volumes.IDFromName(srcVolumeClient, volume); err == nil {
+		if v, err := volumes_utils.IDFromName(srcVolumeClient, volume); err == nil {
 			volume = v
 		}
 

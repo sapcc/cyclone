@@ -12,6 +12,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
 	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
 	"github.com/gophercloud/gophercloud/pagination"
+	images_utils "github.com/gophercloud/utils/openstack/imageservice/v2/images"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -317,7 +318,7 @@ var ImageCmd = &cobra.Command{
 		}
 
 		// resolve image name to an ID
-		if v, err := images.IDFromName(srcImageClient, image); err == nil {
+		if v, err := images_utils.IDFromName(srcImageClient, image); err == nil {
 			image = v
 		}
 

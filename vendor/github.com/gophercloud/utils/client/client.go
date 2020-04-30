@@ -62,6 +62,7 @@ var defaultSensitiveHeaders = map[string]struct{}{
 	"x-container-meta-temp-url-key-2": {},
 	"set-cookie":                      {},
 	"x-subject-token":                 {},
+	"authorization":                   {},
 }
 
 // GetDefaultSensitiveHeaders returns the default list of headers to be masked
@@ -320,6 +321,25 @@ func FormatJSON(raw []byte) (string, error) {
 			}
 			if v, ok := v["token"].(map[string]interface{}); ok {
 				v["id"] = "***"
+			}
+		}
+	}
+
+	// Mask EC2 access id and body hash
+	if v, ok := data["credentials"].(map[string]interface{}); ok {
+		var access string
+		if s, ok := v["access"]; ok {
+			access, _ = s.(string)
+			v["access"] = "***"
+		}
+		if _, ok := v["body_hash"]; ok {
+			v["body_hash"] = "***"
+		}
+		if v, ok := v["headers"].(map[string]interface{}); ok {
+			if _, ok := v["Authorization"]; ok {
+				if s, ok := v["Authorization"].(string); ok {
+					v["Authorization"] = strings.Replace(s, access, "***", -1)
+				}
 			}
 		}
 	}
