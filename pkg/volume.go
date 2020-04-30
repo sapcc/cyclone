@@ -560,7 +560,7 @@ func init() {
 
 func initVolumeCmdFlags() {
 	VolumeCmd.Flags().StringP("to-az", "", "", "destination volume availability zone")
-	VolumeCmd.Flags().StringP("to-volume-name", "", "", "destinamtion volume name")
+	VolumeCmd.Flags().StringP("to-volume-name", "", "", "destination volume name")
 	VolumeCmd.Flags().StringP("container-format", "", "bare", "image container format, when source volume doesn't have this info")
 	VolumeCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
 	VolumeCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume via snapshot")
