@@ -363,10 +363,10 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 	if dstImage != nil {
 		if len(dstVolumes) > 0 {
 			bd := bootfromvolume.BlockDevice{
+				BootIndex:           0,
 				UUID:                dstImage.ID,
 				SourceType:          bootfromvolume.SourceImage,
 				DestinationType:     bootfromvolume.DestinationLocal,
-				BootIndex:           0,
 				DeleteOnTermination: true,
 			}
 			blockDeviceOpts = append(blockDeviceOpts, bd)
@@ -405,25 +405,15 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 	return createOpts
 }
 
-func checkFlavor(srcServerClient, dstServerClient *gophercloud.ServiceClient, srcServer *serverExtended, toFlavor *string) (string, error) {
+func checkFlavor(dstServerClient *gophercloud.ServiceClient, srcFlavor *flavors.Flavor, toFlavor *string) (string, error) {
 	// TODO: compare an old flavor to a new one
 	if *toFlavor == "" {
-		if v, ok := srcServer.Flavor["id"]; ok {
-			if v, ok := v.(string); ok {
-				flavor, err := flavors.Get(srcServerClient, v).Extract()
-				if err != nil {
-					return "", fmt.Errorf("failed to get an info about the source server flavor: %s", err)
-				}
-				flavorID, err := flavors_utils.IDFromName(dstServerClient, flavor.Name)
-				if err != nil {
-					return "", fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
-				}
-				*toFlavor = flavor.Name
-				return flavorID, nil
-			}
-		} else {
-			return "", fmt.Errorf("failed to detect source server flavor")
+		flavorID, err := flavors_utils.IDFromName(dstServerClient, srcFlavor.Name)
+		if err != nil {
+			return "", fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 		}
+		*toFlavor = srcFlavor.Name
+		return flavorID, nil
 	}
 
 	flavorID, err := flavors_utils.IDFromName(dstServerClient, *toFlavor)
@@ -432,6 +422,19 @@ func checkFlavor(srcServerClient, dstServerClient *gophercloud.ServiceClient, sr
 	}
 
 	return flavorID, nil
+}
+
+func getSrcFlavor(srcServerClient *gophercloud.ServiceClient, srcServer *serverExtended) (*flavors.Flavor, error) {
+	if v, ok := srcServer.Flavor["id"]; ok {
+		if v, ok := v.(string); ok {
+			srcFlavor, err := flavors.Get(srcServerClient, v).Extract()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get source server flavor details: %s", err)
+			}
+			return srcFlavor, nil
+		}
+	}
+	return nil, fmt.Errorf("failed to detect source server flavor details")
 }
 
 func checKeyPair(client *gophercloud.ServiceClient, keyName string) error {
@@ -476,6 +479,7 @@ var ServerCmd = &cobra.Command{
 		toSubnetName := viper.GetString("to-subnet-name")
 		toAZ := viper.GetString("to-az")
 		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
+		forceBootable := viper.GetUint("bootable-volume")
 
 		// source and destination parameters
 		loc, err := getSrcAndDst(toAZ)
@@ -544,7 +548,11 @@ var ServerCmd = &cobra.Command{
 		}
 
 		// check server flavors
-		flavorID, err := checkFlavor(srcServerClient, dstServerClient, srcServer, &toFlavor)
+		srcFlavor, err := getSrcFlavor(srcServerClient, srcServer)
+		if err != nil {
+			return err
+		}
+		flavorID, err := checkFlavor(dstServerClient, srcFlavor, &toFlavor)
 		if err != nil {
 			return err
 		}
@@ -602,10 +610,15 @@ var ServerCmd = &cobra.Command{
 		log.Printf("Detected %q attached volumes", vols)
 		//log.Printf("The %q volume is a bootable volume", vols[0])
 
+		var dstVolumes []*volumes.Volume
 		var dstImage *images.Image
 		if bootableVolume {
 			log.Printf("The %q volume is a bootable volume", vols[0])
 		} else {
+			if forceBootable > 0 && uint(srcFlavor.Disk) > forceBootable {
+				return fmt.Errorf("cannot create a bootable volume with a size less than original disk size: %d", srcFlavor.Disk)
+			}
+
 			// TODO: image name must represent the original server source image name
 			dstImage, err = createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcObjectClient, srcServer, loc)
 			if err != nil {
@@ -613,14 +626,30 @@ var ServerCmd = &cobra.Command{
 			}
 
 			// TODO: add an option to keep artifacts on failure
+			dstImageID := dstImage.ID
 			defer func() {
-				if err := images.Delete(dstImageClient, dstImage.ID).ExtractErr(); err != nil {
+				if err := images.Delete(dstImageClient, dstImageID).ExtractErr(); err != nil {
 					log.Printf("Error deleting migrated server snapshot: %s", err)
 				}
 			}()
+
+			if forceBootable > 0 {
+				if uint(srcFlavor.Disk) > forceBootable {
+					return fmt.Errorf("cannot create a bootable volume with a size less than original disk size: %d", srcFlavor.Disk)
+				}
+				log.Printf("Forcing %s image to be converted to a bootable volume", dstImageID)
+				bootableVolume = true
+				var newBootableVolume *volumes.Volume
+				newBootableVolume, err = imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, fmt.Sprintf("bootable for %s", dstImage.Name), "", toAZ, int(forceBootable))
+				if err != nil {
+					return fmt.Errorf("failed to create a bootable volume for a VM", err)
+				}
+				dstVolumes = append(dstVolumes, newBootableVolume)
+				// release dstImage pointer
+				dstImage = nil
+			}
 		}
 
-		var dstVolumes []*volumes.Volume
 		for i, v := range vols {
 			var srcVolume, dstVolume *volumes.Volume
 			srcVolume, err = waitForVolume(srcVolumeClient, v, waitForVolumeSec)
@@ -631,7 +660,7 @@ var ServerCmd = &cobra.Command{
 			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, srcVolume, srcVolume.Name, toAZ, cloneViaSnapshot, loc)
 			if err != nil {
 				// if we don't fail here, then the resulting VM may not boot because of insuficient of volumes
-				return fmt.Errorf("Failed to clone the %q volume: %s", srcVolume.ID, err)
+				return fmt.Errorf("failed to clone the %q volume: %s", srcVolume.ID, err)
 			}
 
 			dstVolumes = append(dstVolumes, dstVolume)
@@ -690,4 +719,5 @@ func initServerCmdFlags() {
 	ServerCmd.Flags().StringP("container-format", "", "bare", "image container format, when source volume doesn't have this info")
 	ServerCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
 	ServerCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume, attached to a server, via snapshot")
+	ServerCmd.Flags().UintP("bootable-volume", "b", 0, "force a VM with a local storage to be cloned to a VM with a bootable volume with a size specified in GiB")
 }

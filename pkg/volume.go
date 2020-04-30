@@ -405,15 +405,36 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageCli
 	if toVolumeName != "" {
 		volumeName = toVolumeName
 	}
+
+	var dstVolume *volumes.Volume
+	dstVolume, err = imageToVolume(imgToVolClient, imgDstClient, dstImage.ID, volumeName, srcVolume.VolumeType, az, srcVolume.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	if loc.SameRegion {
+		if loc.SameProject {
+			// we're done
+			return dstVolume, nil
+		}
+		// volume
+		var v *volumes.Volume
+		v, err = transferVolume(imgToVolClient, dstVolumeClient, dstVolume)
+		return v, err
+	}
+
+	return dstVolume, nil
+}
+
+func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imageID, volumeName, volumeType, az string, volumeSize int) (*volumes.Volume, error) {
 	dstVolumeCreateOpts := volumes.CreateOpts{
-		Size:             srcVolume.Size,
+		Size:             volumeSize,
 		Name:             volumeName,
 		AvailabilityZone: az,
-		ImageID:          dstImage.ID,
-		VolumeType:       srcVolume.VolumeType,
+		ImageID:          imageID,
+		VolumeType:       volumeType,
 	}
-	var dstVolume *volumes.Volume
-	dstVolume, err = volumes.Create(imgToVolClient, dstVolumeCreateOpts).Extract()
+	dstVolume, err := volumes.Create(imgToVolClient, dstVolumeCreateOpts).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create a destination volume: %s", err)
 	}
@@ -427,21 +448,10 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageCli
 	createVolumeSpeed(dstVolume)
 
 	// image can still be in "TODO" state, we need to wait for "available" before defer func will delete it
-	_, err = waitForImage(imgDstClient, dstImage.ID, waitForImageSec)
+	_, err = waitForImage(imgDstClient, imageID, waitForImageSec)
 	if err != nil {
 		// TODO: delete volume?
 		return nil, err
-	}
-
-	if loc.SameRegion {
-		if loc.SameProject {
-			// we're done
-			return dstVolume, nil
-		}
-		// volume
-		var v *volumes.Volume
-		v, err = transferVolume(imgToVolClient, dstVolumeClient, dstVolume)
-		return v, err
 	}
 
 	return dstVolume, nil

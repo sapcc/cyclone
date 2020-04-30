@@ -238,7 +238,7 @@ func getSrcAndDst(az string) (Locations, error) {
 			loc.Dst.AuthURL = s
 			log.Printf("Detected %q destination auth URL", loc.Dst.AuthURL)
 		} else {
-			return loc, fmt.Errorf("Failed to detect destination auth URL, please specify --to-auth-url explicitly")
+			return loc, fmt.Errorf("failed to detect destination auth URL, please specify --to-auth-url explicitly")
 		}
 	}
 
