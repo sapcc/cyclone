@@ -113,6 +113,7 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("timeout-server", "", "1h", "timeout to wait for a server status")
 	RootCmd.PersistentFlags().StringP("timeout-snapshot", "", "1h", "timeout to wait for a snapshot status")
 	RootCmd.PersistentFlags().StringP("timeout-backup", "", "1h", "timeout to wait for a backup status")
+	RootCmd.PersistentFlags().BoolP("image-web-download", "", true, "use Glance web-download image import method")
 	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 	viper.BindPFlag("to-auth-url", RootCmd.PersistentFlags().Lookup("to-auth-url"))
 	viper.BindPFlag("to-region", RootCmd.PersistentFlags().Lookup("to-region"))
@@ -128,6 +129,7 @@ func initRootCmdFlags() {
 	viper.BindPFlag("timeout-server", RootCmd.PersistentFlags().Lookup("timeout-server"))
 	viper.BindPFlag("timeout-snapshot", RootCmd.PersistentFlags().Lookup("timeout-snapshot"))
 	viper.BindPFlag("timeout-backup", RootCmd.PersistentFlags().Lookup("timeout-backup"))
+	viper.BindPFlag("image-web-download", RootCmd.PersistentFlags().Lookup("image-web-download"))
 }
 
 type Locations struct {

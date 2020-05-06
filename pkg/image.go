@@ -2,10 +2,12 @@ package pkg
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
 	"time"
 
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/imagedata"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/imageimport"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
 	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/tasks"
@@ -18,8 +20,9 @@ import (
 )
 
 var (
-	waitForImageSec float64
-	swiftTempURLTTL int = 10 // 10 seconds is enough
+	waitForImageSec  float64
+	swiftTempURLTTL  int = 10 // 10 seconds is enough
+	imageWebDownload bool
 )
 
 var imageWaitStatuses = []string{
@@ -178,28 +181,31 @@ func generateTmpUrlKey(n int) string {
 }
 
 func migrateImage(srcImageClient, dstImageClient, srcObjectClient *gophercloud.ServiceClient, srcImg *images.Image, toImageName string) (*images.Image, error) {
+	var url string
 	containerName := "glance_" + srcImg.ID
 	objectName := srcImg.ID
 
-	tempUrlKey := containers.UpdateOpts{
-		TempURLKey: generateTmpUrlKey(20),
-	}
-	_, err := containers.Update(srcObjectClient, containerName, tempUrlKey).Extract()
-	if err != nil {
-		return nil, fmt.Errorf("unable to set container temporary url key: %s", err)
-	}
+	if imageWebDownload {
+		tempUrlKey := containers.UpdateOpts{
+			TempURLKey: generateTmpUrlKey(20),
+		}
+		_, err := containers.Update(srcObjectClient, containerName, tempUrlKey).Extract()
+		if err != nil {
+			return nil, fmt.Errorf("unable to set container temporary url key: %s", err)
+		}
 
-	tmpUrlOptions := objects.CreateTempURLOpts{
-		Method: "GET",
-		TTL:    swiftTempURLTTL,
-	}
+		tmpUrlOptions := objects.CreateTempURLOpts{
+			Method: "GET",
+			TTL:    swiftTempURLTTL,
+		}
 
-	url, err := objects.CreateTempURL(srcObjectClient, containerName, objectName, tmpUrlOptions)
-	if err != nil {
-		return nil, fmt.Errorf("unable to generate a temporary url for the %q container: %s", containerName, err)
-	}
+		url, err = objects.CreateTempURL(srcObjectClient, containerName, objectName, tmpUrlOptions)
+		if err != nil {
+			return nil, fmt.Errorf("unable to generate a temporary url for the %q container: %s", containerName, err)
+		}
 
-	log.Printf("Generated Swift Temp URL: %s", url)
+		log.Printf("Generated Swift Temp URL: %s", url)
+	}
 
 	imageName := srcImg.Name
 	if toImageName != "" {
@@ -232,31 +238,58 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient *gophercloud.S
 		}
 	}()
 
-	var importInfo *imageimport.ImportInfo
-	importInfo, err = imageimport.Get(dstImageClient).Extract()
-	if err != nil {
-		return nil, fmt.Errorf("error while getting the supported import methods: %s", err)
-	}
+	if imageWebDownload {
+		var importInfo *imageimport.ImportInfo
+		importInfo, err = imageimport.Get(dstImageClient).Extract()
+		if err != nil {
+			return nil, fmt.Errorf("error while getting the supported import methods: %s", err)
+		}
 
-	if !isSliceContainsStr(importInfo.ImportMethods.Value, string(imageimport.WebDownloadMethod)) {
-		return nil, fmt.Errorf("the %q import method is not supported, supported import methods: %q", imageimport.WebDownloadMethod, importInfo.ImportMethods.Value)
-	}
+		if !isSliceContainsStr(importInfo.ImportMethods.Value, string(imageimport.WebDownloadMethod)) {
+			return nil, fmt.Errorf("the %q import method is not supported, supported import methods: %q", imageimport.WebDownloadMethod, importInfo.ImportMethods.Value)
+		}
 
-	// import
-	importOpts := &imageimport.CreateOpts{
-		Name: imageimport.WebDownloadMethod,
-		URI:  url,
-	}
+		// import
+		importOpts := &imageimport.CreateOpts{
+			Name: imageimport.WebDownloadMethod,
+			URI:  url,
+		}
 
-	err = imageimport.Create(dstImageClient, dstImg.ID, importOpts).ExtractErr()
-	if err != nil {
-		return nil, fmt.Errorf("error while importing url %q: %s", url, err)
+		err = imageimport.Create(dstImageClient, dstImg.ID, importOpts).ExtractErr()
+		if err != nil {
+			return nil, fmt.Errorf("error while importing url %q: %s", url, err)
 
-	}
+		}
 
-	dstImg, err = waitForImageTask(dstImageClient, dstImg.ID, waitForImageSec)
-	if err != nil {
-		return nil, fmt.Errorf("error while importing url %q: %s", url, err)
+		dstImg, err = waitForImageTask(dstImageClient, dstImg.ID, waitForImageSec)
+		if err != nil {
+			return nil, fmt.Errorf("error while importing url %q: %s", url, err)
+		}
+	} else {
+		// get the source reader
+		var imageReader io.Reader
+		imageReader, err = imagedata.Download(srcImageClient, srcImg.ID).Extract()
+		if err != nil {
+			return nil, fmt.Errorf("error getting the source image reader: %s", err)
+		}
+
+		dstImgID := dstImg.ID
+		errChan := make(chan error)
+		go func() {
+			dstImg, err = waitForImage(dstImageClient, dstImg.ID, waitForImageSec)
+			errChan <- err
+		}()
+
+		// write the source to the destination
+		err = imagedata.Upload(dstImageClient, dstImgID, imageReader).ExtractErr()
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload an image: %s", err)
+		}
+
+		err = <-errChan
+		if err != nil {
+			return nil, fmt.Errorf("error while waiting for an image to be uploaded: %s", err)
+		}
 	}
 
 	createImageSpeed(dstImg)
@@ -292,6 +325,7 @@ var ImageCmd = &cobra.Command{
 		if err := parseTimeoutArgs(); err != nil {
 			return err
 		}
+		imageWebDownload = viper.GetBool("image-web-download")
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -340,13 +374,15 @@ var ImageCmd = &cobra.Command{
 			return fmt.Errorf("failed to wait for %q source image: %s", image, err)
 		}
 
-		// check whether current user scope belongs to the image owner
-		userProjectID, err := getAuthProjectID(srcImageClient.ProviderClient)
-		if err != nil {
-			return fmt.Errorf("failed to extract user project ID scope: %s", err)
-		}
-		if userProjectID != srcImg.Owner {
-			return fmt.Errorf("cannot clone an image, which belongs to another project: %s", srcImg.Owner)
+		if imageWebDownload {
+			// check whether current user scope belongs to the image owner
+			userProjectID, err := getAuthProjectID(srcImageClient.ProviderClient)
+			if err != nil {
+				return fmt.Errorf("failed to extract user project ID scope: %s", err)
+			}
+			if userProjectID != srcImg.Owner {
+				return fmt.Errorf("cannot clone an image using web download import method, when an image belongs to another project (%s), try to set --image-web-download=false", srcImg.Owner)
+			}
 		}
 
 		defer measureTime()

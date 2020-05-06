@@ -487,6 +487,7 @@ var VolumeCmd = &cobra.Command{
 		if err := parseTimeoutArgs(); err != nil {
 			return err
 		}
+		imageWebDownload = viper.GetBool("image-web-download")
 		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
