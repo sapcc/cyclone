@@ -642,7 +642,7 @@ var ServerCmd = &cobra.Command{
 				var newBootableVolume *volumes.Volume
 				newBootableVolume, err = imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, fmt.Sprintf("bootable for %s", dstImage.Name), "", toAZ, int(forceBootable))
 				if err != nil {
-					return fmt.Errorf("failed to create a bootable volume for a VM", err)
+					return fmt.Errorf("failed to create a bootable volume for a VM: %s", err)
 				}
 				dstVolumes = append(dstVolumes, newBootableVolume)
 				// release dstImage pointer
