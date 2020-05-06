@@ -13,6 +13,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
+	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/gophercloud/utils/client"
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"github.com/spf13/cobra"
@@ -389,6 +390,32 @@ func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstA
 	}
 
 	return nil
+}
+
+func getAuthProjectID(client *gophercloud.ProviderClient) (string, error) {
+	if client == nil {
+		return "", fmt.Errorf("provider client is nil")
+	}
+	r := client.GetAuthResult()
+	if r == nil {
+		return "", fmt.Errorf("provider client auth result is nil")
+	}
+	switch r := r.(type) {
+	case tokens.CreateResult:
+		v, err := r.ExtractProject()
+		if err != nil {
+			return "", err
+		}
+		return v.ID, nil
+	case tokens.GetResult:
+		v, err := r.ExtractProject()
+		if err != nil {
+			return "", err
+		}
+		return v.ID, nil
+	default:
+		return "", fmt.Errorf("got unexpected AuthResult type %t", r)
+	}
 }
 
 // isSliceContainsStr returns true if the string exists in given slice

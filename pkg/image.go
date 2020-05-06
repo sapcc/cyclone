@@ -340,6 +340,15 @@ var ImageCmd = &cobra.Command{
 			return fmt.Errorf("failed to wait for %q source image: %s", image, err)
 		}
 
+		// check whether current user scope belongs to the image owner
+		userProjectID, err := getAuthProjectID(srcImageClient.ProviderClient)
+		if err != nil {
+			return fmt.Errorf("failed to extract user project ID scope: %s", err)
+		}
+		if userProjectID != srcImg.Owner {
+			return fmt.Errorf("cannot clone an image, which belongs to another project: %s", srcImg.Owner)
+		}
+
 		defer measureTime()
 
 		_, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, srcImg, toName)
