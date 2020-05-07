@@ -7,6 +7,7 @@ import (
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedserverattributes"
@@ -458,6 +459,51 @@ func checKeyPair(client *gophercloud.ServiceClient, keyName string) error {
 	})
 }
 
+func getServerInterfaces(client *gophercloud.ServiceClient, id string) ([]attachinterfaces.Interface, error) {
+	var interfaces []attachinterfaces.Interface
+
+	pager := attachinterfaces.List(client, id)
+	err := pager.EachPage(func(page pagination.Page) (bool, error) {
+		s, err := attachinterfaces.ExtractInterfaces(page)
+		if err != nil {
+			return false, err
+		}
+		interfaces = append(interfaces, s...)
+		return true, nil
+	})
+	if err != nil {
+		return interfaces, err
+	}
+
+	return interfaces, nil
+}
+
+func getServerNetworkName(srcServerClient *gophercloud.ServiceClient, server *serverExtended) (string, error) {
+	ifaces, err := getServerInterfaces(srcServerClient, server.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to detect source server interfaces: %s", err)
+	}
+	if len(ifaces) == 0 {
+		return "", fmt.Errorf("source server contains no network interfaces")
+	}
+
+	for _, iface := range ifaces {
+		for network, data := range server.Addresses {
+			if v, ok := data.([]interface{}); ok {
+				for _, v := range v {
+					if v, ok := v.(map[string]interface{}); ok {
+						if v, ok := v["OS-EXT-IPS-MAC:mac_addr"]; ok && v == iface.MACAddr {
+							return network, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("failed to identify source server interface name")
+}
+
 // ServerCmd represents the server command
 var ServerCmd = &cobra.Command{
 	Use:   "server <name|id>",
@@ -600,6 +646,14 @@ var ServerCmd = &cobra.Command{
 				}
 			}()
 		} else {
+			if toNetworkName == "" {
+				log.Printf("New server network name is empty, detecting the network name from the source server")
+				toNetworkName, err = getServerNetworkName(srcServerClient, srcServer)
+				if err != nil {
+					return err
+				}
+				log.Printf("Detected %q network name from the source server", toNetworkName)
+			}
 			networkID, err = networks_utils.IDFromName(dstNetworkClient, toNetworkName)
 			if err != nil {
 				return err
