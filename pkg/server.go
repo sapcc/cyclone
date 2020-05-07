@@ -150,7 +150,7 @@ func serverVolumeAttachments(client *gophercloud.ServiceClient, server *serverEx
 	return vols, bootableVolume, nil
 }
 
-func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcObjectClient *gophercloud.ServiceClient, srcServer *serverExtended, loc Locations) (*images.Image, error) {
+func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcObjectClient, dstObjectClient *gophercloud.ServiceClient, srcServer *serverExtended, loc Locations) (*images.Image, error) {
 	createImageOpts := servers.CreateImageOpts{
 		Name: fmt.Sprintf("%s-server-snapshot", srcServer.Name),
 	}
@@ -167,7 +167,7 @@ func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcOb
 	}
 
 	var srcImage *images.Image
-	srcImage, err = waitForImage(srcImageClient, imageID, waitForImageSec)
+	srcImage, err = waitForImage(srcImageClient, dstObjectClient, imageID, 0, waitForImageSec)
 	if err != nil {
 		deleteSourceOnReturn()
 		return nil, fmt.Errorf("failed to wait for a %q server snapshot image: %s", imageID, err)
@@ -183,13 +183,13 @@ func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcOb
 
 	// TODO: use the actual source image name from the server properties
 	var dstImage *images.Image
-	dstImage, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, srcImage, srcImage.Name)
+	dstImage, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImage.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to migrate server snapshot: %s", err)
 	}
 
 	// image can still be in "TODO" state, we need to wait for "available" before defer func will delete it
-	_, err = waitForImage(srcImageClient, imageID, waitForImageSec)
+	_, err = waitForImage(srcImageClient, nil, imageID, 0, waitForImageSec)
 	if err != nil {
 		return nil, err
 	}
@@ -503,9 +503,12 @@ var ServerCmd = &cobra.Command{
 			return fmt.Errorf("failed to create source image client: %s", err)
 		}
 
-		srcObjectClient, err := NewObjectStorageV1Client(srcProvider, loc.Src.Region)
-		if err != nil {
-			return fmt.Errorf("failed to create source object storage client: %s", err)
+		var srcObjectClient *gophercloud.ServiceClient
+		if imageWebDownload {
+			srcObjectClient, err = NewObjectStorageV1Client(srcProvider, loc.Src.Region)
+			if err != nil {
+				return fmt.Errorf("failed to create source object storage client: %s", err)
+			}
 		}
 
 		srcVolumeClient, err := NewBlockStorageV3Client(srcProvider, loc.Src.Region)
@@ -536,6 +539,11 @@ var ServerCmd = &cobra.Command{
 		dstVolumeClient, err := NewBlockStorageV3Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination volume client: %s", err)
+		}
+
+		dstObjectClient, err := NewObjectStorageV1Client(dstProvider, loc.Dst.Region)
+		if err != nil {
+			log.Printf("failed to create destination object storage client, detailed image clone statistics will be unavailable: %s", err)
 		}
 
 		dstNetworkClient, err := NewNetworkV2Client(dstProvider, loc.Dst.Region)
@@ -621,7 +629,7 @@ var ServerCmd = &cobra.Command{
 			}
 
 			// TODO: image name must represent the original server source image name
-			dstImage, err = createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcObjectClient, srcServer, loc)
+			dstImage, err = createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcServer, loc)
 			if err != nil {
 				return err
 			}
@@ -658,7 +666,7 @@ var ServerCmd = &cobra.Command{
 				return fmt.Errorf("failed to wait for a %q volume: %s", v, err)
 			}
 
-			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, srcVolume, srcVolume.Name, toAZ, cloneViaSnapshot, loc)
+			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient, srcVolume, srcVolume.Name, toAZ, cloneViaSnapshot, loc)
 			if err != nil {
 				// if we don't fail here, then the resulting VM may not boot because of insuficient of volumes
 				return fmt.Errorf("failed to clone the %q volume: %s", srcVolume.ID, err)
@@ -691,7 +699,7 @@ var ServerCmd = &cobra.Command{
 
 		if dstImage != nil {
 			// image can still be in "TODO" state, we need to wait for "available" before defer func will delete it
-			if _, err := waitForImage(dstImageClient, dstImage.ID, waitForImageSec); err != nil {
+			if _, err := waitForImage(dstImageClient, nil, dstImage.ID, 0, waitForImageSec); err != nil {
 				log.Printf("Error waiting for %q image: %s", dstImage.ID, err)
 			}
 		}

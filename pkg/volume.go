@@ -98,16 +98,18 @@ func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs float64)
 }
 
 func createBackupSpeed(client *gophercloud.ServiceClient, backup *backups.Backup) {
-	container, err := containers.Get(client, backup.Container, nil).Extract()
-	if err != nil {
-		log.Printf("Failed to detect a backup container size: %s", err)
-		return
+	if client != nil {
+		container, err := containers.Get(client, backup.Container, nil).Extract()
+		if err != nil {
+			log.Printf("Failed to detect a backup container size: %s", err)
+			return
+		}
+		t := backup.UpdatedAt.Sub(backup.CreatedAt)
+		log.Printf("Time to create a backup: %s", t)
+		size := float64(container.BytesUsed / (1024 * 1024))
+		log.Printf("Size of the backup: %.2f Mb", size)
+		log.Printf("Speed of the backup creation: %.2f Mb/sec", size/t.Seconds())
 	}
-	t := backup.UpdatedAt.Sub(backup.CreatedAt)
-	log.Printf("Time to create a backup: %s", t)
-	size := float64(container.BytesUsed / (1024 * 1024))
-	log.Printf("Size of the backup: %.2f Mb", size)
-	log.Printf("Speed of the backup creation: %.2f Mb/sec", size/t.Seconds())
 }
 
 func waitForBackup(client *gophercloud.ServiceClient, id string, secs float64) (*backups.Backup, error) {
@@ -286,7 +288,7 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 	return newVolume, nil
 }
 
-func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, toVolumeName string, az string, cloneViaSnapshot bool, loc Locations) (*volumes.Volume, error) {
+func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, toVolumeName string, az string, cloneViaSnapshot bool, loc Locations) (*volumes.Volume, error) {
 	newVolume, err := cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, toVolumeName, az, cloneViaSnapshot, loc)
 	if err != nil {
 		return nil, err
@@ -351,7 +353,7 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageCli
 		}
 	}()
 
-	srcImage, err := waitForImage(srcImageClient, srcVolumeImage.ImageID, waitForImageSec)
+	srcImage, err := waitForImage(srcImageClient, dstObjectClient, srcVolumeImage.ImageID, 0, waitForImageSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert a volume to an image: %s", err)
 	}
@@ -388,7 +390,7 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageCli
 		imgDstClient = srcImageClient
 	} else {
 		// sourceImageName, _ := srcVolume.VolumeImageMetadata["image_name"] // TODO: check when migrate to a new region
-		dstImage, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, srcImage, srcImageName)
+		dstImage, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImageName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to migrate the image: %s", err)
 		}
@@ -448,7 +450,7 @@ func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imag
 	createVolumeSpeed(dstVolume)
 
 	// image can still be in "TODO" state, we need to wait for "available" before defer func will delete it
-	_, err = waitForImage(imgDstClient, imageID, waitForImageSec)
+	_, err = waitForImage(imgDstClient, nil, imageID, 0, waitForImageSec)
 	if err != nil {
 		// TODO: delete volume?
 		return nil, err
@@ -520,9 +522,12 @@ var VolumeCmd = &cobra.Command{
 			return fmt.Errorf("failed to create source volume client: %s", err)
 		}
 
-		srcObjectClient, err := NewObjectStorageV1Client(srcProvider, loc.Src.Region)
-		if err != nil {
-			return fmt.Errorf("failed to create source object storage client: %s", err)
+		var srcObjectClient *gophercloud.ServiceClient
+		if imageWebDownload {
+			srcObjectClient, err = NewObjectStorageV1Client(srcProvider, loc.Src.Region)
+			if err != nil {
+				return fmt.Errorf("failed to create source object storage client: %s", err)
+			}
 		}
 
 		// resolve volume name to an ID
@@ -545,6 +550,11 @@ var VolumeCmd = &cobra.Command{
 			return fmt.Errorf("failed to create destination volume client: %s", err)
 		}
 
+		dstObjectClient, err := NewObjectStorageV1Client(dstProvider, loc.Dst.Region)
+		if err != nil {
+			log.Printf("failed to create destination object storage client, detailed image clone statistics will be unavailable: %s", err)
+		}
+
 		srcVolume, err := waitForVolume(srcVolumeClient, volume, waitForVolumeSec)
 		if err != nil {
 			return fmt.Errorf("failed to wait for a %q volume: %s", volume, err)
@@ -557,7 +567,7 @@ var VolumeCmd = &cobra.Command{
 
 		defer measureTime()
 
-		dstVolume, err := migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, srcVolume, toName, toAZ, cloneViaSnapshot, loc)
+		dstVolume, err := migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient, srcVolume, toName, toAZ, cloneViaSnapshot, loc)
 		if err != nil {
 			return err
 		}

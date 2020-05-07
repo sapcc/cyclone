@@ -39,7 +39,7 @@ func createImageSpeed(image *images.Image) {
 	log.Printf("Speed of the image creation: %.2f Mb/sec", size/t.Seconds())
 }
 
-func waitForImageTask(client *gophercloud.ServiceClient, id string, secs float64) (*images.Image, error) {
+func waitForImageTask(client, swiftClient *gophercloud.ServiceClient, id string, srcSizeBytes int64, secs float64) (*images.Image, error) {
 	// initial image status
 	img, err := images.Get(client, id).Extract()
 	if err != nil {
@@ -89,6 +89,7 @@ func waitForImageTask(client *gophercloud.ServiceClient, id string, secs float64
 					if v, ok := v.(string); ok {
 						if v == id {
 							log.Printf("Target image task status is: %s", t.Status)
+
 							// save the correcsponding task id for next calls
 							taskID = t.ID
 							if t.Status == string(tasks.TaskStatusFailure) {
@@ -110,6 +111,9 @@ func waitForImageTask(client *gophercloud.ServiceClient, id string, secs float64
 			return false, err
 		}
 
+		// show user friendly status
+		getContainerSize(swiftClient, id, srcSizeBytes)
+
 		log.Printf("Target image status: %s", img.Status)
 		if img.Status == images.ImageStatusActive {
 			return true, nil
@@ -122,7 +126,32 @@ func waitForImageTask(client *gophercloud.ServiceClient, id string, secs float64
 	return img, err
 }
 
-func waitForImage(client *gophercloud.ServiceClient, id string, secs float64) (*images.Image, error) {
+// this function may show confused size results due to Swift eventual consistency
+func getContainerSize(client *gophercloud.ServiceClient, id string, srcSizeBytes int64) {
+	if client != nil {
+		container, err := containers.Get(client, "glance_"+id, nil).Extract()
+		if err != nil {
+			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+				log.Printf("Failed to get Swift container status: %s", err)
+			}
+		}
+
+		var containerSize, percent int64
+		if container != nil {
+			containerSize = container.BytesUsed
+		}
+
+		if srcSizeBytes > 0 {
+			percent = 100 * containerSize / srcSizeBytes
+			log.Printf("Image size: %d/%d (%d%%)", containerSize, srcSizeBytes, percent)
+			return
+		}
+
+		log.Printf("Image size: %d", containerSize)
+	}
+}
+
+func waitForImage(client, swiftClient *gophercloud.ServiceClient, id string, srcSizeBytes int64, secs float64) (*images.Image, error) {
 	var image *images.Image
 	var err error
 	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
@@ -130,6 +159,9 @@ func waitForImage(client *gophercloud.ServiceClient, id string, secs float64) (*
 		if err != nil {
 			return false, err
 		}
+
+		// show user friendly status
+		getContainerSize(swiftClient, id, srcSizeBytes)
 
 		log.Printf("Transition image status: %s", image.Status)
 		if image.Status == images.ImageStatusActive {
@@ -180,7 +212,7 @@ func generateTmpUrlKey(n int) string {
 	return string(b)
 }
 
-func migrateImage(srcImageClient, dstImageClient, srcObjectClient *gophercloud.ServiceClient, srcImg *images.Image, toImageName string) (*images.Image, error) {
+func migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient *gophercloud.ServiceClient, srcImg *images.Image, toImageName string) (*images.Image, error) {
 	var url string
 	containerName := "glance_" + srcImg.ID
 	objectName := srcImg.ID
@@ -261,7 +293,7 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient *gophercloud.S
 
 		}
 
-		dstImg, err = waitForImageTask(dstImageClient, dstImg.ID, waitForImageSec)
+		dstImg, err = waitForImageTask(dstImageClient, dstObjectClient, dstImg.ID, srcImg.SizeBytes, waitForImageSec)
 		if err != nil {
 			return nil, fmt.Errorf("error while importing url %q: %s", url, err)
 		}
@@ -276,7 +308,7 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient *gophercloud.S
 		dstImgID := dstImg.ID
 		errChan := make(chan error)
 		go func() {
-			dstImg, err = waitForImage(dstImageClient, dstImg.ID, waitForImageSec)
+			dstImg, err = waitForImage(dstImageClient, dstObjectClient, dstImgID, srcImg.SizeBytes, waitForImageSec)
 			errChan <- err
 		}()
 
@@ -349,9 +381,12 @@ var ImageCmd = &cobra.Command{
 			return fmt.Errorf("failed to create source image client: %s", err)
 		}
 
-		srcObjectClient, err := NewObjectStorageV1Client(srcProvider, loc.Src.Region)
-		if err != nil {
-			return fmt.Errorf("failed to create source object storage client: %s", err)
+		var srcObjectClient *gophercloud.ServiceClient
+		if imageWebDownload {
+			srcObjectClient, err = NewObjectStorageV1Client(srcProvider, loc.Src.Region)
+			if err != nil {
+				return fmt.Errorf("failed to create source object storage client: %s", err)
+			}
 		}
 
 		// resolve image name to an ID
@@ -369,7 +404,12 @@ var ImageCmd = &cobra.Command{
 			return fmt.Errorf("failed to create destination image client: %s", err)
 		}
 
-		srcImg, err := waitForImage(srcImageClient, image, waitForImageSec)
+		dstObjectClient, err := NewObjectStorageV1Client(dstProvider, loc.Dst.Region)
+		if err != nil {
+			log.Printf("failed to create destination object storage client, detailed image clone statistics will be unavailable: %s", err)
+		}
+
+		srcImg, err := waitForImage(srcImageClient, nil, image, 0, waitForImageSec)
 		if err != nil {
 			return fmt.Errorf("failed to wait for %q source image: %s", image, err)
 		}
@@ -387,7 +427,7 @@ var ImageCmd = &cobra.Command{
 
 		defer measureTime()
 
-		_, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, srcImg, toName)
+		_, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImg, toName)
 
 		return err
 	},
