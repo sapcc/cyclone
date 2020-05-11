@@ -299,7 +299,7 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClie
 		}
 	} else {
 		// get the source reader
-		var imageReader io.Reader
+		var imageReader io.ReadCloser
 		imageReader, err = imagedata.Download(srcImageClient, srcImg.ID).Extract()
 		if err != nil {
 			return nil, fmt.Errorf("error getting the source image reader: %s", err)
@@ -317,6 +317,7 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClie
 		if err != nil {
 			return nil, fmt.Errorf("failed to upload an image: %s", err)
 		}
+		imageReader.Close()
 
 		err = <-errChan
 		if err != nil {
