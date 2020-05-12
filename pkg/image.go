@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math/rand"
@@ -15,6 +16,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
 	"github.com/gophercloud/gophercloud/pagination"
 	images_utils "github.com/gophercloud/utils/openstack/imageservice/v2/images"
+	"github.com/machinebox/progress"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -305,21 +307,21 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClie
 			return nil, fmt.Errorf("error getting the source image reader: %s", err)
 		}
 
-		dstImgID := dstImg.ID
-		errChan := make(chan error)
+		progressReader := progress.NewReader(imageReader)
 		go func() {
-			dstImg, err = waitForImage(dstImageClient, dstObjectClient, dstImgID, srcImg.SizeBytes, waitForImageSec)
-			errChan <- err
+			for p := range progress.NewTicker(context.Background(), progressReader, srcImg.SizeBytes, 1*time.Second) {
+				log.Printf("Image size: %d/%d (%.2f%%), remaining: %s", p.N(), p.Size(), p.Percent(), p.Remaining().Round(time.Second))
+			}
 		}()
 
 		// write the source to the destination
-		err = imagedata.Upload(dstImageClient, dstImgID, imageReader).ExtractErr()
+		err = imagedata.Upload(dstImageClient, dstImg.ID, progressReader).ExtractErr()
 		if err != nil {
 			return nil, fmt.Errorf("failed to upload an image: %s", err)
 		}
 		imageReader.Close()
 
-		err = <-errChan
+		dstImg, err = waitForImage(dstImageClient, dstObjectClient, dstImg.ID, srcImg.SizeBytes, waitForImageSec)
 		if err != nil {
 			return nil, fmt.Errorf("error while waiting for an image to be uploaded: %s", err)
 		}

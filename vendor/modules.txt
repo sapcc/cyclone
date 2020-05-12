@@ -59,6 +59,8 @@ github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
+# github.com/machinebox/progress v0.2.0
+github.com/machinebox/progress
 # github.com/magiconair/properties v1.8.1
 github.com/magiconair/properties
 # github.com/mitchellh/mapstructure v1.1.2
