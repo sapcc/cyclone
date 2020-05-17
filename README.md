@@ -114,7 +114,7 @@ $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
 
 ### Upload a local image file into a backup
 
-Backup upload is a resource demand command. More parallel threads will require more CPUs and RAM, i.e. 16 threads may require 16 CPUs and up to 5Gb of RAM, depending on the image size.
+Backup upload is a resource demand command. More parallel threads will consume more network traffic and require more CPUs and RAM, i.e. 16 threads may require 16 CPUs and up to 5Gb of RAM, depending on the image size.
 Properties must be defined, when a backup supposed to be restored to a bootable volume.
 
 ```sh
