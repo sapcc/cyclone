@@ -361,7 +361,6 @@ L:
 
 	// import the backup
 	service := "cinder.backup.drivers.swift.SwiftBackupDriver"
-	metadata := make(map[string]string)
 	backupImport := backups.ImportBackup{
 		ID:               backupID,
 		VolumeID:         volumeID,
@@ -374,7 +373,6 @@ L:
 		Service:          &service,
 		CreatedAt:        time.Now().UTC(),
 		DataTimestamp:    time.Now().UTC(),
-		Metadata:         &metadata,
 	}
 
 	backupURL, err := json.Marshal(backupImport)

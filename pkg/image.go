@@ -273,14 +273,8 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClie
 	}()
 
 	if imageWebDownload {
-		var importInfo *imageimport.ImportInfo
-		importInfo, err = imageimport.Get(dstImageClient).Extract()
-		if err != nil {
-			return nil, fmt.Errorf("error while getting the supported import methods: %s", err)
-		}
-
-		if !isSliceContainsStr(importInfo.ImportMethods.Value, string(imageimport.WebDownloadMethod)) {
-			return nil, fmt.Errorf("the %q import method is not supported, supported import methods: %q", imageimport.WebDownloadMethod, importInfo.ImportMethods.Value)
+		if !isSliceContainsStr(dstImg.OpenStackImageImportMethods, string(imageimport.WebDownloadMethod)) {
+			return nil, fmt.Errorf("the %q import method is not supported, supported import methods: %q", imageimport.WebDownloadMethod, dstImg.OpenStackImageImportMethods)
 		}
 
 		// import

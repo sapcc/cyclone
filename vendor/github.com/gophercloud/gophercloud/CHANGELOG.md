@@ -1,4 +1,11 @@
-## 0.11.0 (Unreleased)
+## 0.12.0 (Unreleased)
+
+BUG FIXES
+
+* Changed `containerinfra/v1/clusters.Cluster.HealthStatusReason` from `string` to `map[string]interface{}` [GH-1968](https://github.com/gophercloud/gophercloud/pull/1968)
+* Fixed marshalling of `blockstorage/extensions/backups.ImportBackup.Metadata` [GH-1967](https://github.com/gophercloud/gophercloud/pull/1967)
+
+## 0.11.0 (May 14, 2020)
 
 UPGRADE NOTES
 
@@ -41,13 +48,14 @@ IMPROVEMENTS
 * Added `identity/v3/projects.UpdateOpts.Options` [GH-1951](https://github.com/gophercloud/gophercloud/pull/1951)
 * Added `identity/v3/projects.Project.Extra` [GH-1951](https://github.com/gophercloud/gophercloud/pull/1951)
 * Added `identity/v3/projects.Options.Options` [GH-1951](https://github.com/gophercloud/gophercloud/pull/1951)
-
-
+* Added `imageservice/v2/images.Image.OpenStackImageImportMethods` [GH-1962](https://github.com/gophercloud/gophercloud/pull/1962)
+* Added `imageservice/v2/images.Image.OpenStackImageStoreIDs` [GH-1962](https://github.com/gophercloud/gophercloud/pull/1962)
 
 BUG FIXES
 
 * Changed`identity/v3/extensions/trusts.Trust.RemainingUses` from `bool` to `int` [GH-1939](https://github.com/gophercloud/gophercloud/pull/1939)
 * Changed `identity/v3/applicationcredentials.CreateOpts.ExpiresAt` from `string` to `*time.Time` [GH-1937](https://github.com/gophercloud/gophercloud/pull/1937)
+* Fixed issue with unmarshalling/decoding slices of composed structs [GH-1964](https://github.com/gophercloud/gophercloud/pull/1964)
 
 ## 0.10.0 (April 12, 2020)
 
