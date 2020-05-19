@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sapcc/go-bits/logg"
 	"github.com/spf13/viper"
 )
 
@@ -76,6 +77,9 @@ func initLogger() {
 
 		// no need to close the log: https://golang.org/pkg/runtime/#SetFinalizer
 		l = llog.New(logFile, llog.Prefix(), llog.Flags())
+
+		logg.SetLogger(l)
+		logg.ShowDebug = true
 
 		if viper.GetBool("debug") {
 			// write log into stderr and log file

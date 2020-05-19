@@ -184,6 +184,13 @@ $ source openrc-of-the-source-project
 $ cyclone backup restore my-backup
 ```
 
+### Clone an existing backup to another region
+
+```sh
+$ source openrc-of-the-source-project
+$ cyclone backup clone my-backup --to-region my-region-1 --threads=16
+```
+
 ## Build
 
 ```sh

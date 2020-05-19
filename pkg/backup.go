@@ -702,6 +702,7 @@ func init() {
 	initBackupCmdFlags()
 	BackupCmd.AddCommand(BackupUploadCmd)
 	BackupCmd.AddCommand(BackupRestoreCmd)
+	BackupCmd.AddCommand(BackupCloneCmd)
 	RootCmd.AddCommand(BackupCmd)
 }
 
@@ -720,4 +721,8 @@ func initBackupCmdFlags() {
 	BackupRestoreCmd.Flags().StringP("to-az", "", "", "destination availability zone")
 	BackupRestoreCmd.Flags().StringP("to-volume-type", "", "", "destination volume type")
 	BackupRestoreCmd.Flags().UintP("volume-size", "b", 0, "target volume size")
+
+	BackupCloneCmd.Flags().UintP("threads", "t", 1, "an amount of parallel threads")
+	BackupCloneCmd.Flags().StringP("to-backup-name", "", "", "destination backup name")
+	BackupCloneCmd.Flags().StringP("to-container-name", "", "", "destination backup container name")
 }
