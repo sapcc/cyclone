@@ -179,14 +179,14 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 		return
 	}
 
-	uploadOpts := objects.CreateOpts{
-		Content: rb,
-	}
-
+	// TODO: check if file exists
 	// upload and retry when upload fails
 	var retries int = 5
 	var sleepSeconds time.Duration = 15
 	for j := 0; j < retries; j++ {
+		uploadOpts := objects.CreateOpts{
+			Content: bytes.NewReader(rb.Bytes()),
+		}
 		err = objects.Create(objClient, containerName, chunkPath, uploadOpts).Err
 		if err != nil {
 			log.Printf("failed to upload %q/%q data in %d retry: %s: sleeping %d seconds", containerName, chunkPath, j, err, sleepSeconds)
@@ -195,6 +195,8 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 		}
 		break
 	}
+	// free up the buffer
+	rb.Reset()
 
 	if err != nil {
 		errChan <- fmt.Errorf("failed to upload %q/%q data: %s", containerName, chunkPath, err)
