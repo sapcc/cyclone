@@ -62,6 +62,9 @@ github.com/hashicorp/hcl/json/scanner
 github.com/hashicorp/hcl/json/token
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
+# github.com/klauspost/compress v1.10.6
+github.com/klauspost/compress/flate
+github.com/klauspost/compress/zlib
 # github.com/machinebox/progress v0.2.0
 github.com/machinebox/progress
 # github.com/magiconair/properties v1.8.1

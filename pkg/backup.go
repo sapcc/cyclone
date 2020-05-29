@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"bytes"
-	"compress/zlib"
 	"context"
 	"crypto/md5"
 	"crypto/sha256"
@@ -12,7 +11,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -28,6 +26,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
 	backups_utils "github.com/gophercloud/utils/openstack/blockstorage/extensions/backups"
 	images_utils "github.com/gophercloud/utils/openstack/imageservice/v2/images"
+	"github.com/klauspost/compress/zlib"
 	"github.com/machinebox/progress"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -161,8 +160,7 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 	sha256hashes := make(chan [][32]byte)
 	go calcSha256Hash(myChunk, sha256hashes)
 
-	var compressedChunk []byte
-	rb := bytes.NewBuffer(compressedChunk)
+	rb := new(bytes.Buffer)
 	zf, err := zlib.NewWriterLevel(rb, compressionLevel)
 	if err != nil {
 		errChan <- fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err)
@@ -178,6 +176,8 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 		errChan <- fmt.Errorf("failed to flush and close zlib compressed data: %s", err)
 		return
 	}
+	// free up the compressor
+	zf.Reset(nil)
 
 	// TODO: check if file exists
 	// upload and retry when upload fails
@@ -208,11 +208,7 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 	sha256meta.Sha256s[i] = <-sha256hashes
 	sha256meta.Unlock()
 
-	compressedChunk = nil
 	myChunk = nil
-
-	// free up the heap
-	runtime.GC()
 }
 
 func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gophercloud.ServiceClient, containerName, imageID, az string, properties map[string]string, size int, threads uint) (*backups.Backup, error) {
