@@ -123,6 +123,13 @@ type volumeMeta struct {
 	VolumeGlanceMetadata map[string]string `json:"volume-glance-metadata"`
 }
 
+func (r *volumeMeta) MarshalJSON() ([]byte, error) {
+	if r.VolumeGlanceMetadata == nil {
+		r.VolumeGlanceMetadata = make(map[string]string)
+	}
+	return json.Marshal(r)
+}
+
 type volumeBaseMeta struct {
 	MigrationStatus           *string    `json:"migration_status"`
 	ProviderID                *string    `json:"provider_id"`
