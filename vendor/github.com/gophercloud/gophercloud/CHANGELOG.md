@@ -1,9 +1,35 @@
-## 0.12.0 (Unreleased)
+## 0.13.0 (Unreleased)
+
+IMPROVEMENTS
+
+* Added `ProtocolTerminatedHTTPS` as a valid listener protocol to `loadbalancer/v2/listeners` [GH-1992](https://github.com/gophercloud/gophercloud/pull/1992)
+* Added `objectstorage/v1/objects.CreateTempURLOpts.Timestamp` [GH-1994](https://github.com/gophercloud/gophercloud/pull/1994)
+
+BUG FIXES
+
+* Fixed URL escaping in `objectstorage/v1/objects.CreateTempURL` [GH-1994](https://github.com/gophercloud/gophercloud/pull/1994)
+
+## 0.12.0 (June 25, 2020)
+
+UPGRADE NOTES
+
+* The URL used in the `compute/v2/extensions/bootfromvolume` package has been changed from `os-volumes_boot` to `servers`.
+
+IMPROVEMENTS
+
+* The URL used in the `compute/v2/extensions/bootfromvolume` package has been changed from `os-volumes_boot` to `servers` [GH-1973](https://github.com/gophercloud/gophercloud/pull/1973)
+* Modify `baremetal/v1/nodes.LogicalDisk.PhysicalDisks` type to support physical disks hints [GH-1982](https://github.com/gophercloud/gophercloud/pull/1982)
+* Added `baremetalintrospection/httpbasic` which provides an HTTP Basic Auth client [GH-1986](https://github.com/gophercloud/gophercloud/pull/1986)
+* Added `baremetal/httpbasic` which provides an HTTP Basic Auth client [GH-1983](https://github.com/gophercloud/gophercloud/pull/1983)
+* Added `containerinfra/v1/clusters.CreateOpts.MergeLabels` [GH-1985](https://github.com/gophercloud/gophercloud/pull/1985)
 
 BUG FIXES
 
 * Changed `containerinfra/v1/clusters.Cluster.HealthStatusReason` from `string` to `map[string]interface{}` [GH-1968](https://github.com/gophercloud/gophercloud/pull/1968)
 * Fixed marshalling of `blockstorage/extensions/backups.ImportBackup.Metadata` [GH-1967](https://github.com/gophercloud/gophercloud/pull/1967)
+* Fixed typo of "OAUth" to "OAuth" in `identity/v3/extensions/oauth1` [GH-1969](https://github.com/gophercloud/gophercloud/pull/1969)
+* Fixed goroutine leak during reauthentication [GH-1978](https://github.com/gophercloud/gophercloud/pull/1978)
+* Changed `baremetalintrospection/v1/introspection.RootDiskType.Size` from `int` to `int64` [GH-1988](https://github.com/gophercloud/gophercloud/pull/1988)
 
 ## 0.11.0 (May 14, 2020)
 
@@ -181,7 +207,7 @@ IMPROVEMENTS
 * Added `MonitorAddress` to `loadbalancer/v2/pools.CreateMemberOpts` [GH-1824](https://github.com/gophercloud/gophercloud/pull/1824)
 * Added `MonitorPort` to `loadbalancer/v2/pools.CreateMemberOpts` [GH-1824](https://github.com/gophercloud/gophercloud/pull/1824)
 * Changed `Impersonation` to a non-required field in `identity/v3/extensions/trusts.CreateOpts` [GH-1818](https://github.com/gophercloud/gophercloud/pull/1818)
-* Added `InsertHeaders` to `loadbalancer/v2/listeners.UpdateOpts` [GH-1835]
+* Added `InsertHeaders` to `loadbalancer/v2/listeners.UpdateOpts` [GH-1835](https://github.com/gophercloud/gophercloud/pull/1835)
 * Added `NUMATopology` to `baremetalintrospection/v1/introspection.Data` [GH-1842](https://github.com/gophercloud/gophercloud/pull/1842)
 * Added `placement/v1/resourceproviders.Create` [GH-1841](https://github.com/gophercloud/gophercloud/pull/1841)
 * Added `blockstorage/extensions/volumeactions.UploadImageOpts.Visibility` [GH-1873](https://github.com/gophercloud/gophercloud/pull/1873)
