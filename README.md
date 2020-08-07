@@ -46,11 +46,11 @@ Flags:
   -d, --debug                                     print out request and response objects
   -h, --help                                      help for cyclone
       --image-web-download                        use Glance web-download image import method (default true)
-      --timeout-backup string                     timeout to wait for a backup status (default "1h")
-      --timeout-image string                      timeout to wait for an image status (default "1h")
-      --timeout-server string                     timeout to wait for a server status (default "1h")
-      --timeout-snapshot string                   timeout to wait for a snapshot status (default "1h")
-      --timeout-volume string                     timeout to wait for a volume status (default "1h")
+      --timeout-backup string                     timeout to wait for a backup status (default "24h")
+      --timeout-image string                      timeout to wait for an image status (default "24h")
+      --timeout-server string                     timeout to wait for a server status (default "24h")
+      --timeout-snapshot string                   timeout to wait for a snapshot status (default "24h")
+      --timeout-volume string                     timeout to wait for a volume status (default "24h")
       --to-application-credential-id string       destination application credential ID
       --to-application-credential-name string     destination application credential name
       --to-application-credential-secret string   destination application credential secret
@@ -117,7 +117,7 @@ $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
 Properties must be defined, when a backup supposed to be restored to a bootable volume.
 
 ```sh
-$ cyclone backup upload my-file.vmdk --to-container-name swift-backup-container --timeout-backup=24h --timeout-volume=24h --volume-size=160 --threads=16 \
+$ cyclone backup upload my-file.vmdk --to-container-name swift-backup-container --volume-size=160 --threads=16 \
   -p hw_vif_model=VirtualVmxnet3 \
   -p vmware_ostype=sles12_64Guest \
   -p hypervisor_type=vmware \
@@ -135,13 +135,13 @@ $ cyclone backup upload my-file.vmdk --to-container-name swift-backup-container 
 ### Upload the remote Glance image into a backup
 
 ```sh
-$ cyclone backup upload my-glance-image --to-container-name swift-backup-container --timeout-backup=24h --volume-size=160 --threads=16
+$ cyclone backup upload my-glance-image --to-container-name swift-backup-container --volume-size=160 --threads=16
 ```
 
 ### Create a new volume from an existing backup
 
 ```sh
-$ cyclone backup restore my-backup --timeout-volume=24h
+$ cyclone backup restore my-backup
 ```
 
 ## Build
