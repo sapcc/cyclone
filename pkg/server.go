@@ -339,7 +339,7 @@ func createServerPort(client *gophercloud.ServiceClient, networkName, subnetName
 	return port, nil
 }
 
-func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName, toAZ string, network servers.Network, dstVolumes []*volumes.Volume, dstImage *images.Image, bootableVolume bool) servers.CreateOptsBuilder {
+func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName, toAZ string, network servers.Network, dstVolumes []*volumes.Volume, dstImage *images.Image, bootableVolume bool, deleteVolOnTerm bool) servers.CreateOptsBuilder {
 	serverName := toServerName
 	if serverName == "" {
 		// use original server name
@@ -368,7 +368,7 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 				UUID:                dstImage.ID,
 				SourceType:          bootfromvolume.SourceImage,
 				DestinationType:     bootfromvolume.DestinationLocal,
-				DeleteOnTermination: true,
+				DeleteOnTermination: deleteVolOnTerm,
 			}
 			blockDeviceOpts = append(blockDeviceOpts, bd)
 		}
@@ -391,7 +391,7 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 		}
 		if i == 0 && bootableVolume {
 			bd.BootIndex = 0
-			bd.DeleteOnTermination = true
+			bd.DeleteOnTermination = deleteVolOnTerm
 		}
 		blockDeviceOpts = append(blockDeviceOpts, bd)
 	}
@@ -527,6 +527,7 @@ var ServerCmd = &cobra.Command{
 		toAZ := viper.GetString("to-az")
 		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
 		forceBootable := viper.GetUint("bootable-volume")
+		deleteVolOnTerm := viper.GetBool("delete-volume-on-termination")
 
 		// source and destination parameters
 		loc, err := getSrcAndDst(toAZ)
@@ -734,7 +735,7 @@ var ServerCmd = &cobra.Command{
 			// TODO: defer delete volumes on failure?
 		}
 
-		createOpts := createServerOpts(srcServer, toName, flavorID, toKeyName, toAZ, network, dstVolumes, dstImage, bootableVolume)
+		createOpts := createServerOpts(srcServer, toName, flavorID, toKeyName, toAZ, network, dstVolumes, dstImage, bootableVolume, deleteVolOnTerm)
 		dstServer := new(serverExtended)
 		err = servers.Create(dstServerClient, createOpts).ExtractInto(dstServer)
 		if err != nil {
@@ -783,4 +784,5 @@ func initServerCmdFlags() {
 	ServerCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
 	ServerCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume, attached to a server, via snapshot")
 	ServerCmd.Flags().UintP("bootable-volume", "b", 0, "force a VM with a local storage to be cloned to a VM with a bootable volume with a size specified in GiB")
+	ServerCmd.Flags().BoolP("delete-volume-on-termination", "", true, "specifies whether or not to delete the attached bootable volume when the server is terminated")
 }
