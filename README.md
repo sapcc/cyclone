@@ -112,6 +112,14 @@ $ source openrc-of-the-source-project
 $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
 ```
 
+### Clone a server with a local disk or a bootable volume only
+
+`--bootable-disk-only` flag allows to clone a VM with only a local disk or a bootable volume, ignoring all secondary attached volumes.
+
+```sh
+cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only
+```
+
 ### Upload a local image file into a backup
 
 Properties must be defined, when a backup supposed to be restored to a bootable volume.

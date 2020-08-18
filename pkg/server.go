@@ -528,6 +528,7 @@ var ServerCmd = &cobra.Command{
 		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
 		forceBootable := viper.GetUint("bootable-volume")
 		deleteVolOnTerm := viper.GetBool("delete-volume-on-termination")
+		bootableDiskOnly := viper.GetBool("bootable-disk-only")
 
 		// source and destination parameters
 		loc, err := getSrcAndDst(toAZ)
@@ -672,7 +673,15 @@ var ServerCmd = &cobra.Command{
 		}
 
 		log.Printf("Detected %q attached volumes", vols)
-		//log.Printf("The %q volume is a bootable volume", vols[0])
+		if bootableDiskOnly && len(vols) > 1 {
+			if bootableVolume {
+				vols := vols[:1]
+				log.Printf("Processing only the bootable disk: %s", vols)
+			} else {
+				vols = nil
+				log.Printf("Processing only the local disk")
+			}
+		}
 
 		var dstVolumes []*volumes.Volume
 		var dstImage *images.Image
@@ -785,4 +794,5 @@ func initServerCmdFlags() {
 	ServerCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume, attached to a server, via snapshot")
 	ServerCmd.Flags().UintP("bootable-volume", "b", 0, "force a VM with a local storage to be cloned to a VM with a bootable volume with a size specified in GiB")
 	ServerCmd.Flags().BoolP("delete-volume-on-termination", "", true, "specifies whether or not to delete the attached bootable volume when the server is terminated")
+	ServerCmd.Flags().BoolP("bootable-disk-only", "", false, "clone only the bootable disk/volume, skipping the rest attached volumes")
 }
