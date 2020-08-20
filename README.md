@@ -117,7 +117,8 @@ $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
 `--bootable-disk-only` flag allows to clone a VM with only a local disk or a bootable volume, ignoring all secondary attached volumes.
 
 ```sh
-cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only
+$ source openrc-of-the-source-project
+$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only
 ```
 
 ### Clona a server with a bootable volume to a server with a local disk
@@ -125,7 +126,8 @@ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only
 `--local-disk` allows to clone a VM with a Cinder bootable volume to a VM with a local disk.
 
 ```sh
-cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --local-disk
+$ source openrc-of-the-source-project
+$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --local-disk
 ```
 
 ### Upload a local image file into a backup
@@ -133,6 +135,7 @@ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --local-disk
 Properties must be defined, when a backup supposed to be restored to a bootable volume.
 
 ```sh
+$ source openrc-of-the-source-project
 $ cyclone backup upload my-file.vmdk --to-container-name swift-backup-container --volume-size=160 --threads=16 \
   -p hw_vif_model=VirtualVmxnet3 \
   -p vmware_ostype=sles12_64Guest \
@@ -151,12 +154,14 @@ $ cyclone backup upload my-file.vmdk --to-container-name swift-backup-container 
 ### Upload the remote Glance image into a backup
 
 ```sh
+$ source openrc-of-the-source-project
 $ cyclone backup upload my-glance-image --to-container-name swift-backup-container --volume-size=160 --threads=16
 ```
 
 ### Create a new volume from an existing backup
 
 ```sh
+$ source openrc-of-the-source-project
 $ cyclone backup restore my-backup
 ```
 
