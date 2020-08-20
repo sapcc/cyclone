@@ -22,7 +22,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
-	flavors_utils "github.com/gophercloud/utils/openstack/compute/v2/flavors"
 	servers_utils "github.com/gophercloud/utils/openstack/compute/v2/servers"
 	networks_utils "github.com/gophercloud/utils/openstack/networking/v2/networks"
 	subnets_utils "github.com/gophercloud/utils/openstack/networking/v2/subnets"
@@ -406,23 +405,60 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 	return createOpts
 }
 
-func checkFlavor(dstServerClient *gophercloud.ServiceClient, srcFlavor *flavors.Flavor, toFlavor *string) (string, error) {
+func getFlavorFromName(client *gophercloud.ServiceClient, name string) (*flavors.Flavor, error) {
+	allPages, err := flavors.ListDetail(client, nil).AllPages()
+	if err != nil {
+		return nil, err
+	}
+
+	all, err := flavors.ExtractFlavors(allPages)
+	if err != nil {
+		return nil, err
+	}
+
+	var flavor *flavors.Flavor
+	count := 0
+	for i, f := range all {
+		if f.Name == name {
+			count++
+			flavor = &all[i]
+		}
+	}
+
+	switch count {
+	case 0:
+		err := &gophercloud.ErrResourceNotFound{}
+		err.ResourceType = "flavor"
+		err.Name = name
+		return nil, err
+	case 1:
+		return flavor, nil
+	default:
+		err := &gophercloud.ErrMultipleResourcesFound{}
+		err.ResourceType = "flavor"
+		err.Name = name
+		err.Count = count
+		return nil, err
+	}
+}
+
+func checkFlavor(dstServerClient *gophercloud.ServiceClient, srcFlavor *flavors.Flavor, toFlavor *string) (*flavors.Flavor, error) {
 	// TODO: compare an old flavor to a new one
 	if *toFlavor == "" {
-		flavorID, err := flavors_utils.IDFromName(dstServerClient, srcFlavor.Name)
+		flavor, err := getFlavorFromName(dstServerClient, srcFlavor.Name)
 		if err != nil {
-			return "", fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
+			return nil, fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 		}
 		*toFlavor = srcFlavor.Name
-		return flavorID, nil
+		return flavor, nil
 	}
 
-	flavorID, err := flavors_utils.IDFromName(dstServerClient, *toFlavor)
+	flavor, err := getFlavorFromName(dstServerClient, *toFlavor)
 	if err != nil {
-		return "", fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
+		return nil, fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 	}
 
-	return flavorID, nil
+	return flavor, nil
 }
 
 func getSrcFlavor(srcServerClient *gophercloud.ServiceClient, srcServer *serverExtended) (*flavors.Flavor, error) {
@@ -502,6 +538,62 @@ func getServerNetworkName(srcServerClient *gophercloud.ServiceClient, server *se
 	}
 
 	return "", fmt.Errorf("failed to identify source server interface name")
+}
+
+func bootableToLocal(srcVolumeClient, srcImageClient, srcObjectClient, dstImageClient, dstObjectClient *gophercloud.ServiceClient, cloneViaSnapshot bool, toAZ string, loc Locations, flavor *flavors.Flavor, vols *[]string) (*images.Image, error) {
+	log.Printf("Forcing the %q bootable volume to be a local disk", (*vols)[0])
+
+	var err error
+	var srcVolume, newVolume *volumes.Volume
+	srcVolume, err = waitForVolume(srcVolumeClient, (*vols)[0], waitForVolumeSec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to wait for a %q volume: %s", (*vols)[0], err)
+	}
+
+	if flavor.Disk < srcVolume.Size {
+		return nil, fmt.Errorf("target %q flavor minimal disk size is less than a volume size: %d < %d", flavor.Name, flavor.Disk, srcVolume.Size)
+	}
+
+	// clone the in-use volume before creating its snapshot
+	// it is impossible to convert a volume to a glance image, even with the force argument
+	newVolume, err = cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, "", toAZ, cloneViaSnapshot, loc)
+	if err != nil {
+		return nil, err
+	}
+
+	var srcImage, dstImage *images.Image
+	// converting a volume to an image
+	srcImage, err = volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient, newVolume)
+	// delete the cloned volume just after the image was created
+	if err := volumes.Delete(srcVolumeClient, newVolume.ID, nil).ExtractErr(); err != nil {
+		log.Printf("failed to delete a cloned volume: %s", err)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if loc.SameProject {
+		dstImage = srcImage
+	} else {
+		// migrate the image/volume within different regions
+		dstImage, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImage.Name)
+		// remove source region transition image just after it was migrated
+		if err := images.Delete(srcImageClient, srcImage.ID).ExtractErr(); err != nil {
+			log.Printf("Failed to delete destination transition image: %s", err)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to migrate the image: %s", err)
+		}
+	}
+
+	// pop the bootable volume from the volume array
+	if len(*vols) > 1 {
+		*vols = (*vols)[1:]
+	} else {
+		*vols = nil
+	}
+
+	return dstImage, nil
 }
 
 // ServerCmd represents the server command
@@ -615,7 +707,7 @@ var ServerCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		flavorID, err := checkFlavor(dstServerClient, srcFlavor, &toFlavor)
+		flavor, err := checkFlavor(dstServerClient, srcFlavor, &toFlavor)
 		if err != nil {
 			return err
 		}
@@ -693,6 +785,24 @@ var ServerCmd = &cobra.Command{
 		var dstImage *images.Image
 		if bootableVolume {
 			log.Printf("The %q volume is a bootable volume", vols[0])
+
+			if forceLocal {
+				dstImage, err = bootableToLocal(srcVolumeClient, srcImageClient, srcObjectClient, dstImageClient, dstObjectClient, cloneViaSnapshot, toAZ, loc, flavor, &vols)
+				if err != nil {
+					return err
+				}
+
+				// TODO: add an option to keep artifacts on failure
+				dstImageID := dstImage.ID
+				defer func() {
+					if err := images.Delete(dstImageClient, dstImageID).ExtractErr(); err != nil {
+						log.Printf("Error deleting migrated server snapshot: %s", err)
+					}
+				}()
+
+				// set bootable volume flag to false, because we set a proper dstImage var
+				bootableVolume = false
+			}
 		} else {
 			if forceBootable > 0 && uint(srcFlavor.Disk) > forceBootable {
 				return fmt.Errorf("cannot create a bootable volume with a size less than original disk size: %d", srcFlavor.Disk)
@@ -750,7 +860,7 @@ var ServerCmd = &cobra.Command{
 			// TODO: defer delete volumes on failure?
 		}
 
-		createOpts := createServerOpts(srcServer, toName, flavorID, toKeyName, toAZ, network, dstVolumes, dstImage, bootableVolume, deleteVolOnTerm)
+		createOpts := createServerOpts(srcServer, toName, flavor.ID, toKeyName, toAZ, network, dstVolumes, dstImage, bootableVolume, deleteVolOnTerm)
 		dstServer := new(serverExtended)
 		err = servers.Create(dstServerClient, createOpts).ExtractInto(dstServer)
 		if err != nil {

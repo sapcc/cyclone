@@ -252,6 +252,8 @@ func volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient *gophercloud
 		ContainerFormat: viper.GetString("container-format"),
 		DiskFormat:      viper.GetString("disk-format"),
 		Visibility:      string(images.ImageVisibilityPrivate),
+		// for some reason this doesn't work, when volume status is in-use
+		Force: true,
 	}
 
 	// preserve source image name

@@ -120,6 +120,14 @@ $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
 cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only
 ```
 
+### Clona a server with a bootable volume to a server with a local disk
+
+`--local-disk` allows to clone a VM with a Cinder bootable volume to a VM with a local disk.
+
+```sh
+cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --local-disk
+```
+
 ### Upload a local image file into a backup
 
 Properties must be defined, when a backup supposed to be restored to a bootable volume.
