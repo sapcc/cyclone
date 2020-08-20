@@ -149,7 +149,8 @@ func getContainerSize(client *gophercloud.ServiceClient, id string, srcSizeBytes
 			return
 		}
 
-		log.Printf("Image size: %d", containerSize)
+		// container size in Mb
+		log.Printf("Image size: %.2f Mb", float64(containerSize/(1024*1024)))
 	}
 }
 

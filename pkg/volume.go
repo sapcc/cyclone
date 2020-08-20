@@ -247,72 +247,48 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 	return newVolume, nil
 }
 
-func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, toVolumeName string, az string, cloneViaSnapshot bool, loc Locations) (*volumes.Volume, error) {
-	newVolume, err := cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, toVolumeName, az, cloneViaSnapshot, loc)
-	if err != nil {
-		return nil, err
-	}
-
-	// volume was cloned, now it requires migration
-	srcVolume = newVolume
-
-	volDeleted := false
-	defer func() {
-		if err != nil && !volDeleted {
-			if err := volumes.Delete(srcVolumeClient, srcVolume.ID, nil).ExtractErr(); err != nil {
-				log.Printf("failed to delete a cloned volume: %s", err)
-			}
-		}
-	}()
-
-	if loc.SameAZ ||
-		newVolume.AvailabilityZone == az { // a volume was cloned via backup
-		if loc.SameProject {
-			// we're done
-			return newVolume, nil
-		}
-		// just change volume ownership
-		var v *volumes.Volume
-		v, err = transferVolume(srcVolumeClient, dstVolumeClient, newVolume)
-		return v, err
-	}
-
-	// create an image from volume
-
-	// preserve original image name
-	srcImageName, _ := srcVolume.VolumeImageMetadata["image_name"]
-	if srcImageName == "" {
-		srcImageName = srcVolume.ID
-	}
-
+func volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, srcVolume *volumes.Volume) (*images.Image, error) {
 	createSrcImage := volumeactions.UploadImageOpts{
 		ContainerFormat: viper.GetString("container-format"),
 		DiskFormat:      viper.GetString("disk-format"),
-		ImageName:       srcImageName,
 		Visibility:      string(images.ImageVisibilityPrivate),
 	}
+
+	// preserve source image name
+	if v, ok := srcVolume.VolumeImageMetadata["image_name"]; ok && v != "" {
+		createSrcImage.ImageName = v
+	} else {
+		createSrcImage.ImageName = srcVolume.ID
+	}
+
+	// preserve source container format
 	if v, ok := srcVolume.VolumeImageMetadata["container_format"]; ok && v != "" {
 		createSrcImage.ContainerFormat = v
 	}
+
+	// preserve source disk format
 	if v, ok := srcVolume.VolumeImageMetadata["disk_format"]; ok && v != "" {
 		createSrcImage.DiskFormat = v
 	}
 
 	srcVolumeClient.Microversion = "3.1" // required to set the image visibility
 	var srcVolumeImage volumeactions.VolumeImage
-	srcVolumeImage, err = volumeactions.UploadImage(srcVolumeClient, srcVolume.ID, createSrcImage).Extract()
+	srcVolumeImage, err := volumeactions.UploadImage(srcVolumeClient, srcVolume.ID, createSrcImage).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert a source volume to an image: %s", err)
 	}
 
 	defer func() {
-		log.Printf("Removing transition image %q", srcVolumeImage.ImageID)
-		if err := images.Delete(srcImageClient, srcVolumeImage.ImageID).ExtractErr(); err != nil {
-			log.Printf("Failed to delete transition image: %s", err)
+		if err != nil {
+			log.Printf("Removing transition image %q", srcVolumeImage.ImageID)
+			if err := images.Delete(srcImageClient, srcVolumeImage.ImageID).ExtractErr(); err != nil {
+				log.Printf("Failed to delete transition image: %s", err)
+			}
 		}
 	}()
 
-	srcImage, err := waitForImage(srcImageClient, dstObjectClient, srcVolumeImage.ImageID, 0, waitForImageSec)
+	var srcImage *images.Image
+	srcImage, err = waitForImage(srcImageClient, srcObjectClient, srcVolumeImage.ImageID, 0, waitForImageSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert a volume to an image: %s", err)
 	}
@@ -323,11 +299,8 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectCl
 
 	// sometimes volume can be still in uploading state
 	if _, err := waitForVolume(srcVolumeClient, srcVolume.ID, waitForVolumeSec); err != nil {
+		// in this case end user can continue the image migration afterwards
 		return nil, fmt.Errorf("failed to wait for a cloned volume available status: %s", err)
-	}
-	volDeleted = true
-	if err := volumes.Delete(srcVolumeClient, srcVolume.ID, nil).ExtractErr(); err != nil {
-		return nil, fmt.Errorf("failed to delete a cloned volume: %s", err)
 	}
 
 	log.Printf("Updating image options")
@@ -339,58 +312,98 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectCl
 
 	log.Printf("Updated %q image", srcImage.ID)
 
-	var dstImage *images.Image
-	imgToVolClient := dstVolumeClient
-	imgDstClient := dstImageClient
-	if loc.SameRegion {
-		// same region, but requested a new availability zone
-		dstImage = srcImage
-		imgToVolClient = srcVolumeClient
-		imgDstClient = srcImageClient
-	} else {
-		// sourceImageName, _ := srcVolume.VolumeImageMetadata["image_name"] // TODO: check when migrate to a new region
-		dstImage, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImageName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to migrate the image: %s", err)
-		}
-	}
+	return srcImage, nil
+}
 
-	defer func() {
-		if err := images.Delete(imgDstClient, dstImage.ID).ExtractErr(); err != nil {
-			log.Printf("Failed to delete destination transition image: %s", err)
-		}
-	}()
-
-	// now we have to convert the destination image to a volume, bootable if it was bootable
-	volumeName := srcVolume.Name
-	if toVolumeName != "" {
-		volumeName = toVolumeName
-	}
-
-	var dstVolume *volumes.Volume
-	dstVolume, err = imageToVolume(imgToVolClient, imgDstClient, dstImage.ID, volumeName, srcVolume.VolumeType, az, srcVolume.Size)
+func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, toVolumeName string, toVolumeType, az string, cloneViaSnapshot bool, loc Locations) (*volumes.Volume, error) {
+	newVolume, err := cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, toVolumeName, az, cloneViaSnapshot, loc)
 	if err != nil {
 		return nil, err
 	}
 
-	if loc.SameRegion {
+	// volume was cloned, now it requires a migration
+	srcVolume = newVolume
+
+	if loc.SameAZ ||
+		srcVolume.AvailabilityZone == az { // a volume was cloned via backup
 		if loc.SameProject {
 			// we're done
-			return dstVolume, nil
+			return srcVolume, nil
 		}
-		// volume
-		var v *volumes.Volume
-		v, err = transferVolume(imgToVolClient, dstVolumeClient, dstVolume)
-		return v, err
+
+		// just change volume ownership
+		// don't remove the source volume in case or err, because customer may
+		// transfer the cloned volume afterwards
+		return transferVolume(srcVolumeClient, dstVolumeClient, srcVolume)
 	}
 
-	return dstVolume, nil
+	defer func() {
+		// it is safe to remove the cloned volume on exit
+		if err := volumes.Delete(srcVolumeClient, srcVolume.ID, nil).ExtractErr(); err != nil {
+			// it is fine, when the volume was already removed.
+			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+				log.Printf("failed to delete a cloned volume: %s", err)
+			}
+		}
+	}()
+
+	// converting a volume to an image
+	srcImage, err := volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient, srcVolume)
+	if err != nil {
+		return nil, err
+	}
+
+	//
+	volumeName := srcVolume.Name
+	if toVolumeName != "" {
+		volumeName = toVolumeName
+	}
+	volumeType := srcVolume.VolumeType
+	if toVolumeType != "" {
+		volumeType = toVolumeType
+	}
+
+	defer func() {
+		// remove source region transition image
+		if err := images.Delete(srcImageClient, srcImage.ID).ExtractErr(); err != nil {
+			log.Printf("Failed to delete destination transition image: %s", err)
+		}
+	}()
+
+	if !loc.SameRegion {
+		// migrate the image/volume within different regions
+		dstImage, err := migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImage.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to migrate the image: %s", err)
+		}
+		defer func() {
+			// remove destination region transition image
+			if err := images.Delete(dstImageClient, dstImage.ID).ExtractErr(); err != nil {
+				log.Printf("Failed to delete destination transition image: %s", err)
+			}
+		}()
+		return imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, volumeName, srcVolume.Description, volumeType, az, srcVolume.Size)
+	}
+
+	// migrate the image/volume within the same region
+	dstVolume, err := imageToVolume(srcVolumeClient, srcImageClient, srcImage.ID, volumeName, srcVolume.Description, volumeType, az, srcVolume.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	if loc.SameProject {
+		// we're done
+		return dstVolume, nil
+	}
+
+	return transferVolume(srcVolumeClient, dstVolumeClient, dstVolume)
 }
 
-func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imageID, volumeName, volumeType, az string, volumeSize int) (*volumes.Volume, error) {
+func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imageID, volumeName, volumeDescription, volumeType, az string, volumeSize int) (*volumes.Volume, error) {
 	dstVolumeCreateOpts := volumes.CreateOpts{
 		Size:             volumeSize,
 		Name:             volumeName,
+		Description:      volumeDescription,
 		AvailabilityZone: az,
 		ImageID:          imageID,
 		VolumeType:       volumeType,
@@ -425,15 +438,15 @@ func transferVolume(srcVolumeClient, dstVolumeClient *gophercloud.ServiceClient,
 	}
 	transfer, err := volumetransfers.Create(srcVolumeClient, transferOpts).Extract()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a volume transfer request: %s", err)
+		return nil, fmt.Errorf("failed to create a %q volume transfer request: %s", srcVolume.ID, err)
 	}
 
 	_, err = volumetransfers.Accept(dstVolumeClient, transfer.ID, volumetransfers.AcceptOpts{AuthKey: transfer.AuthKey}).Extract()
 	if err != nil {
 		if err := volumetransfers.Delete(srcVolumeClient, transfer.ID).ExtractErr(); err != nil {
-			log.Printf("Failed to delete a volume transfer request: %s", err)
+			log.Printf("Failed to delete a %q volume transfer request: %s", srcVolume.ID, err)
 		}
-		return nil, fmt.Errorf("failed to accept a volume transfer request: %s", err)
+		return nil, fmt.Errorf("failed to accept a %q volume transfer request: %s", srcVolume.ID, err)
 	}
 
 	return srcVolume, nil
@@ -457,7 +470,8 @@ var VolumeCmd = &cobra.Command{
 		volume := args[0]
 
 		toAZ := viper.GetString("to-az")
-		toName := viper.GetString("to-volume-name")
+		toVolumeName := viper.GetString("to-volume-name")
+		toVolumeType := viper.GetString("to-volume-type")
 		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
 
 		// source and destination parameters
@@ -526,7 +540,7 @@ var VolumeCmd = &cobra.Command{
 
 		defer measureTime()
 
-		dstVolume, err := migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient, srcVolume, toName, toAZ, cloneViaSnapshot, loc)
+		dstVolume, err := migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient, srcVolume, toVolumeName, toVolumeType, toAZ, cloneViaSnapshot, loc)
 		if err != nil {
 			return err
 		}
@@ -545,6 +559,7 @@ func init() {
 func initVolumeCmdFlags() {
 	VolumeCmd.Flags().StringP("to-az", "", "", "destination volume availability zone")
 	VolumeCmd.Flags().StringP("to-volume-name", "", "", "destination volume name")
+	VolumeCmd.Flags().StringP("to-volume-type", "", "", "destination volume type")
 	VolumeCmd.Flags().StringP("container-format", "", "bare", "image container format, when source volume doesn't have this info")
 	VolumeCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
 	VolumeCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume via snapshot")

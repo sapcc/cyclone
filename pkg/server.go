@@ -525,10 +525,16 @@ var ServerCmd = &cobra.Command{
 		toNetworkName := viper.GetString("to-network-name")
 		toSubnetName := viper.GetString("to-subnet-name")
 		toAZ := viper.GetString("to-az")
+		toVolumeType := viper.GetString("to-volume-type")
 		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
 		forceBootable := viper.GetUint("bootable-volume")
+		forceLocal := viper.GetBool("local-disk")
 		deleteVolOnTerm := viper.GetBool("delete-volume-on-termination")
 		bootableDiskOnly := viper.GetBool("bootable-disk-only")
+
+		if forceBootable > 0 && forceLocal {
+			return fmt.Errorf("cannot use both --bootable-volume and --local-disk flags")
+		}
 
 		// source and destination parameters
 		loc, err := getSrcAndDst(toAZ)
@@ -713,7 +719,7 @@ var ServerCmd = &cobra.Command{
 				log.Printf("Forcing %s image to be converted to a bootable volume", dstImageID)
 				bootableVolume = true
 				var newBootableVolume *volumes.Volume
-				newBootableVolume, err = imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, fmt.Sprintf("bootable for %s", dstImage.Name), "", toAZ, int(forceBootable))
+				newBootableVolume, err = imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, "", fmt.Sprintf("bootable for %s", dstImage.Name), "", toAZ, int(forceBootable))
 				if err != nil {
 					return fmt.Errorf("failed to create a bootable volume for a VM: %s", err)
 				}
@@ -730,7 +736,7 @@ var ServerCmd = &cobra.Command{
 				return fmt.Errorf("failed to wait for a %q volume: %s", v, err)
 			}
 
-			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient, srcVolume, srcVolume.Name, toAZ, cloneViaSnapshot, loc)
+			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient, srcVolume, srcVolume.Name, toVolumeType, toAZ, cloneViaSnapshot, loc)
 			if err != nil {
 				// if we don't fail here, then the resulting VM may not boot because of insuficient of volumes
 				return fmt.Errorf("failed to clone the %q volume: %s", srcVolume.ID, err)
@@ -789,10 +795,12 @@ func initServerCmdFlags() {
 	ServerCmd.Flags().StringP("to-network-name", "", "", "destination server network name")
 	ServerCmd.Flags().StringP("to-subnet-name", "", "", "destination server subnet name")
 	ServerCmd.Flags().StringP("to-az", "", "", "destination availability zone")
+	ServerCmd.Flags().StringP("to-volume-type", "", "", "destination volume type")
 	ServerCmd.Flags().StringP("container-format", "", "bare", "image container format, when source volume doesn't have this info")
 	ServerCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
 	ServerCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume, attached to a server, via snapshot")
 	ServerCmd.Flags().UintP("bootable-volume", "b", 0, "force a VM with a local storage to be cloned to a VM with a bootable volume with a size specified in GiB")
+	ServerCmd.Flags().BoolP("local-disk", "", false, "convert the attached bootable volume to a local disk")
 	ServerCmd.Flags().BoolP("delete-volume-on-termination", "", true, "specifies whether or not to delete the attached bootable volume when the server is terminated")
 	ServerCmd.Flags().BoolP("bootable-disk-only", "", false, "clone only the bootable disk/volume, skipping the rest attached volumes")
 }
