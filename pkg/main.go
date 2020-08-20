@@ -56,10 +56,12 @@ func (cl *compactLogger) Fatal(args ...interface{}) {
 }
 
 var (
-	start   time.Time = time.Now()
-	logFile *os.File
-	l       *llog.Logger
-	log     compactLogger
+	start              time.Time = time.Now()
+	logFile            *os.File
+	l                  *llog.Logger
+	log                compactLogger
+	backoffFactor      = 2
+	backoffMaxInterval = 10 * time.Second
 )
 
 func (lg *logger) Printf(format string, args ...interface{}) {
@@ -456,4 +458,68 @@ func isSliceContainsStr(sl []string, str string) bool {
 		}
 	}
 	return false
+}
+
+// ArithmeticBackoff options.
+type ArithmeticBackoff struct {
+	Timeout     int
+	Factor      int
+	MaxInterval time.Duration
+}
+
+func NewArithmeticBackoff(timeout int, factor int, maxInterval time.Duration) *ArithmeticBackoff {
+	return &ArithmeticBackoff{
+		Timeout:     timeout,
+		Factor:      factor,
+		MaxInterval: maxInterval,
+	}
+}
+
+// WaitFor method polls a predicate function, once per interval with an
+// arithmetic backoff, up to a timeout limit. This is an enhanced
+// gophercloud.WaitFor function with a logic from
+// https://github.com/sapcc/go-bits/blob/master/retry/pkg.go
+func (eb *ArithmeticBackoff) WaitFor(predicate func() (bool, error)) error {
+	type WaitForResult struct {
+		Success bool
+		Error   error
+	}
+
+	start := time.Now().Unix()
+	duration := time.Second
+
+	for {
+		// If a timeout is set, and that's been exceeded, shut it down.
+		if eb.Timeout >= 0 && time.Now().Unix()-start >= int64(eb.Timeout) {
+			return fmt.Errorf("A timeout occurred")
+		}
+
+		duration += time.Second * time.Duration(eb.Factor)
+		if duration > eb.MaxInterval {
+			duration = eb.MaxInterval
+		}
+		time.Sleep(duration)
+
+		var result WaitForResult
+		ch := make(chan bool, 1)
+		go func() {
+			defer close(ch)
+			satisfied, err := predicate()
+			result.Success = satisfied
+			result.Error = err
+		}()
+
+		select {
+		case <-ch:
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.Success {
+				return nil
+			}
+		// If the predicate has not finished by the timeout, cancel it.
+		case <-time.After(time.Duration(eb.Timeout) * time.Second):
+			return fmt.Errorf("A timeout occurred")
+		}
+	}
 }

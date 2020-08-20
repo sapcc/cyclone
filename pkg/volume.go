@@ -74,7 +74,7 @@ func createSnapshotSpeed(snapshot *snapshots.Snapshot) {
 func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs float64) (*snapshots.Snapshot, error) {
 	var snapshot *snapshots.Snapshot
 	var err error
-	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
+	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		snapshot, err = snapshots.Get(client, id).Extract()
 		if err != nil {
 			return false, err
@@ -108,7 +108,7 @@ func createVolumeSpeed(volume *volumes.Volume) {
 func waitForVolume(client *gophercloud.ServiceClient, id string, secs float64) (*volumes.Volume, error) {
 	var volume *volumes.Volume
 	var err error
-	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
+	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		volume, err = volumes.Get(client, id).Extract()
 		if err != nil {
 			return false, err
