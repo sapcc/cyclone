@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gophercloud/gophercloud"
@@ -31,14 +32,37 @@ var RootCmd = &cobra.Command{
 	SilenceUsage: true,
 }
 
+type compactLogger struct {
+	sync.RWMutex
+	lastMsg string
+}
+
+func (cl *compactLogger) Printf(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	cl.RLock()
+	if cl.lastMsg == msg {
+		cl.RUnlock()
+		return
+	}
+	cl.RUnlock()
+	cl.Lock()
+	defer cl.Unlock()
+	cl.lastMsg = msg
+	llog.Print(msg)
+}
+
+func (cl *compactLogger) Fatal(args ...interface{}) {
+	llog.Fatal(args...)
+}
+
 var (
 	start   time.Time = time.Now()
 	logFile *os.File
 	l       *llog.Logger
-	log     = llog.New(llog.Writer(), llog.Prefix(), llog.Flags())
+	log     compactLogger
 )
 
-func (lg logger) Printf(format string, args ...interface{}) {
+func (lg *logger) Printf(format string, args ...interface{}) {
 	for _, v := range strings.Split(fmt.Sprintf(format, args...), "\n") {
 		l.Printf("[%s] %s", lg.Prefix, v)
 	}
@@ -88,15 +112,15 @@ func initLogger() {
 		}
 
 		// no need to close the log: https://golang.org/pkg/runtime/#SetFinalizer
-		l = llog.New(logFile, log.Prefix(), log.Flags())
+		l = llog.New(logFile, llog.Prefix(), llog.Flags())
 
 		if viper.GetBool("debug") {
 			// write log into stderr and log file
-			l.SetOutput(io.MultiWriter(log.Writer(), l.Writer()))
+			l.SetOutput(io.MultiWriter(llog.Writer(), l.Writer()))
 		}
 
 		// write stderr logs into the log file
-		log.SetOutput(io.MultiWriter(log.Writer(), logFile))
+		llog.SetOutput(io.MultiWriter(llog.Writer(), logFile))
 	}
 }
 

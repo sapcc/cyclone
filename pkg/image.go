@@ -62,6 +62,7 @@ func waitForImageTask(client, swiftClient *gophercloud.ServiceClient, id string,
 
 	var taskID string
 	err = gophercloud.WaitFor(int(secs), func() (bool, error) {
+		var taskStatus string
 		err = tasks.List(client, tasks.ListOpts{}).EachPage(func(page pagination.Page) (bool, error) {
 			tl, err := tasks.ExtractTasks(page)
 			if err != nil {
@@ -70,7 +71,7 @@ func waitForImageTask(client, swiftClient *gophercloud.ServiceClient, id string,
 
 			for _, task := range tl {
 				if taskID != "" && task.Status != string(tasks.TaskStatusFailure) {
-					log.Printf("Target image task status is: %s", task.Status)
+					taskStatus = fmt.Sprintf("Target image task status is: %s", task.Status)
 					return updateStatus(task)
 				}
 
@@ -90,7 +91,7 @@ func waitForImageTask(client, swiftClient *gophercloud.ServiceClient, id string,
 				if v, ok := t.Input["image_id"]; ok {
 					if v, ok := v.(string); ok {
 						if v == id {
-							log.Printf("Target image task status is: %s", t.Status)
+							taskStatus = fmt.Sprintf("Target image task status is: %s", t.Status)
 
 							// save the correcsponding task id for next calls
 							taskID = t.ID
@@ -114,9 +115,13 @@ func waitForImageTask(client, swiftClient *gophercloud.ServiceClient, id string,
 		}
 
 		// show user friendly status
-		getContainerSize(swiftClient, id, srcSizeBytes)
+		containerSize := getContainerSize(swiftClient, id, srcSizeBytes)
+		if containerSize == "" {
+			log.Printf("Target image status: %s, %s", img.Status, taskStatus)
+		} else {
+			log.Printf("Target image status: %s, %s, %s", img.Status, taskStatus, containerSize)
+		}
 
-		log.Printf("Target image status: %s", img.Status)
 		if img.Status == images.ImageStatusActive {
 			return true, nil
 		} else {
@@ -129,13 +134,14 @@ func waitForImageTask(client, swiftClient *gophercloud.ServiceClient, id string,
 }
 
 // this function may show confused size results due to Swift eventual consistency
-func getContainerSize(client *gophercloud.ServiceClient, id string, srcSizeBytes int64) {
+func getContainerSize(client *gophercloud.ServiceClient, id string, srcSizeBytes int64) string {
 	if client != nil {
 		container, err := containers.Get(client, "glance_"+id, nil).Extract()
 		if err != nil {
 			if _, ok := err.(gophercloud.ErrDefault404); !ok {
 				log.Printf("Failed to get Swift container status: %s", err)
 			}
+			return ""
 		}
 
 		var containerSize, percent int64
@@ -145,13 +151,13 @@ func getContainerSize(client *gophercloud.ServiceClient, id string, srcSizeBytes
 
 		if srcSizeBytes > 0 {
 			percent = 100 * containerSize / srcSizeBytes
-			log.Printf("Image size: %d/%d (%d%%)", containerSize, srcSizeBytes, percent)
-			return
+			return fmt.Sprintf("image size: %d/%d (%d%%)", containerSize, srcSizeBytes, percent)
 		}
 
 		// container size in Mb
-		log.Printf("Image size: %.2f Mb", float64(containerSize/(1024*1024)))
+		return fmt.Sprintf("image size: %.2f Mb", float64(containerSize/(1024*1024)))
 	}
+	return ""
 }
 
 func waitForImage(client, swiftClient *gophercloud.ServiceClient, id string, srcSizeBytes int64, secs float64) (*images.Image, error) {
@@ -164,9 +170,12 @@ func waitForImage(client, swiftClient *gophercloud.ServiceClient, id string, src
 		}
 
 		// show user friendly status
-		getContainerSize(swiftClient, id, srcSizeBytes)
-
-		log.Printf("Transition image status: %s", image.Status)
+		containerSize := getContainerSize(swiftClient, id, srcSizeBytes)
+		if containerSize == "" {
+			log.Printf("Transition image status: %s", image.Status)
+		} else {
+			log.Printf("Transition image status: %s, %s", image.Status, containerSize)
+		}
 		if image.Status == images.ImageStatusActive {
 			return true, nil
 		}
