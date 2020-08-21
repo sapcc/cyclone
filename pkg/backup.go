@@ -526,9 +526,12 @@ var BackupUploadCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := NewOpenStackClient(loc.Src)
+		srcProvider, err := NewOpenStackClient(&loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
+		}
+		if loc.Src.TempCleanUpFunc != nil {
+			defer loc.Src.TempCleanUpFunc()
 		}
 
 		srcObjectClient, err := NewObjectStorageV1Client(srcProvider, loc.Src.Region)
@@ -547,9 +550,12 @@ var BackupUploadCmd = &cobra.Command{
 			image = v
 		}
 
-		dstProvider, err := NewOpenStackClient(loc.Dst)
+		dstProvider, err := NewOpenStackClient(&loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
+		}
+		if loc.Dst.TempCleanUpFunc != nil {
+			defer loc.Dst.TempCleanUpFunc()
 		}
 
 		dstVolumeClient, err := NewBlockStorageV3Client(dstProvider, loc.Dst.Region)
@@ -609,9 +615,12 @@ var BackupRestoreCmd = &cobra.Command{
 			return err
 		}
 
-		dstProvider, err := NewOpenStackClient(loc.Dst)
+		dstProvider, err := NewOpenStackClient(&loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
+		}
+		if loc.Dst.TempCleanUpFunc != nil {
+			defer loc.Dst.TempCleanUpFunc()
 		}
 
 		dstVolumeClient, err := NewBlockStorageV3Client(dstProvider, loc.Dst.Region)

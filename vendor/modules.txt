@@ -22,6 +22,7 @@ github.com/gophercloud/gophercloud/openstack/compute/v2/flavors
 github.com/gophercloud/gophercloud/openstack/compute/v2/servers
 github.com/gophercloud/gophercloud/openstack/identity/v2/tenants
 github.com/gophercloud/gophercloud/openstack/identity/v2/tokens
+github.com/gophercloud/gophercloud/openstack/identity/v3/applicationcredentials
 github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/ec2tokens
 github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/oauth1
 github.com/gophercloud/gophercloud/openstack/identity/v3/tokens
@@ -44,7 +45,6 @@ github.com/gophercloud/utils/env
 github.com/gophercloud/utils/openstack/blockstorage/extensions/backups
 github.com/gophercloud/utils/openstack/blockstorage/v3/volumes
 github.com/gophercloud/utils/openstack/clientconfig
-github.com/gophercloud/utils/openstack/compute/v2/servers
 github.com/gophercloud/utils/openstack/imageservice/v2/images
 github.com/gophercloud/utils/openstack/networking/v2/networks
 github.com/gophercloud/utils/openstack/networking/v2/subnets

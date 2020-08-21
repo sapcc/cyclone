@@ -14,6 +14,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
+	"github.com/gophercloud/gophercloud/openstack/identity/v3/applicationcredentials"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/gophercloud/utils/client"
 	"github.com/gophercloud/utils/openstack/clientconfig"
@@ -181,6 +182,7 @@ type Location struct {
 	ApplicationCredentialID     string
 	ApplicationCredentialSecret string
 	Origin                      string
+	TempCleanUpFunc             func()
 }
 
 func parseTimeoutArg(arg string, dst *float64, errors *[]error) {
@@ -288,7 +290,7 @@ func getSrcAndDst(az string) (Locations, error) {
 	return loc, nil
 }
 
-func NewOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
+func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 	envPrefix := "OS_"
 	if loc.Origin == "dst" {
 		envPrefix = "TO_OS_"
@@ -348,7 +350,75 @@ func NewOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 		return nil, err
 	}
 
+	if ao.TokenID != "" {
+		// force application credential creation to allow further reauth
+		log.Printf("Force %s application credential creation due to OpenStack Keystone token auth", loc.Origin)
+		user, err := getUserFromProvider(provider)
+		if err != nil {
+			return nil, err
+		}
+
+		identityClient, err := openstack.NewIdentityV3(provider, gophercloud.EndpointOpts{
+			Region: loc.Region,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create OpenStack Identity V3 client: %s", err)
+		}
+
+		createOpts := applicationcredentials.CreateOpts{
+			Name:        fmt.Sprintf("cyclone_%s_%s", time.Now().Format("20060102150405"), loc.Origin),
+			Description: "temp credentials for cyclone",
+			// we need to be able to delete AC token within its own scope
+			Unrestricted: true,
+		}
+		ac, err := applicationcredentials.Create(identityClient, user.ID, createOpts).Extract()
+		if err != nil {
+			if v, ok := err.(gophercloud.ErrDefault404); ok {
+				return nil, fmt.Errorf("failed to create a temp application credential: %s", v.ErrUnexpectedResponseCode.Body)
+			}
+			return nil, fmt.Errorf("failed to create a temp application credential: %s", err)
+		}
+
+		// unset previous auth options
+		ao.Username = ""
+		ao.UserID = ""
+		ao.Password = ""
+		ao.DomainID = ""
+		ao.DomainName = ""
+		ao.TenantID = ""
+		ao.TenantName = ""
+		ao.TokenID = ""
+		ao.Scope = nil
+		ao.ApplicationCredentialID = ac.ID
+		ao.ApplicationCredentialSecret = ac.Secret
+
+		loc.TempCleanUpFunc = func() {
+			if err := applicationcredentials.Delete(identityClient, user.ID, ac.ID).ExtractErr(); err != nil {
+				log.Printf("Failed to delete a %q temp application credential: %s", ac.Name, err)
+			}
+		}
+
+		err = openstack.Authenticate(provider, *ao)
+		if err != nil {
+			// delete application credentials on auth failure
+			defer loc.TempCleanUpFunc()
+			return nil, fmt.Errorf("failed to auth using just created application credentials: %s", err)
+		}
+	}
+
 	return provider, nil
+}
+
+func getUserFromProvider(provider *gophercloud.ProviderClient) (*tokens.User, error) {
+	if v, ok := provider.GetAuthResult().(tokens.CreateResult); ok {
+		user, err := v.ExtractUser()
+		if err != nil {
+			return nil, fmt.Errorf("cannot extract user data from the token: %s", err)
+		}
+		return user, nil
+	}
+
+	return nil, fmt.Errorf("cannot detect current token info")
 }
 
 func NewGlanceV2Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
