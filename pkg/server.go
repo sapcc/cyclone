@@ -598,7 +598,7 @@ func bootableToLocal(srcVolumeClient, srcImageClient, srcObjectClient, dstImageC
 
 	var srcImage, dstImage *images.Image
 	// converting a volume to an image
-	srcImage, err = volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient, newVolume)
+	srcImage, err = volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient, "", newVolume)
 	// delete the cloned volume just after the image was created
 	if err := volumes.Delete(srcVolumeClient, newVolume.ID, nil).ExtractErr(); err != nil {
 		log.Printf("failed to delete a cloned volume: %s", err)

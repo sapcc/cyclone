@@ -462,6 +462,10 @@ func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstA
 		return nil
 	}
 
+	if client == nil {
+		return fmt.Errorf("no service client provided")
+	}
+
 	// check availability zone name
 	allPages, err := availabilityzones.List(client).AllPages()
 	if err != nil {

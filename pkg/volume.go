@@ -247,7 +247,7 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 	return newVolume, nil
 }
 
-func volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, srcVolume *volumes.Volume) (*images.Image, error) {
+func volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, imageName string, srcVolume *volumes.Volume) (*images.Image, error) {
 	createSrcImage := volumeactions.UploadImageOpts{
 		ContainerFormat: viper.GetString("container-format"),
 		DiskFormat:      viper.GetString("disk-format"),
@@ -256,8 +256,10 @@ func volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient *gophercloud
 		Force: true,
 	}
 
-	// preserve source image name
-	if v, ok := srcVolume.VolumeImageMetadata["image_name"]; ok && v != "" {
+	if imageName != "" {
+		createSrcImage.ImageName = imageName
+	} else if v, ok := srcVolume.VolumeImageMetadata["image_name"]; ok && v != "" {
+		// preserve source image name
 		createSrcImage.ImageName = v
 	} else {
 		createSrcImage.ImageName = srcVolume.ID
@@ -350,7 +352,7 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectCl
 	}()
 
 	// converting a volume to an image
-	srcImage, err := volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient, srcVolume)
+	srcImage, err := volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient, "", srcVolume)
 	if err != nil {
 		return nil, err
 	}
@@ -559,8 +561,100 @@ var VolumeCmd = &cobra.Command{
 	},
 }
 
+// VolumeToImageCmd represents the volume command
+var VolumeToImageCmd = &cobra.Command{
+	Use:   "to-image <name|id>",
+	Args:  cobra.ExactArgs(1),
+	Short: "Upload a volume to an image",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		return parseTimeoutArgs()
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// convert a volume to an image
+
+		volume := args[0]
+
+		toImageName := viper.GetString("to-image-name")
+		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
+
+		// source and destination parameters
+		loc, err := getSrcAndDst("")
+		if err != nil {
+			return err
+		}
+
+		srcProvider, err := NewOpenStackClient(&loc.Src)
+		if err != nil {
+			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
+		}
+		if loc.Src.TempCleanUpFunc != nil {
+			defer loc.Src.TempCleanUpFunc()
+		}
+
+		srcImageClient, err := NewGlanceV2Client(srcProvider, loc.Src.Region)
+		if err != nil {
+			return fmt.Errorf("failed to create source image client: %s", err)
+		}
+
+		srcVolumeClient, err := NewBlockStorageV3Client(srcProvider, loc.Src.Region)
+		if err != nil {
+			return fmt.Errorf("failed to create source volume client: %s", err)
+		}
+
+		srcObjectClient, err := NewObjectStorageV1Client(srcProvider, loc.Src.Region)
+		if err != nil {
+			return fmt.Errorf("failed to create source object storage client: %s", err)
+		}
+
+		// resolve volume name to an ID
+		if v, err := volumes_utils.IDFromName(srcVolumeClient, volume); err == nil {
+			volume = v
+		}
+
+		srcVolume, err := waitForVolume(srcVolumeClient, volume, waitForVolumeSec)
+		if err != nil {
+			return fmt.Errorf("failed to wait for a %q volume: %s", volume, err)
+		}
+
+		var toAZ string
+		err = checkAvailabilityZone(nil, srcVolume.AvailabilityZone, &toAZ, &loc)
+		if err != nil {
+			return err
+		}
+
+		defer measureTime()
+
+		if srcVolume.Status == "in-use" {
+			// clone the "in-use" volume
+			newVolume, err := cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, "", toAZ, cloneViaSnapshot, loc)
+			if err != nil {
+				return err
+			}
+
+			defer func() {
+				if err := volumes.Delete(srcVolumeClient, newVolume.ID, nil).ExtractErr(); err != nil {
+					log.Printf("Failed to delete a cloned volume: %s", err)
+				}
+			}()
+
+			// volume was cloned, now we can safely convert it to a volume
+			srcVolume = newVolume
+		}
+
+		dstImage, err := volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient, toImageName, srcVolume)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Target image name is %q (id: %q)", dstImage.Name, dstImage.ID)
+
+		return nil
+	},
+}
+
 func init() {
 	initVolumeCmdFlags()
+	VolumeCmd.AddCommand(VolumeToImageCmd)
 	RootCmd.AddCommand(VolumeCmd)
 }
 
@@ -571,4 +665,9 @@ func initVolumeCmdFlags() {
 	VolumeCmd.Flags().StringP("container-format", "", "bare", "image container format, when source volume doesn't have this info")
 	VolumeCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
 	VolumeCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume via snapshot")
+
+	VolumeToImageCmd.Flags().StringP("container-format", "", "bare", "image container format, when source volume doesn't have this info")
+	VolumeToImageCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
+	VolumeToImageCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume via snapshot")
+	VolumeToImageCmd.Flags().StringP("to-image-name", "", "", "destination image name")
 }

@@ -4,7 +4,7 @@ Clone OpenStack entities easily.
 
 ## Why?
 
-In modern clusters compute instances are considered as Cattles, but there are exceptions, when a compute instance is a Pet and needs care, especially when you need to migrate or clone it to a new OpenStack region or availability zone.
+In modern clusters compute instances are considered as a Cattle, but there are exceptions, when a compute instance is a Pet and needs care, especially when you need to migrate or clone it to a new OpenStack region or availability zone.
 
 Here comes cyclone (**C**loud **Clone** or cclone) to help you with this task. It takes care about all volumes attached to a VM and clones them with all required intermediate type conversions.
 
@@ -121,7 +121,7 @@ $ source openrc-of-the-source-project
 $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only
 ```
 
-### Clona a server with a bootable volume to a server with a local disk
+### Clone a server with a bootable volume to a server with a local disk
 
 `--local-disk` allows to clone a VM with a Cinder bootable volume to a VM with a local disk.
 
@@ -151,12 +151,31 @@ $ cyclone backup upload my-file.vmdk --to-container-name swift-backup-container 
   -p hw_disk_bus=scsi
 ```
 
-### Upload the remote Glance image into a backup
+### Upload a remote Glance image into a backup
 
 ```sh
 $ source openrc-of-the-source-project
 $ cyclone backup upload my-glance-image --to-container-name swift-backup-container --volume-size=160 --threads=16
 ```
+
+### Transfer a big volume from one region to another
+
+In this case you need to convert a volume to an image first:
+
+```sh
+$ source openrc-of-the-source-project
+$ cyclone volume to-image my-cinder-volume
+```
+
+then transfer it within multiple parallel connections to a target backup resource with a further volume restore action.
+
+```sh
+$ source openrc-of-the-source-project
+$ cyclone backup upload my-glance-image --to-container-name swift-backup-container --to-region my-region-1 \
+  --volume-size=160 --threads=16 --restore-volume
+```
+
+It's strongly recommended to run the `cyclone backup upload` command inside a VM, located in the target region.
 
 ### Create a new volume from an existing backup
 
