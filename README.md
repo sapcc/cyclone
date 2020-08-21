@@ -164,7 +164,7 @@ In this case you need to convert a volume to an image first:
 
 ```sh
 $ source openrc-of-the-source-project
-$ cyclone volume to-image my-cinder-volume
+$ cyclone volume to-image my-cinder-volume --to-image-name my-glance-image
 ```
 
 then transfer it within multiple parallel connections to a target backup resource with a further volume restore action.
