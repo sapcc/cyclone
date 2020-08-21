@@ -18,6 +18,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/gophercloud/utils/client"
 	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -181,6 +182,7 @@ type Location struct {
 	ApplicationCredentialName   string
 	ApplicationCredentialID     string
 	ApplicationCredentialSecret string
+	Token                       string
 	Origin                      string
 	TempCleanUpFunc             func()
 }
@@ -234,6 +236,7 @@ func getSrcAndDst(az string) (Locations, error) {
 	loc.Src.ApplicationCredentialName = os.Getenv("OS_APPLICATION_CREDENTIAL_NAME")
 	loc.Src.ApplicationCredentialID = os.Getenv("OS_APPLICATION_CREDENTIAL_ID")
 	loc.Src.ApplicationCredentialSecret = os.Getenv("OS_APPLICATION_CREDENTIAL_SECRET")
+	loc.Src.Token = os.Getenv("OS_AUTH_TOKEN")
 
 	loc.Dst.Origin = "dst"
 	loc.Dst.Region = viper.GetString("to-region")
@@ -282,6 +285,8 @@ func getSrcAndDst(az string) (Locations, error) {
 		if loc.Src.Domain == loc.Dst.Domain {
 			if loc.Src.Project == loc.Dst.Project {
 				loc.SameProject = true
+				// share the same token
+				loc.Dst.Token = loc.Src.Token
 			}
 		}
 		loc.SameRegion = true
@@ -306,6 +311,7 @@ func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 			ApplicationCredentialID:     loc.ApplicationCredentialID,
 			ApplicationCredentialName:   loc.ApplicationCredentialName,
 			ApplicationCredentialSecret: loc.ApplicationCredentialSecret,
+			Token:                       loc.Token,
 		},
 		RegionName: loc.Region,
 	})
@@ -343,6 +349,16 @@ func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 			Rt:     &http.Transport{},
 			Logger: &logger{Prefix: loc.Origin},
 		},
+	}
+
+	if ao.ApplicationCredentialSecret == "" && ao.TokenID == "" &&
+		ao.Username != "" && ao.Password == "" {
+		fmt.Printf("Enter the %s password: ", loc.Origin)
+		v, err := gopass.GetPasswd()
+		if err != nil {
+			return nil, err
+		}
+		ao.Password = string(v)
 	}
 
 	err = openstack.Authenticate(provider, *ao)
