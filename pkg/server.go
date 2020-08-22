@@ -673,9 +673,6 @@ var ServerCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
-		if loc.Src.TempCleanUpFunc != nil {
-			defer loc.Src.TempCleanUpFunc()
-		}
 
 		srcServerClient, err := NewComputeV2Client(srcProvider, loc.Src.Region)
 		if err != nil {
@@ -708,9 +705,6 @@ var ServerCmd = &cobra.Command{
 		dstProvider, err := NewOpenStackClient(&loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
-		}
-		if loc.Dst.TempCleanUpFunc != nil {
-			defer loc.Dst.TempCleanUpFunc()
 		}
 
 		dstServerClient, err := NewComputeV2Client(dstProvider, loc.Dst.Region)

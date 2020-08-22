@@ -6,6 +6,7 @@ import (
 	llog "log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -64,6 +65,7 @@ var (
 	log                compactLogger
 	backoffFactor      = 2
 	backoffMaxInterval = 10 * time.Second
+	cleanupFuncs       []func(*sync.WaitGroup)
 )
 
 func (lg *logger) Printf(format string, args ...interface{}) {
@@ -84,10 +86,37 @@ func measureTime(caption ...string) {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	initRootCmdFlags()
-	if err := RootCmd.Execute(); err != nil {
+
+	cleanupFunc := func() {
+		var wg = &sync.WaitGroup{}
+		for _, f := range cleanupFuncs {
+			wg.Add(1)
+			go f(wg)
+		}
+		wg.Wait()
+	}
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		select {
+		case <-c:
+			log.Printf("Interrupted")
+			cleanupFunc()
+			os.Exit(1)
+		}
+	}()
+
+	err := RootCmd.Execute()
+	if err != nil {
 		if logFile != nil {
 			fmt.Fprintf(logFile, "Error: %s\n", err)
 		}
+	}
+
+	cleanupFunc()
+
+	if err != nil {
 		os.Exit(1)
 	}
 }
@@ -184,7 +213,6 @@ type Location struct {
 	ApplicationCredentialSecret string
 	Token                       string
 	Origin                      string
-	TempCleanUpFunc             func()
 }
 
 func parseTimeoutArg(arg string, dst *float64, errors *[]error) {
@@ -381,13 +409,36 @@ func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 			return nil, fmt.Errorf("failed to create OpenStack Identity V3 client: %s", err)
 		}
 
+		acName := fmt.Sprintf("cyclone_%s_%s", time.Now().Format("20060102150405"), loc.Origin)
 		createOpts := applicationcredentials.CreateOpts{
-			Name:        fmt.Sprintf("cyclone_%s_%s", time.Now().Format("20060102150405"), loc.Origin),
+			Name:        acName,
 			Description: "temp credentials for cyclone",
 			// we need to be able to delete AC token within its own scope
 			Unrestricted: true,
 		}
-		ac, err := applicationcredentials.Create(identityClient, user.ID, createOpts).Extract()
+
+		acWait := &sync.WaitGroup{}
+		acWait.Add(1)
+		var ac *applicationcredentials.ApplicationCredential
+		cleanupFuncs = append(cleanupFuncs, func(wg *sync.WaitGroup) {
+			defer wg.Done()
+			log.Printf("Cleaning up %q application credential", acName)
+
+			// wait for ac Create response
+			acWait.Wait()
+			if ac == nil {
+				// nothing to delete
+				return
+			}
+
+			if err := applicationcredentials.Delete(identityClient, user.ID, ac.ID).ExtractErr(); err != nil {
+				if _, ok := err.(gophercloud.ErrDefault404); !ok {
+					log.Printf("Failed to delete a %q temp application credential: %s", acName, err)
+				}
+			}
+		})
+		ac, err = applicationcredentials.Create(identityClient, user.ID, createOpts).Extract()
+		acWait.Done()
 		if err != nil {
 			if v, ok := err.(gophercloud.ErrDefault404); ok {
 				return nil, fmt.Errorf("failed to create a temp application credential: %s", v.ErrUnexpectedResponseCode.Body)
@@ -408,16 +459,8 @@ func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 		ao.ApplicationCredentialID = ac.ID
 		ao.ApplicationCredentialSecret = ac.Secret
 
-		loc.TempCleanUpFunc = func() {
-			if err := applicationcredentials.Delete(identityClient, user.ID, ac.ID).ExtractErr(); err != nil {
-				log.Printf("Failed to delete a %q temp application credential: %s", ac.Name, err)
-			}
-		}
-
 		err = openstack.Authenticate(provider, *ao)
 		if err != nil {
-			// delete application credentials on auth failure
-			defer loc.TempCleanUpFunc()
 			return nil, fmt.Errorf("failed to auth using just created application credentials: %s", err)
 		}
 	}
