@@ -41,7 +41,7 @@ type serverExtended struct {
 }
 
 var serverWaitStatuses = []string{
-	string("BUILD"),
+	"BUILD",
 }
 
 func createServerSpeed(server *serverExtended) {
@@ -52,7 +52,7 @@ func createServerSpeed(server *serverExtended) {
 func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (*serverExtended, error) {
 	var server serverExtended
 	var err error
-	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
+	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		var tmp serverExtended
 		err = servers.Get(client, id).ExtractInto(&tmp)
 		if err != nil {
@@ -125,7 +125,7 @@ func getServerIDFromName(client *gophercloud.ServiceClient, name string) (string
 func waitForPort(client *gophercloud.ServiceClient, id string, secs float64) (*ports.Port, error) {
 	var port *ports.Port
 	var err error
-	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
+	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		port, err = ports.Get(client, id).Extract()
 		if err != nil {
 			return false, err

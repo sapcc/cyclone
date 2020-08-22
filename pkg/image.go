@@ -35,7 +35,7 @@ var imageWaitStatuses = []string{
 
 func createImageSpeed(image *images.Image) {
 	t := image.UpdatedAt.Sub(image.CreatedAt)
-	log.Printf("Time to create a image: %s", t)
+	log.Printf("Time to create an image: %s", t)
 	size := float64(image.SizeBytes / (1024 * 1024))
 	log.Printf("Size of the image: %.2f Mb", size)
 	log.Printf("Speed of the image creation: %.2f Mb/sec", size/t.Seconds())
@@ -61,7 +61,7 @@ func waitForImageTask(client, swiftClient *gophercloud.ServiceClient, id string,
 	}
 
 	var taskID string
-	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
+	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		var taskStatus string
 		err = tasks.List(client, tasks.ListOpts{}).EachPage(func(page pagination.Page) (bool, error) {
 			tl, err := tasks.ExtractTasks(page)
@@ -163,7 +163,7 @@ func getContainerSize(client *gophercloud.ServiceClient, id string, srcSizeBytes
 func waitForImage(client, swiftClient *gophercloud.ServiceClient, id string, srcSizeBytes int64, secs float64) (*images.Image, error) {
 	var image *images.Image
 	var err error
-	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
+	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		image, err = images.Get(client, id).Extract()
 		if err != nil {
 			return false, err
@@ -273,10 +273,11 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClie
 		return nil, fmt.Errorf("error creating destination Image: %s", err)
 	}
 
+	dstImgID := dstImg.ID
 	defer func() {
 		if err != nil {
-			log.Printf("Deleting target %q image", dstImg.ID)
-			if err := images.Delete(dstImageClient, dstImg.ID).ExtractErr(); err != nil {
+			log.Printf("Deleting target %q image", dstImgID)
+			if err := images.Delete(dstImageClient, dstImgID).ExtractErr(); err != nil {
 				log.Printf("Error deleting target image: %s", err)
 			}
 		}
@@ -434,9 +435,14 @@ var ImageCmd = &cobra.Command{
 
 		defer measureTime()
 
-		_, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImg, toName)
+		dstImg, err := migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImg, toName)
+		if err != nil {
+			return err
+		}
 
-		return err
+		log.Printf("Target image name is %q (id: %q)", dstImg.Name, dstImg.ID)
+
+		return nil
 	},
 }
 

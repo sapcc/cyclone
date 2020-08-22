@@ -59,7 +59,7 @@ func (cl *compactLogger) Fatal(args ...interface{}) {
 }
 
 var (
-	start              time.Time = time.Now()
+	startTime          time.Time = time.Now()
 	logFile            *os.File
 	l                  *llog.Logger
 	log                compactLogger
@@ -76,9 +76,9 @@ func (lg *logger) Printf(format string, args ...interface{}) {
 
 func measureTime(caption ...string) {
 	if len(caption) == 0 {
-		log.Printf("Total execution time: %s", time.Now().Sub(start))
+		log.Printf("Total execution time: %s", time.Now().Sub(startTime))
 	} else {
-		log.Printf(caption[0], time.Now().Sub(start))
+		log.Printf(caption[0], time.Now().Sub(startTime))
 	}
 }
 
@@ -90,7 +90,6 @@ func Execute() {
 	cleanupFunc := func() {
 		var wg = &sync.WaitGroup{}
 		for _, f := range cleanupFuncs {
-			wg.Add(1)
 			go f(wg)
 		}
 		wg.Wait()
@@ -397,7 +396,7 @@ func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 	if ao.TokenID != "" {
 		// force application credential creation to allow further reauth
 		log.Printf("Force %s application credential creation due to OpenStack Keystone token auth", loc.Origin)
-		user, err := getUserFromProvider(provider)
+		userID, err := getAuthUserID(provider)
 		if err != nil {
 			return nil, err
 		}
@@ -421,6 +420,7 @@ func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 		acWait.Add(1)
 		var ac *applicationcredentials.ApplicationCredential
 		cleanupFuncs = append(cleanupFuncs, func(wg *sync.WaitGroup) {
+			wg.Add(1)
 			defer wg.Done()
 			log.Printf("Cleaning up %q application credential", acName)
 
@@ -431,13 +431,13 @@ func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 				return
 			}
 
-			if err := applicationcredentials.Delete(identityClient, user.ID, ac.ID).ExtractErr(); err != nil {
+			if err := applicationcredentials.Delete(identityClient, userID, ac.ID).ExtractErr(); err != nil {
 				if _, ok := err.(gophercloud.ErrDefault404); !ok {
 					log.Printf("Failed to delete a %q temp application credential: %s", acName, err)
 				}
 			}
 		})
-		ac, err = applicationcredentials.Create(identityClient, user.ID, createOpts).Extract()
+		ac, err = applicationcredentials.Create(identityClient, userID, createOpts).Extract()
 		acWait.Done()
 		if err != nil {
 			if v, ok := err.(gophercloud.ErrDefault404); ok {
@@ -466,18 +466,6 @@ func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 	}
 
 	return provider, nil
-}
-
-func getUserFromProvider(provider *gophercloud.ProviderClient) (*tokens.User, error) {
-	if v, ok := provider.GetAuthResult().(tokens.CreateResult); ok {
-		user, err := v.ExtractUser()
-		if err != nil {
-			return nil, fmt.Errorf("cannot extract user data from the token: %s", err)
-		}
-		return user, nil
-	}
-
-	return nil, fmt.Errorf("cannot detect current token info")
 }
 
 func NewGlanceV2Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
@@ -557,6 +545,32 @@ func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstA
 	return nil
 }
 
+func getAuthUserID(client *gophercloud.ProviderClient) (string, error) {
+	if client == nil {
+		return "", fmt.Errorf("provider client is nil")
+	}
+	r := client.GetAuthResult()
+	if r == nil {
+		return "", fmt.Errorf("provider client auth result is nil")
+	}
+	switch r := r.(type) {
+	case tokens.CreateResult:
+		v, err := r.ExtractUser()
+		if err != nil {
+			return "", err
+		}
+		return v.ID, nil
+	case tokens.GetResult:
+		v, err := r.ExtractUser()
+		if err != nil {
+			return "", err
+		}
+		return v.ID, nil
+	default:
+		return "", fmt.Errorf("got unexpected AuthResult type %t", r)
+	}
+}
+
 func getAuthProjectID(client *gophercloud.ProviderClient) (string, error) {
 	if client == nil {
 		return "", fmt.Errorf("provider client is nil")
@@ -593,15 +607,15 @@ func isSliceContainsStr(sl []string, str string) bool {
 	return false
 }
 
-// ArithmeticBackoff options.
-type ArithmeticBackoff struct {
+// Backoff options.
+type Backoff struct {
 	Timeout     int
 	Factor      int
 	MaxInterval time.Duration
 }
 
-func NewArithmeticBackoff(timeout int, factor int, maxInterval time.Duration) *ArithmeticBackoff {
-	return &ArithmeticBackoff{
+func NewBackoff(timeout int, factor int, maxInterval time.Duration) *Backoff {
+	return &Backoff{
 		Timeout:     timeout,
 		Factor:      factor,
 		MaxInterval: maxInterval,
@@ -612,7 +626,7 @@ func NewArithmeticBackoff(timeout int, factor int, maxInterval time.Duration) *A
 // arithmetic backoff, up to a timeout limit. This is an enhanced
 // gophercloud.WaitFor function with a logic from
 // https://github.com/sapcc/go-bits/blob/master/retry/pkg.go
-func (eb *ArithmeticBackoff) WaitFor(predicate func() (bool, error)) error {
+func (eb *Backoff) WaitFor(predicate func() (bool, error)) error {
 	type WaitForResult struct {
 		Success bool
 		Error   error

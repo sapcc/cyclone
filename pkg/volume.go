@@ -74,7 +74,7 @@ func createSnapshotSpeed(snapshot *snapshots.Snapshot) {
 func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs float64) (*snapshots.Snapshot, error) {
 	var snapshot *snapshots.Snapshot
 	var err error
-	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
+	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		snapshot, err = snapshots.Get(client, id).Extract()
 		if err != nil {
 			return false, err
@@ -108,7 +108,7 @@ func createVolumeSpeed(volume *volumes.Volume) {
 func waitForVolume(client *gophercloud.ServiceClient, id string, secs float64) (*volumes.Volume, error) {
 	var volume *volumes.Volume
 	var err error
-	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
+	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		volume, err = volumes.Get(client, id).Extract()
 		if err != nil {
 			return false, err
@@ -229,9 +229,10 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 		return nil, fmt.Errorf("failed to create a source volume from a backup: %s", err)
 	}
 
+	newVolumeID := newVolume.ID
 	defer func() {
 		if err != nil {
-			if err := volumes.Delete(srcVolumeClient, newVolume.ID, nil).ExtractErr(); err != nil {
+			if err := volumes.Delete(srcVolumeClient, newVolumeID, nil).ExtractErr(); err != nil {
 				log.Printf("Failed to delete a cloned volume: %s", err)
 			}
 		}
@@ -561,7 +562,10 @@ var VolumeToImageCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Short: "Upload a volume to an image",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		return parseTimeoutArgs()
+		if err := parseTimeoutArgs(); err != nil {
+			return err
+		}
+		return viper.BindPFlags(cmd.Flags())
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// convert a volume to an image

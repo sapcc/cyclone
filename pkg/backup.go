@@ -62,7 +62,7 @@ func createBackupSpeed(client *gophercloud.ServiceClient, backup *backups.Backup
 func waitForBackup(client *gophercloud.ServiceClient, id string, secs float64) (*backups.Backup, error) {
 	var backup *backups.Backup
 	var err error
-	err = NewArithmeticBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
+	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		backup, err = backups.Get(client, id).Extract()
 		if err != nil {
 			return false, err
