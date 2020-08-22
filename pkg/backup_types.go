@@ -3,6 +3,7 @@ package pkg
 import (
 	"encoding/hex"
 	"encoding/json"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -48,7 +49,12 @@ func (r *sha256file) MarshalJSON() ([]byte, error) {
 		for _, v := range r.Sha256s[k] {
 			str = append(str, hex.EncodeToString(v[:]))
 		}
+		r.Sha256s[k] = nil
 	}
+	r.Sha256s = nil
+
+	// clean the r.Sha256s memory
+	runtime.GC()
 
 	return json.Marshal(s{
 		r.BackupDescription,
@@ -102,7 +108,12 @@ func (r *metadata) MarshalJSON() ([]byte, error) {
 	var obj []backupChunkEntry
 	for _, k := range keys {
 		obj = append(obj, r.Objects[k])
+		r.Objects[k] = nil
 	}
+	r.Objects = nil
+
+	// clean the r.Objects memory
+	runtime.GC()
 
 	return json.Marshal(s{
 		r.BackupDescription,

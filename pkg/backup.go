@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -84,7 +85,7 @@ func waitForBackup(client *gophercloud.ServiceClient, id string, secs float64) (
 }
 
 // calculate sha256 hashes in parallel
-func calcSha256Hash(myChunk []byte, hashChan chan [][32]byte) {
+func calcSha256Hash(myChunk []byte, sha256meta *sha256file, i int, done chan struct{}) {
 	var lenght int = len(myChunk)
 	var hashes int
 	if n, mod := lenght/sha256chunk, lenght%sha256chunk; mod > 0 {
@@ -94,30 +95,57 @@ func calcSha256Hash(myChunk []byte, hashChan chan [][32]byte) {
 	}
 
 	h := make([][32]byte, hashes)
-	sha256calc := func(i, start, end int, wg *sync.WaitGroup) {
-		h[i] = sha256.Sum256(myChunk[start:end])
-		wg.Done()
-	}
-
-	var waitGroup sync.WaitGroup
-	for i := 0; i < hashes; i++ {
-		start := i * sha256chunk
+	sha256calc := func(j int, wg *sync.WaitGroup) {
+		wg.Add(1)
+		defer wg.Done()
+		start := j * sha256chunk
 		end := start + sha256chunk
 		if end > lenght {
 			end = lenght
 		}
-		waitGroup.Add(1)
-		go sha256calc(i, start, end, &waitGroup)
+		h[j] = sha256.Sum256(myChunk[start:end])
+	}
+
+	waitGroup := &sync.WaitGroup{}
+	for j := 0; j < hashes; j++ {
+		go sha256calc(j, waitGroup)
 	}
 
 	waitGroup.Wait()
 
-	hashChan <- h
+	sha256meta.Lock()
+	sha256meta.Sha256s[i] = h
+	sha256meta.Unlock()
+
+	close(done)
+}
+
+// calculate md5 hashes
+func calcMd5Hash(myChunk []byte, meta *metadata, i int, done chan struct{}, chunkPath string) {
+	hash := md5.Sum(myChunk)
+	object := backupChunkEntry{
+		chunkPath: {
+			"compression": "zlib",
+			"length":      len(myChunk),
+			"md5":         hex.EncodeToString(hash[:]),
+			"offset":      (i - 1) * backupChunk,
+		},
+	}
+	meta.Lock()
+	meta.Objects[i] = object
+	meta.Unlock()
+
+	close(done)
 }
 
 func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClient *gophercloud.ServiceClient, reader *progress.Reader, meta *metadata, sha256meta *sha256file, contChan chan bool, limitChan chan struct{}, errChan chan error) {
+	wg.Add(1)
+	// consume the queue
+	limitChan <- struct{}{}
+
 	defer func() {
 		wg.Done()
+		// release the queue
 		<-limitChan
 	}()
 
@@ -127,38 +155,28 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 			errChan <- fmt.Errorf("failed to read file: %s", err)
 			return
 		}
-		// stop further reading, end of file
-		contChan <- false
 	}
 	if len(myChunk) == 0 {
-		// stop further reading, no further data
+		// stop further reading, no data
 		contChan <- false
 		return
+	} else if err == io.EOF {
+		// EOF, but we still need to process some data
+		contChan <- false
+	} else {
+		// allow next go routine to process the input
+		contChan <- true
 	}
-	contChan <- true
 
 	chunkPath := fmt.Sprintf("%s-%05d", path, i)
-	md5done := make(chan bool)
+
 	// calculate md5 hash while we upload chunks
-	go func(myChunk []byte) {
-		hash := md5.Sum(myChunk)
-		object := backupChunkEntry{
-			chunkPath: {
-				"compression": "zlib",
-				"length":      len(myChunk),
-				"md5":         hex.EncodeToString(hash[:]),
-				"offset":      (i - 1) * backupChunk,
-			},
-		}
-		meta.Lock()
-		meta.Objects[i] = object
-		meta.Unlock()
-		md5done <- true
-	}(myChunk)
+	md5done := make(chan struct{})
+	go calcMd5Hash(myChunk, meta, i, md5done, chunkPath)
 
 	// calculate sha256 hash while we upload chunks
-	sha256hashes := make(chan [][32]byte)
-	go calcSha256Hash(myChunk, sha256hashes)
+	sha256done := make(chan struct{})
+	go calcSha256Hash(myChunk, sha256meta, i, sha256done)
 
 	rb := new(bytes.Buffer)
 	zf, err := zlib.NewWriterLevel(rb, compressionLevel)
@@ -179,7 +197,7 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 	// free up the compressor
 	zf.Reset(nil)
 
-	// TODO: check if file exists
+	// TODO: check if the remote object exists
 	// upload and retry when upload fails
 	var retries int = 5
 	var sleepSeconds time.Duration = 15
@@ -204,14 +222,12 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 	}
 
 	<-md5done
-	sha256meta.Lock()
-	sha256meta.Sha256s[i] = <-sha256hashes
-	sha256meta.Unlock()
+	<-sha256done
 
 	myChunk = nil
 }
 
-func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gophercloud.ServiceClient, containerName, imageID, az string, properties map[string]string, size int, threads uint) (*backups.Backup, error) {
+func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gophercloud.ServiceClient, backupName, containerName, imageID, az string, properties map[string]string, size int, threads uint) (*backups.Backup, error) {
 	imageData, err := getSourceData(srcImgClient, srcObjClient, imageID)
 	if err != nil {
 		return nil, err
@@ -256,7 +272,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	}
 
 	path := fmt.Sprintf("volume_%s/%s/az_%s_backup_%s", volumeID, time.Now().UTC().Format(backupTimeFormat), az, backupID)
-	sha256meta := sha256file{
+	sha256meta := &sha256file{
 		VolumeID:  volumeID,
 		BackupID:  backupID,
 		ChunkSize: sha256chunk,
@@ -277,7 +293,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 		return nil, fmt.Errorf("failed to marshal meta")
 	}
 
-	meta := metadata{
+	meta := &metadata{
 		CreatedAt:  sha256meta.CreatedAt,
 		Version:    sha256meta.Version,
 		VolumeID:   sha256meta.VolumeID,
@@ -291,43 +307,46 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 		return nil, fmt.Errorf("failed to create a %q container: %s", containerName, err)
 	}
 
-	var waitGroup sync.WaitGroup
 	var i int
-
 	errChan := make(chan error)
-	contChan := make(chan bool)
+	contChan := make(chan bool, 1)
 	limitChan := make(chan struct{}, threads)
+	waitGroup := &sync.WaitGroup{}
 
-	// first chunk
-	waitGroup.Add(1)
-	i++
-	go processChunk(&waitGroup, i, path, containerName, dstObjClient, progressReader, &meta, &sha256meta, contChan, limitChan, errChan)
-	limitChan <- struct{}{}
-L:
-	for {
-		select {
-		case v := <-errChan:
-			return nil, v
-		case v := <-contChan:
-			if !v {
-				break L
+	// start
+	contChan <- true
+	err = func() error {
+		for {
+			select {
+			case err := <-errChan:
+				return err
+			case do := <-contChan:
+				if !do {
+					return nil
+				}
+				i++
+				go processChunk(waitGroup, i, path, containerName, dstObjClient,
+					progressReader, meta, sha256meta, contChan, limitChan, errChan)
 			}
-
-			limitChan <- struct{}{}
-			waitGroup.Add(1)
-			i++
-			go processChunk(&waitGroup, i, path, containerName, dstObjClient, progressReader, &meta, &sha256meta, contChan, limitChan, errChan)
 		}
+	}()
+	if err != nil {
+		return nil, err
 	}
+
 	log.Printf("Uploading the rest and the metadata")
 	waitGroup.Wait()
 	imageData.readCloser.Close()
 
+	// run garbage collector before processing the potential memory consuming JSON marshalling
+	runtime.GC()
+
 	// write _sha256file
-	buf, err := json.MarshalIndent(&sha256meta, "", "  ")
+	buf, err := json.MarshalIndent(sha256meta, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal sha256meta: %s", err)
 	}
+	sha256meta = nil
 
 	createOpts := objects.CreateOpts{
 		Content: bytes.NewReader(buf),
@@ -339,12 +358,14 @@ L:
 	}
 	// free up the heap
 	buf = nil
+	runtime.GC()
 
 	// write _metadata
-	buf, err = json.MarshalIndent(&meta, "", "  ")
+	buf, err = json.MarshalIndent(meta, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal meta: %s", err)
 	}
+	meta = nil
 
 	createOpts = objects.CreateOpts{
 		Content: bytes.NewReader(buf),
@@ -356,11 +377,13 @@ L:
 	}
 	// free up the heap
 	buf = nil
+	runtime.GC()
 
 	// import the backup
 	service := "cinder.backup.drivers.swift.SwiftBackupDriver"
 	backupImport := backups.ImportBackup{
 		ID:               backupID,
+		DisplayName:      &backupName,
 		VolumeID:         volumeID,
 		AvailabilityZone: &az,
 		UpdatedAt:        time.Now().UTC(),
@@ -507,7 +530,8 @@ var BackupUploadCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		image := args[0]
 
-		toName := viper.GetString("to-volume-name")
+		toVolumeName := viper.GetString("to-volume-name")
+		toBackupName := viper.GetString("to-backup-name")
 		toContainerName := viper.GetString("to-container-name")
 		size := viper.GetUint("volume-size")
 		threads := viper.GetUint("threads")
@@ -515,6 +539,10 @@ var BackupUploadCmd = &cobra.Command{
 		toVolumeType := viper.GetString("to-volume-type")
 		restoreVolume := viper.GetBool("restore-volume")
 		properties := viper.GetStringMapString("property")
+
+		if threads == 0 {
+			return fmt.Errorf("an amount of threads cannot be zero")
+		}
 
 		if toContainerName == "" {
 			return fmt.Errorf("Swift container name connot be empty")
@@ -569,10 +597,12 @@ var BackupUploadCmd = &cobra.Command{
 
 		defer measureTime()
 
-		backup, err := uploadBackup(srcImageClient, srcObjectClient, dstObjectClient, dstVolumeClient, toContainerName, image, toAZ, properties, int(size), threads)
+		backup, err := uploadBackup(srcImageClient, srcObjectClient, dstObjectClient, dstVolumeClient, toBackupName, toContainerName, image, toAZ, properties, int(size), threads)
 		if err != nil {
 			return err
 		}
+
+		log.Printf("Target backup name is %q (id: %q)", backup.Name, backup.ID)
 
 		if !restoreVolume {
 			return nil
@@ -580,8 +610,15 @@ var BackupUploadCmd = &cobra.Command{
 
 		// reauth before the long-time task
 		dstVolumeClient.TokenID = ""
-		_, err = backupToVolume(dstVolumeClient, backup, toName, toVolumeType, toAZ)
-		return err
+		dstVolume, err := backupToVolume(dstVolumeClient, backup, toVolumeName, toVolumeType, toAZ)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Target volume name is %q (id: %q)", dstVolume.Name, dstVolume.ID)
+
+		return nil
+
 	},
 }
 
@@ -598,7 +635,7 @@ var BackupRestoreCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		backup := args[0]
 
-		toName := viper.GetString("to-volume-name")
+		toVolumeName := viper.GetString("to-volume-name")
 		size := viper.GetUint("volume-size")
 		toAZ := viper.GetString("to-az")
 		toVolumeType := viper.GetString("to-volume-type")
@@ -647,8 +684,14 @@ var BackupRestoreCmd = &cobra.Command{
 
 		defer measureTime()
 
-		_, err = backupToVolume(dstVolumeClient, backupObj, toName, toVolumeType, toAZ)
-		return err
+		dstVolume, err := backupToVolume(dstVolumeClient, backupObj, toVolumeName, toVolumeType, toAZ)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Target volume name is %q (id: %q)", dstVolume.Name, dstVolume.ID)
+
+		return nil
 	},
 }
 
@@ -665,6 +708,7 @@ func initBackupCmdFlags() {
 	BackupUploadCmd.Flags().UintP("threads", "t", 1, "an amount of parallel threads")
 	BackupUploadCmd.Flags().BoolP("restore-volume", "", false, "restore a volume after upload")
 	BackupUploadCmd.Flags().StringP("to-volume-name", "", "", "target volume name")
+	BackupUploadCmd.Flags().StringP("to-backup-name", "", "", "target backup name")
 	BackupUploadCmd.Flags().StringP("to-volume-type", "", "", "destination volume type")
 	BackupUploadCmd.Flags().UintP("volume-size", "b", 0, "target volume size (must not be less than original image virtual size)")
 	BackupUploadCmd.Flags().StringToStringP("property", "p", nil, "image property for the target volume")
