@@ -669,30 +669,30 @@ var ServerCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := NewOpenStackClient(&loc.Src)
+		srcProvider, err := newOpenStackClient(&loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
 
-		srcServerClient, err := NewComputeV2Client(srcProvider, loc.Src.Region)
+		srcServerClient, err := newComputeV2Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source server client: %s", err)
 		}
 
-		srcImageClient, err := NewGlanceV2Client(srcProvider, loc.Src.Region)
+		srcImageClient, err := newGlanceV2Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source image client: %s", err)
 		}
 
 		var srcObjectClient *gophercloud.ServiceClient
 		if imageWebDownload {
-			srcObjectClient, err = NewObjectStorageV1Client(srcProvider, loc.Src.Region)
+			srcObjectClient, err = newObjectStorageV1Client(srcProvider, loc.Src.Region)
 			if err != nil {
 				return fmt.Errorf("failed to create source object storage client: %s", err)
 			}
 		}
 
-		srcVolumeClient, err := NewBlockStorageV3Client(srcProvider, loc.Src.Region)
+		srcVolumeClient, err := newBlockStorageV3Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source volume client: %s", err)
 		}
@@ -702,32 +702,32 @@ var ServerCmd = &cobra.Command{
 			server = v
 		}
 
-		dstProvider, err := NewOpenStackClient(&loc.Dst)
+		dstProvider, err := newOpenStackClient(&loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
 
-		dstServerClient, err := NewComputeV2Client(dstProvider, loc.Dst.Region)
+		dstServerClient, err := newComputeV2Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination server client: %s", err)
 		}
 
-		dstImageClient, err := NewGlanceV2Client(dstProvider, loc.Dst.Region)
+		dstImageClient, err := newGlanceV2Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination image client: %s", err)
 		}
 
-		dstVolumeClient, err := NewBlockStorageV3Client(dstProvider, loc.Dst.Region)
+		dstVolumeClient, err := newBlockStorageV3Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination volume client: %s", err)
 		}
 
-		dstObjectClient, err := NewObjectStorageV1Client(dstProvider, loc.Dst.Region)
+		dstObjectClient, err := newObjectStorageV1Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			log.Printf("failed to create destination object storage client, detailed image clone statistics will be unavailable: %s", err)
 		}
 
-		dstNetworkClient, err := NewNetworkV2Client(dstProvider, loc.Dst.Region)
+		dstNetworkClient, err := newNetworkV2Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination network client: %s", err)
 		}

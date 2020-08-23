@@ -2,85 +2,47 @@ package pkg
 
 import (
 	"fmt"
-	"io"
-	llog "log"
-	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/applicationcredentials"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
-	"github.com/gophercloud/utils/client"
-	"github.com/gophercloud/utils/openstack/clientconfig"
-	"github.com/howeyc/gopass"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-type logger struct {
-	Prefix string
+type Locations struct {
+	Src         Location
+	Dst         Location
+	SameRegion  bool
+	SameAZ      bool
+	SameProject bool
 }
 
-// RootCmd represents the base command when called without any subcommands
-var RootCmd = &cobra.Command{
-	Use:          "cyclone",
-	Short:        "Clone OpenStack entities easily",
-	SilenceUsage: true,
-}
-
-type compactLogger struct {
-	sync.RWMutex
-	lastMsg string
-}
-
-func (cl *compactLogger) Printf(format string, args ...interface{}) {
-	msg := fmt.Sprintf(format, args...)
-	cl.RLock()
-	if cl.lastMsg == msg {
-		cl.RUnlock()
-		return
-	}
-	cl.RUnlock()
-	cl.Lock()
-	defer cl.Unlock()
-	cl.lastMsg = msg
-	llog.Print(msg)
-}
-
-func (cl *compactLogger) Fatal(args ...interface{}) {
-	llog.Fatal(args...)
+type Location struct {
+	AuthURL                     string
+	Region                      string
+	Domain                      string
+	Project                     string
+	Username                    string
+	Password                    string
+	ApplicationCredentialName   string
+	ApplicationCredentialID     string
+	ApplicationCredentialSecret string
+	Token                       string
+	Origin                      string
 }
 
 var (
-	startTime          time.Time = time.Now()
-	logFile            *os.File
-	l                  *llog.Logger
-	log                compactLogger
-	backoffFactor      = 2
-	backoffMaxInterval = 10 * time.Second
-	cleanupFuncs       []func(*sync.WaitGroup)
+	// RootCmd represents the base command when called without any subcommands
+	RootCmd = &cobra.Command{
+		Use:          "cyclone",
+		Short:        "Clone OpenStack entities easily",
+		SilenceUsage: true,
+	}
+	cleanupFuncs []func(*sync.WaitGroup)
 )
-
-func (lg *logger) Printf(format string, args ...interface{}) {
-	for _, v := range strings.Split(fmt.Sprintf(format, args...), "\n") {
-		l.Printf("[%s] %s", lg.Prefix, v)
-	}
-}
-
-func measureTime(caption ...string) {
-	if len(caption) == 0 {
-		log.Printf("Total execution time: %s", time.Now().Sub(startTime))
-	} else {
-		log.Printf(caption[0], time.Now().Sub(startTime))
-	}
-}
 
 // Execute adds all child commands to the root command sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
@@ -108,51 +70,13 @@ func Execute() {
 
 	err := RootCmd.Execute()
 	if err != nil {
-		if logFile != nil {
-			fmt.Fprintf(logFile, "Error: %s\n", err)
-		}
+		log.Printf("Error: %s", err)
 	}
 
 	cleanupFunc()
 
 	if err != nil {
 		os.Exit(1)
-	}
-}
-
-func initLogger() {
-	if l == nil {
-		dir := filepath.Join(os.TempDir(), "cyclone")
-		err := os.MkdirAll(dir, os.ModePerm)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fileName := time.Now().Format("20060102150405") + ".log"
-		logFile, err = os.Create(filepath.Join(dir, fileName))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		symLink := filepath.Join(dir, "latest.log")
-		if _, err := os.Lstat(symLink); err == nil {
-			os.Remove(symLink)
-		}
-
-		err = os.Symlink(fileName, symLink)
-		if err != nil {
-			log.Printf("Failed to create a log symlink: %s", err)
-		}
-
-		// no need to close the log: https://golang.org/pkg/runtime/#SetFinalizer
-		l = llog.New(logFile, llog.Prefix(), llog.Flags())
-
-		if viper.GetBool("debug") {
-			// write log into stderr and log file
-			l.SetOutput(io.MultiWriter(llog.Writer(), l.Writer()))
-		}
-
-		// write stderr logs into the log file
-		llog.SetOutput(io.MultiWriter(llog.Writer(), logFile))
 	}
 }
 
@@ -190,28 +114,6 @@ func initRootCmdFlags() {
 	viper.BindPFlag("timeout-snapshot", RootCmd.PersistentFlags().Lookup("timeout-snapshot"))
 	viper.BindPFlag("timeout-backup", RootCmd.PersistentFlags().Lookup("timeout-backup"))
 	viper.BindPFlag("image-web-download", RootCmd.PersistentFlags().Lookup("image-web-download"))
-}
-
-type Locations struct {
-	Src         Location
-	Dst         Location
-	SameRegion  bool
-	SameAZ      bool
-	SameProject bool
-}
-
-type Location struct {
-	AuthURL                     string
-	Region                      string
-	Domain                      string
-	Project                     string
-	Username                    string
-	Password                    string
-	ApplicationCredentialName   string
-	ApplicationCredentialID     string
-	ApplicationCredentialSecret string
-	Token                       string
-	Origin                      string
 }
 
 func parseTimeoutArg(arg string, dst *float64, errors *[]error) {
@@ -320,353 +222,4 @@ func getSrcAndDst(az string) (Locations, error) {
 	}
 
 	return loc, nil
-}
-
-func NewOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
-	envPrefix := "OS_"
-	if loc.Origin == "dst" {
-		envPrefix = "TO_OS_"
-	}
-	ao, err := clientconfig.AuthOptions(&clientconfig.ClientOpts{
-		EnvPrefix: envPrefix,
-		AuthInfo: &clientconfig.AuthInfo{
-			AuthURL:                     loc.AuthURL,
-			Username:                    loc.Username,
-			Password:                    loc.Password,
-			DomainName:                  loc.Domain,
-			ProjectName:                 loc.Project,
-			ApplicationCredentialID:     loc.ApplicationCredentialID,
-			ApplicationCredentialName:   loc.ApplicationCredentialName,
-			ApplicationCredentialSecret: loc.ApplicationCredentialSecret,
-			Token:                       loc.Token,
-		},
-		RegionName: loc.Region,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Could be long-running, therefore we need to be able to renew a token
-	ao.AllowReauth = true
-
-	/* TODO: Introduce auth by CLI parameters
-	   ao := gophercloud.AuthOptions{
-	           IdentityEndpoint:            authURL,
-	           UserID:                      userID,
-	           Username:                    username,
-	           Password:                    password,
-	           TenantID:                    tenantID,
-	           TenantName:                  tenantName,
-	           DomainID:                    domainID,
-	           DomainName:                  domainName,
-	           ApplicationCredentialID:     applicationCredentialID,
-	           ApplicationCredentialName:   applicationCredentialName,
-	           ApplicationCredentialSecret: applicationCredentialSecret,
-	   }
-	*/
-
-	provider, err := openstack.NewClient(ao.IdentityEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	// debug logger is enabled by default and writes logs into a cyclone temp dir
-	provider.HTTPClient = http.Client{
-		Transport: &client.RoundTripper{
-			Rt:     &http.Transport{},
-			Logger: &logger{Prefix: loc.Origin},
-		},
-	}
-
-	if ao.ApplicationCredentialSecret == "" && ao.TokenID == "" &&
-		ao.Username != "" && ao.Password == "" {
-		fmt.Printf("Enter the %s password: ", loc.Origin)
-		v, err := gopass.GetPasswd()
-		if err != nil {
-			return nil, err
-		}
-		ao.Password = string(v)
-	}
-
-	err = openstack.Authenticate(provider, *ao)
-	if err != nil {
-		return nil, err
-	}
-
-	if ao.TokenID != "" {
-		// force application credential creation to allow further reauth
-		log.Printf("Force %s application credential creation due to OpenStack Keystone token auth", loc.Origin)
-		userID, err := getAuthUserID(provider)
-		if err != nil {
-			return nil, err
-		}
-
-		identityClient, err := openstack.NewIdentityV3(provider, gophercloud.EndpointOpts{
-			Region: loc.Region,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create OpenStack Identity V3 client: %s", err)
-		}
-
-		acName := fmt.Sprintf("cyclone_%s_%s", time.Now().Format("20060102150405"), loc.Origin)
-		createOpts := applicationcredentials.CreateOpts{
-			Name:        acName,
-			Description: "temp credentials for cyclone",
-			// we need to be able to delete AC token within its own scope
-			Unrestricted: true,
-		}
-
-		acWait := &sync.WaitGroup{}
-		acWait.Add(1)
-		var ac *applicationcredentials.ApplicationCredential
-		cleanupFuncs = append(cleanupFuncs, func(wg *sync.WaitGroup) {
-			wg.Add(1)
-			defer wg.Done()
-			log.Printf("Cleaning up %q application credential", acName)
-
-			// wait for ac Create response
-			acWait.Wait()
-			if ac == nil {
-				// nothing to delete
-				return
-			}
-
-			if err := applicationcredentials.Delete(identityClient, userID, ac.ID).ExtractErr(); err != nil {
-				if _, ok := err.(gophercloud.ErrDefault404); !ok {
-					log.Printf("Failed to delete a %q temp application credential: %s", acName, err)
-				}
-			}
-		})
-		ac, err = applicationcredentials.Create(identityClient, userID, createOpts).Extract()
-		acWait.Done()
-		if err != nil {
-			if v, ok := err.(gophercloud.ErrDefault404); ok {
-				return nil, fmt.Errorf("failed to create a temp application credential: %s", v.ErrUnexpectedResponseCode.Body)
-			}
-			return nil, fmt.Errorf("failed to create a temp application credential: %s", err)
-		}
-
-		// unset previous auth options
-		ao.Username = ""
-		ao.UserID = ""
-		ao.Password = ""
-		ao.DomainID = ""
-		ao.DomainName = ""
-		ao.TenantID = ""
-		ao.TenantName = ""
-		ao.TokenID = ""
-		ao.Scope = nil
-		ao.ApplicationCredentialID = ac.ID
-		ao.ApplicationCredentialSecret = ac.Secret
-
-		err = openstack.Authenticate(provider, *ao)
-		if err != nil {
-			return nil, fmt.Errorf("failed to auth using just created application credentials: %s", err)
-		}
-	}
-
-	return provider, nil
-}
-
-func NewGlanceV2Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
-	return openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{
-		Region: region,
-	})
-}
-
-func NewBlockStorageV3Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
-	return openstack.NewBlockStorageV3(provider, gophercloud.EndpointOpts{
-		Region: region,
-	})
-}
-
-func NewObjectStorageV1Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
-	return openstack.NewObjectStorageV1(provider, gophercloud.EndpointOpts{
-		Region: region,
-	})
-}
-
-func NewComputeV2Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
-	return openstack.NewComputeV2(provider, gophercloud.EndpointOpts{
-		Region: region,
-	})
-}
-
-func NewNetworkV2Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
-	return openstack.NewNetworkV2(provider, gophercloud.EndpointOpts{
-		Region: region,
-	})
-}
-
-func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstAZ *string, loc *Locations) error {
-	if *dstAZ == "" {
-		if strings.HasPrefix(srcAZ, loc.Dst.Region) {
-			*dstAZ = srcAZ
-			loc.SameAZ = true
-			return nil
-		}
-		// use as a default
-		return nil
-	}
-
-	if client == nil {
-		return fmt.Errorf("no service client provided")
-	}
-
-	// check availability zone name
-	allPages, err := availabilityzones.List(client).AllPages()
-	if err != nil {
-		return fmt.Errorf("error retrieving availability zones: %s", err)
-	}
-	zones, err := availabilityzones.ExtractAvailabilityZones(allPages)
-	if err != nil {
-		return fmt.Errorf("error extracting availability zones from response: %s", err)
-	}
-
-	var zonesNames []string
-	var found bool
-	for _, z := range zones {
-		if z.ZoneState.Available == true {
-			zonesNames = append(zonesNames, z.ZoneName)
-		}
-		if z.ZoneName == *dstAZ {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return fmt.Errorf("failed to find %q availability zone, supported availability zones: %q", *dstAZ, zonesNames)
-	}
-
-	if srcAZ == *dstAZ {
-		loc.SameAZ = true
-	}
-
-	return nil
-}
-
-func getAuthUserID(client *gophercloud.ProviderClient) (string, error) {
-	if client == nil {
-		return "", fmt.Errorf("provider client is nil")
-	}
-	r := client.GetAuthResult()
-	if r == nil {
-		return "", fmt.Errorf("provider client auth result is nil")
-	}
-	switch r := r.(type) {
-	case tokens.CreateResult:
-		v, err := r.ExtractUser()
-		if err != nil {
-			return "", err
-		}
-		return v.ID, nil
-	case tokens.GetResult:
-		v, err := r.ExtractUser()
-		if err != nil {
-			return "", err
-		}
-		return v.ID, nil
-	default:
-		return "", fmt.Errorf("got unexpected AuthResult type %t", r)
-	}
-}
-
-func getAuthProjectID(client *gophercloud.ProviderClient) (string, error) {
-	if client == nil {
-		return "", fmt.Errorf("provider client is nil")
-	}
-	r := client.GetAuthResult()
-	if r == nil {
-		return "", fmt.Errorf("provider client auth result is nil")
-	}
-	switch r := r.(type) {
-	case tokens.CreateResult:
-		v, err := r.ExtractProject()
-		if err != nil {
-			return "", err
-		}
-		return v.ID, nil
-	case tokens.GetResult:
-		v, err := r.ExtractProject()
-		if err != nil {
-			return "", err
-		}
-		return v.ID, nil
-	default:
-		return "", fmt.Errorf("got unexpected AuthResult type %t", r)
-	}
-}
-
-// isSliceContainsStr returns true if the string exists in given slice
-func isSliceContainsStr(sl []string, str string) bool {
-	for _, s := range sl {
-		if s == str {
-			return true
-		}
-	}
-	return false
-}
-
-// Backoff options.
-type Backoff struct {
-	Timeout     int
-	Factor      int
-	MaxInterval time.Duration
-}
-
-func NewBackoff(timeout int, factor int, maxInterval time.Duration) *Backoff {
-	return &Backoff{
-		Timeout:     timeout,
-		Factor:      factor,
-		MaxInterval: maxInterval,
-	}
-}
-
-// WaitFor method polls a predicate function, once per interval with an
-// arithmetic backoff, up to a timeout limit. This is an enhanced
-// gophercloud.WaitFor function with a logic from
-// https://github.com/sapcc/go-bits/blob/master/retry/pkg.go
-func (eb *Backoff) WaitFor(predicate func() (bool, error)) error {
-	type WaitForResult struct {
-		Success bool
-		Error   error
-	}
-
-	start := time.Now().Unix()
-	duration := time.Second
-
-	for {
-		// If a timeout is set, and that's been exceeded, shut it down.
-		if eb.Timeout >= 0 && time.Now().Unix()-start >= int64(eb.Timeout) {
-			return fmt.Errorf("A timeout occurred")
-		}
-
-		duration += time.Second * time.Duration(eb.Factor)
-		if duration > eb.MaxInterval {
-			duration = eb.MaxInterval
-		}
-		time.Sleep(duration)
-
-		var result WaitForResult
-		ch := make(chan bool, 1)
-		go func() {
-			defer close(ch)
-			satisfied, err := predicate()
-			result.Success = satisfied
-			result.Error = err
-		}()
-
-		select {
-		case <-ch:
-			if result.Error != nil {
-				return result.Error
-			}
-			if result.Success {
-				return nil
-			}
-		// If the predicate has not finished by the timeout, cancel it.
-		case <-time.After(time.Duration(eb.Timeout) * time.Second):
-			return fmt.Errorf("A timeout occurred")
-		}
-	}
 }

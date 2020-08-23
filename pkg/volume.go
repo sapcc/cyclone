@@ -485,24 +485,24 @@ var VolumeCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := NewOpenStackClient(&loc.Src)
+		srcProvider, err := newOpenStackClient(&loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
 
-		srcImageClient, err := NewGlanceV2Client(srcProvider, loc.Src.Region)
+		srcImageClient, err := newGlanceV2Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source image client: %s", err)
 		}
 
-		srcVolumeClient, err := NewBlockStorageV3Client(srcProvider, loc.Src.Region)
+		srcVolumeClient, err := newBlockStorageV3Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source volume client: %s", err)
 		}
 
 		var srcObjectClient *gophercloud.ServiceClient
 		if imageWebDownload {
-			srcObjectClient, err = NewObjectStorageV1Client(srcProvider, loc.Src.Region)
+			srcObjectClient, err = newObjectStorageV1Client(srcProvider, loc.Src.Region)
 			if err != nil {
 				return fmt.Errorf("failed to create source object storage client: %s", err)
 			}
@@ -513,22 +513,22 @@ var VolumeCmd = &cobra.Command{
 			volume = v
 		}
 
-		dstProvider, err := NewOpenStackClient(&loc.Dst)
+		dstProvider, err := newOpenStackClient(&loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
 
-		dstImageClient, err := NewGlanceV2Client(dstProvider, loc.Dst.Region)
+		dstImageClient, err := newGlanceV2Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination image client: %s", err)
 		}
 
-		dstVolumeClient, err := NewBlockStorageV3Client(dstProvider, loc.Dst.Region)
+		dstVolumeClient, err := newBlockStorageV3Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination volume client: %s", err)
 		}
 
-		dstObjectClient, err := NewObjectStorageV1Client(dstProvider, loc.Dst.Region)
+		dstObjectClient, err := newObjectStorageV1Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			log.Printf("failed to create destination object storage client, detailed image clone statistics will be unavailable: %s", err)
 		}
@@ -581,22 +581,22 @@ var VolumeToImageCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := NewOpenStackClient(&loc.Src)
+		srcProvider, err := newOpenStackClient(&loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
 
-		srcImageClient, err := NewGlanceV2Client(srcProvider, loc.Src.Region)
+		srcImageClient, err := newGlanceV2Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source image client: %s", err)
 		}
 
-		srcVolumeClient, err := NewBlockStorageV3Client(srcProvider, loc.Src.Region)
+		srcVolumeClient, err := newBlockStorageV3Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source volume client: %s", err)
 		}
 
-		srcObjectClient, err := NewObjectStorageV1Client(srcProvider, loc.Src.Region)
+		srcObjectClient, err := newObjectStorageV1Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source object storage client: %s", err)
 		}

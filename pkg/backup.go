@@ -554,18 +554,18 @@ var BackupUploadCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := NewOpenStackClient(&loc.Src)
+		srcProvider, err := newOpenStackClient(&loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
 
-		srcObjectClient, err := NewObjectStorageV1Client(srcProvider, loc.Src.Region)
+		srcObjectClient, err := newObjectStorageV1Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			// don't fail, will use Glance client instead
 			log.Printf("Failed to create source object storage client: %s", err)
 		}
 
-		srcImageClient, err := NewGlanceV2Client(srcProvider, loc.Src.Region)
+		srcImageClient, err := newGlanceV2Client(srcProvider, loc.Src.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create source image client: %s", err)
 		}
@@ -575,17 +575,17 @@ var BackupUploadCmd = &cobra.Command{
 			image = v
 		}
 
-		dstProvider, err := NewOpenStackClient(&loc.Dst)
+		dstProvider, err := newOpenStackClient(&loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
 
-		dstVolumeClient, err := NewBlockStorageV3Client(dstProvider, loc.Dst.Region)
+		dstVolumeClient, err := newBlockStorageV3Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination volume client: %s", err)
 		}
 
-		dstObjectClient, err := NewObjectStorageV1Client(dstProvider, loc.Dst.Region)
+		dstObjectClient, err := newObjectStorageV1Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination object storage client, detailed image clone statistics will be unavailable: %s", err)
 		}
@@ -646,12 +646,12 @@ var BackupRestoreCmd = &cobra.Command{
 			return err
 		}
 
-		dstProvider, err := NewOpenStackClient(&loc.Dst)
+		dstProvider, err := newOpenStackClient(&loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
 
-		dstVolumeClient, err := NewBlockStorageV3Client(dstProvider, loc.Dst.Region)
+		dstVolumeClient, err := newBlockStorageV3Client(dstProvider, loc.Dst.Region)
 		if err != nil {
 			return fmt.Errorf("failed to create destination volume client: %s", err)
 		}
