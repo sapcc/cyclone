@@ -31,7 +31,7 @@ func measureTime(caption ...string) {
 	}
 }
 
-func newOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
+func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 	envPrefix := "OS_"
 	if loc.Origin == "dst" {
 		envPrefix = "TO_OS_"
@@ -154,18 +154,12 @@ func newOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 			return nil, fmt.Errorf("failed to create a temp application credential: %s", err)
 		}
 
-		// unset previous auth options
-		ao.Username = ""
-		ao.UserID = ""
-		ao.Password = ""
-		ao.DomainID = ""
-		ao.DomainName = ""
-		ao.TenantID = ""
-		ao.TenantName = ""
-		ao.TokenID = ""
-		ao.Scope = nil
-		ao.ApplicationCredentialID = ac.ID
-		ao.ApplicationCredentialSecret = ac.Secret
+		// set new auth options
+		ao = &gophercloud.AuthOptions{
+			IdentityEndpoint:            loc.AuthURL,
+			ApplicationCredentialID:     ac.ID,
+			ApplicationCredentialSecret: ac.Secret,
+		}
 
 		err = openstack.Authenticate(provider, *ao)
 		if err != nil {

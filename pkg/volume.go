@@ -485,7 +485,7 @@ var VolumeCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := newOpenStackClient(&loc.Src)
+		srcProvider, err := newOpenStackClient(loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
@@ -513,7 +513,7 @@ var VolumeCmd = &cobra.Command{
 			volume = v
 		}
 
-		dstProvider, err := newOpenStackClient(&loc.Dst)
+		dstProvider, err := newOpenStackClient(loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
@@ -581,7 +581,7 @@ var VolumeToImageCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := newOpenStackClient(&loc.Src)
+		srcProvider, err := newOpenStackClient(loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
