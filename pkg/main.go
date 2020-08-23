@@ -52,6 +52,7 @@ func Execute() {
 	cleanupFunc := func() {
 		var wg = &sync.WaitGroup{}
 		for _, f := range cleanupFuncs {
+			wg.Add(1)
 			go f(wg)
 		}
 		wg.Wait()

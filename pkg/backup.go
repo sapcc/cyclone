@@ -96,7 +96,6 @@ func calcSha256Hash(myChunk []byte, sha256meta *sha256file, i int, done chan str
 
 	h := make([][32]byte, hashes)
 	sha256calc := func(j int, wg *sync.WaitGroup) {
-		wg.Add(1)
 		defer wg.Done()
 		start := j * sha256chunk
 		end := start + sha256chunk
@@ -106,12 +105,13 @@ func calcSha256Hash(myChunk []byte, sha256meta *sha256file, i int, done chan str
 		h[j] = sha256.Sum256(myChunk[start:end])
 	}
 
-	waitGroup := &sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	for j := 0; j < hashes; j++ {
-		go sha256calc(j, waitGroup)
+		wg.Add(1)
+		go sha256calc(j, wg)
 	}
 
-	waitGroup.Wait()
+	wg.Wait()
 
 	sha256meta.Lock()
 	sha256meta.Sha256s[i] = h
@@ -139,10 +139,6 @@ func calcMd5Hash(myChunk []byte, meta *metadata, i int, done chan struct{}, chun
 }
 
 func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClient *gophercloud.ServiceClient, reader *progress.Reader, meta *metadata, sha256meta *sha256file, contChan chan bool, limitChan chan struct{}, errChan chan error) {
-	wg.Add(1)
-	// consume the queue
-	limitChan <- struct{}{}
-
 	defer func() {
 		wg.Done()
 		// release the queue
@@ -311,7 +307,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	errChan := make(chan error)
 	contChan := make(chan bool, 1)
 	limitChan := make(chan struct{}, threads)
-	waitGroup := &sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 
 	// start
 	contChan <- true
@@ -325,7 +321,10 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 					return nil
 				}
 				i++
-				go processChunk(waitGroup, i, path, containerName, dstObjClient,
+				wg.Add(1)
+				// consume the queue
+				limitChan <- struct{}{}
+				go processChunk(wg, i, path, containerName, dstObjClient,
 					progressReader, meta, sha256meta, contChan, limitChan, errChan)
 			}
 		}
@@ -335,7 +334,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	}
 
 	log.Printf("Uploading the rest and the metadata")
-	waitGroup.Wait()
+	wg.Wait()
 	imageData.readCloser.Close()
 
 	// run garbage collector before processing the potential memory consuming JSON marshalling

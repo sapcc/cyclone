@@ -129,7 +129,6 @@ func newOpenStackClient(loc *Location) (*gophercloud.ProviderClient, error) {
 		acWait.Add(1)
 		var ac *applicationcredentials.ApplicationCredential
 		cleanupFuncs = append(cleanupFuncs, func(wg *sync.WaitGroup) {
-			wg.Add(1)
 			defer wg.Done()
 			log.Printf("Cleaning up %q application credential", acName)
 
