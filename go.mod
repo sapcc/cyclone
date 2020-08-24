@@ -3,10 +3,11 @@ module github.com/sapcc/cyclone
 require (
 	github.com/google/uuid v1.1.1
 	github.com/gophercloud/gophercloud v0.12.1-0.20200805145317-51f8fa152459
-	github.com/gophercloud/utils v0.0.0-20200508015959-b0167b94122c
+	github.com/gophercloud/utils v0.0.0-20200824143036-e38af13814d1
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/klauspost/compress v1.10.6
 	github.com/machinebox/progress v0.2.0
+	github.com/majewsky/schwift v0.0.0-20200416120220-80c09ef2a88d
 	github.com/matryer/is v1.4.0 // indirect
 	github.com/sapcc/go-bits v0.0.0-20200719195243-6f202ca5296a
 	github.com/sapcc/swift-http-import v0.0.0-20200804102541-a5d807f50609

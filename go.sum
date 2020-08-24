@@ -90,6 +90,8 @@ github.com/gophercloud/gophercloud v0.12.1-0.20200805145317-51f8fa152459 h1:7lia
 github.com/gophercloud/gophercloud v0.12.1-0.20200805145317-51f8fa152459/go.mod h1:gmC5oQqMDOMO1t1gq5DquX/yAU808e/4mzjjDA76+Ss=
 github.com/gophercloud/utils v0.0.0-20200508015959-b0167b94122c h1:iawx2ojEQA7c+GmkaVO5sN+k8YONibXyDO8RlsC+1bs=
 github.com/gophercloud/utils v0.0.0-20200508015959-b0167b94122c/go.mod h1:ehWUbLQJPqS0Ep+CxeD559hsm9pthPXadJNKwZkp43w=
+github.com/gophercloud/utils v0.0.0-20200824143036-e38af13814d1 h1:PCY8T2vPe19eHSDwLpcVokvthjy3Mf5obaX46gAfjuQ=
+github.com/gophercloud/utils v0.0.0-20200824143036-e38af13814d1/go.mod h1:ehWUbLQJPqS0Ep+CxeD559hsm9pthPXadJNKwZkp43w=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 h1:EGx4pi6eqNxGaHF6qqu48+N2wcFQ5qg5FXgOdqsJ5d8=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/context v1.1.1/go.mod h1:kBGZzfjB9CEq2AlWe17Uuf7NDRt0dE0s8S51q0aT7Yg=

@@ -22,6 +22,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	"github.com/gophercloud/gophercloud/pagination"
+	servers_utils "github.com/gophercloud/utils/openstack/compute/v2/servers"
 	networks_utils "github.com/gophercloud/utils/openstack/networking/v2/networks"
 	subnets_utils "github.com/gophercloud/utils/openstack/networking/v2/subnets"
 	"github.com/spf13/cobra"
@@ -84,42 +85,6 @@ func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (
 	})
 
 	return &server, err
-}
-
-func getServerIDFromName(client *gophercloud.ServiceClient, name string) (string, error) {
-	count := 0
-	id := ""
-
-	listOpts := servers.ListOpts{
-		// nova list uses a name field as an regexp
-		Name: fmt.Sprintf("^%s$", name),
-	}
-
-	allPages, err := servers.List(client, listOpts).AllPages()
-	if err != nil {
-		return "", err
-	}
-
-	all, err := servers.ExtractServers(allPages)
-	if err != nil {
-		return "", err
-	}
-
-	for _, f := range all {
-		if f.Name == name {
-			count++
-			id = f.ID
-		}
-	}
-
-	switch count {
-	case 0:
-		return "", gophercloud.ErrResourceNotFound{Name: name, ResourceType: "server"}
-	case 1:
-		return id, nil
-	default:
-		return "", gophercloud.ErrMultipleResourcesFound{Name: name, Count: count, ResourceType: "server"}
-	}
 }
 
 func waitForPort(client *gophercloud.ServiceClient, id string, secs float64) (*ports.Port, error) {
@@ -698,7 +663,7 @@ var ServerCmd = &cobra.Command{
 		}
 
 		// resolve server name to an ID
-		if v, err := getServerIDFromName(srcServerClient, server); err == nil {
+		if v, err := servers_utils.IDFromName(srcServerClient, server); err == nil {
 			server = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
