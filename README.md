@@ -160,6 +160,8 @@ $ cyclone backup upload my-glance-image --to-container-name swift-backup-contain
 
 ### Transfer a big volume from one region to another
 
+~> **Note:** The `cyclone backup upload` command produces high traffic and CPU/RAM usage. It's recommended to run it inside a VM, located in the target region.
+
 In this case you need to convert a volume to an image first:
 
 ```sh
@@ -175,7 +177,7 @@ $ cyclone backup upload my-glance-image --to-container-name swift-backup-contain
   --volume-size=160 --threads=16 --restore-volume
 ```
 
-It's strongly recommended to run the `cyclone backup upload` command inside a VM, located in the target region.
+It's strongly recommended to run the `cyclone backup upload` command inside a VM, located in the source or the target region.
 
 ### Create a new volume from an existing backup
 
@@ -185,6 +187,8 @@ $ cyclone backup restore my-backup
 ```
 
 ### Clone an existing backup to another region
+
+~> **Note:** The `cyclone backup clone` command produces high traffic. It's recommended to run it inside a VM, located in the source or the target region.
 
 ```sh
 $ source openrc-of-the-source-project
