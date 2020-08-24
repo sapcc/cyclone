@@ -700,6 +700,8 @@ var ServerCmd = &cobra.Command{
 		// resolve server name to an ID
 		if v, err := getServerIDFromName(srcServerClient, server); err == nil {
 			server = v
+		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
+			return err
 		}
 
 		dstProvider, err := newOpenStackClient(loc.Dst)

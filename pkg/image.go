@@ -400,6 +400,8 @@ var ImageCmd = &cobra.Command{
 		// resolve image name to an ID
 		if v, err := images_utils.IDFromName(srcImageClient, image); err == nil {
 			image = v
+		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
+			return err
 		}
 
 		dstProvider, err := newOpenStackClient(loc.Dst)

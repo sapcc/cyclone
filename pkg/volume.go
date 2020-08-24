@@ -511,6 +511,8 @@ var VolumeCmd = &cobra.Command{
 		// resolve volume name to an ID
 		if v, err := volumes_utils.IDFromName(srcVolumeClient, volume); err == nil {
 			volume = v
+		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
+			return err
 		}
 
 		dstProvider, err := newOpenStackClient(loc.Dst)
@@ -604,6 +606,8 @@ var VolumeToImageCmd = &cobra.Command{
 		// resolve volume name to an ID
 		if v, err := volumes_utils.IDFromName(srcVolumeClient, volume); err == nil {
 			volume = v
+		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
+			return err
 		}
 
 		srcVolume, err := waitForVolume(srcVolumeClient, volume, waitForVolumeSec)

@@ -572,6 +572,8 @@ var BackupUploadCmd = &cobra.Command{
 		// resolve image name to an ID
 		if v, err := images_utils.IDFromName(srcImageClient, image); err == nil {
 			image = v
+		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
+			return err
 		}
 
 		dstProvider, err := newOpenStackClient(loc.Dst)
@@ -663,6 +665,8 @@ var BackupRestoreCmd = &cobra.Command{
 		// resolve backup name to an ID
 		if v, err := backups_utils.IDFromName(dstVolumeClient, backup); err == nil {
 			backup = v
+		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
+			return err
 		}
 
 		backupObj, err := waitForBackup(dstVolumeClient, backup, waitForBackupSec)
