@@ -78,6 +78,7 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	provider.UserAgent.Prepend("cyclone/" + Version)
 
 	// debug logger is enabled by default and writes logs into a cyclone temp dir
 	provider.HTTPClient = http.Client{

@@ -2,7 +2,7 @@ PKG:=github.com/sapcc/cyclone
 APP_NAME:=cyclone
 PWD:=$(shell pwd)
 UID:=$(shell id -u)
-VERSION:=$(shell git describe --tags --always --dirty="-dev")
+VERSION:=$(shell git describe --tags --always --dirty="-dev" | sed "s/^v//")
 LDFLAGS:=-X $(PKG)/pkg.Version=$(VERSION)
 
 export CGO_ENABLED:=0
