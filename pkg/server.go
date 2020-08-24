@@ -831,7 +831,7 @@ var ServerCmd = &cobra.Command{
 				log.Printf("Forcing %s image to be converted to a bootable volume", dstImageID)
 				bootableVolume = true
 				var newBootableVolume *volumes.Volume
-				newBootableVolume, err = imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, "", fmt.Sprintf("bootable for %s", dstImage.Name), "", toAZ, int(forceBootable))
+				newBootableVolume, err = imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, "", fmt.Sprintf("bootable for %s", dstImage.Name), "", toAZ, int(forceBootable), nil)
 				if err != nil {
 					return fmt.Errorf("failed to create a bootable volume for a VM: %s", err)
 				}

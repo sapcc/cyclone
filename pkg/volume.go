@@ -387,11 +387,11 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectCl
 				log.Printf("Failed to delete destination transition image: %s", err)
 			}
 		}()
-		return imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, volumeName, srcVolume.Description, volumeType, az, srcVolume.Size)
+		return imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, volumeName, srcVolume.Description, volumeType, az, srcVolume.Size, srcVolume)
 	}
 
 	// migrate the image/volume within the same region
-	dstVolume, err := imageToVolume(srcVolumeClient, srcImageClient, srcImage.ID, volumeName, srcVolume.Description, volumeType, az, srcVolume.Size)
+	dstVolume, err := imageToVolume(srcVolumeClient, srcImageClient, srcImage.ID, volumeName, srcVolume.Description, volumeType, az, srcVolume.Size, srcVolume)
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +404,7 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectCl
 	return transferVolume(srcVolumeClient, dstVolumeClient, dstVolume)
 }
 
-func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imageID, volumeName, volumeDescription, volumeType, az string, volumeSize int) (*volumes.Volume, error) {
+func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imageID, volumeName, volumeDescription, volumeType, az string, volumeSize int, srcVolume *volumes.Volume) (*volumes.Volume, error) {
 	dstVolumeCreateOpts := volumes.CreateOpts{
 		Size:             volumeSize,
 		Name:             volumeName,
@@ -422,6 +422,22 @@ func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imag
 	if err != nil {
 		// TODO: delete volume?
 		return nil, err
+	}
+
+	if srcVolume != nil && srcVolume.Bootable != "" && dstVolume.Bootable != srcVolume.Bootable {
+		// when a non-bootable volume is created from a Glance image, it has a bootable flag set
+		v, err := strconv.ParseBool(srcVolume.Bootable)
+		if err != nil {
+			log.Printf("Failed to parse %s to bool: %s", srcVolume.Bootable, err)
+		} else {
+			bootableOpts := volumeactions.BootableOpts{
+				Bootable: v,
+			}
+			err = volumeactions.SetBootable(imgToVolClient, dstVolume.ID, bootableOpts).ExtractErr()
+			if err != nil {
+				log.Printf("Failed to update volume bootable options: %s", err)
+			}
+		}
 	}
 
 	createVolumeSpeed(dstVolume)
