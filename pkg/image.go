@@ -388,6 +388,7 @@ var ImageCmd = &cobra.Command{
 		// migrate image
 		image := args[0]
 		toName := viper.GetString("to-image-name")
+		properties := viper.GetStringMapString("property")
 
 		// source and destination parameters
 		loc, err := getSrcAndDst("")
@@ -440,6 +441,15 @@ var ImageCmd = &cobra.Command{
 			return fmt.Errorf("failed to wait for %q source image: %s", image, err)
 		}
 
+		if len(properties) > 0 {
+			log.Printf("Overriding image properties")
+			log.Printf("Old properties: %q", expandImageProperties(srcImg.Properties))
+			log.Printf("Override properties: %q", properties)
+			for k, v := range properties {
+				srcImg.Properties[k] = v
+			}
+		}
+
 		if imageWebDownload {
 			// check whether current user scope belongs to the image owner
 			userProjectID, err := getAuthProjectID(srcImageClient.ProviderClient)
@@ -471,4 +481,5 @@ func init() {
 
 func initImageCmdFlags() {
 	ImageCmd.Flags().StringP("to-image-name", "", "", "destination image name")
+	ImageCmd.Flags().StringToStringP("property", "p", nil, "override image properties for the target image")
 }
