@@ -245,7 +245,7 @@ var BackupCloneCmd = &cobra.Command{
 		}
 
 		if toContainerName == "" {
-			return fmt.Errorf("Swift container name connot be empty")
+			return fmt.Errorf("swift container name connot be empty")
 		}
 
 		// source and destination parameters

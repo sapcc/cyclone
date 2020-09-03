@@ -25,9 +25,9 @@ var (
 
 func measureTime(caption ...string) {
 	if len(caption) == 0 {
-		log.Printf("Total execution time: %s", time.Now().Sub(startTime))
+		log.Printf("Total execution time: %s", time.Since(startTime))
 	} else {
-		log.Printf(caption[0], time.Now().Sub(startTime))
+		log.Printf(caption[0], time.Since(startTime))
 	}
 }
 
@@ -229,7 +229,7 @@ func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstA
 	var zonesNames []string
 	var found bool
 	for _, z := range zones {
-		if z.ZoneState.Available == true {
+		if z.ZoneState.Available {
 			zonesNames = append(zonesNames, z.ZoneName)
 		}
 		if z.ZoneName == *dstAZ {
@@ -341,7 +341,7 @@ func (eb *Backoff) WaitFor(predicate func() (bool, error)) error {
 	for {
 		// If a timeout is set, and that's been exceeded, shut it down.
 		if eb.Timeout >= 0 && time.Now().Unix()-start >= int64(eb.Timeout) {
-			return fmt.Errorf("A timeout occurred")
+			return fmt.Errorf("a timeout occurred")
 		}
 
 		duration += time.Second * time.Duration(eb.Factor)
@@ -369,7 +369,7 @@ func (eb *Backoff) WaitFor(predicate func() (bool, error)) error {
 			}
 		// If the predicate has not finished by the timeout, cancel it.
 		case <-time.After(time.Duration(eb.Timeout) * time.Second):
-			return fmt.Errorf("A timeout occurred")
+			return fmt.Errorf("a timeout occurred")
 		}
 	}
 }

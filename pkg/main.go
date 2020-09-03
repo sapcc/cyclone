@@ -61,12 +61,10 @@ func Execute() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
-		select {
-		case <-c:
-			log.Printf("Interrupted")
-			cleanupFunc()
-			os.Exit(1)
-		}
+		<-c
+		log.Printf("Interrupted")
+		cleanupFunc()
+		os.Exit(1)
 	}()
 
 	err := RootCmd.Execute()

@@ -196,15 +196,15 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 	// TODO: check if the remote object exists
 	// upload and retry when upload fails
 	var retries int = 5
-	var sleepSeconds time.Duration = 15
+	var sleep time.Duration = 15 * time.Second
 	for j := 0; j < retries; j++ {
 		uploadOpts := objects.CreateOpts{
 			Content: bytes.NewReader(rb.Bytes()),
 		}
 		err = objects.Create(objClient, containerName, chunkPath, uploadOpts).Err
 		if err != nil {
-			log.Printf("failed to upload %q/%q data in %d retry: %s: sleeping %d seconds", containerName, chunkPath, j, err, sleepSeconds)
-			time.Sleep(sleepSeconds * time.Second)
+			log.Printf("failed to upload %q/%q data in %d retry: %s: sleeping %d seconds", containerName, chunkPath, j, err, sleep)
+			time.Sleep(sleep)
 			continue
 		}
 		break
@@ -544,7 +544,7 @@ var BackupUploadCmd = &cobra.Command{
 		}
 
 		if toContainerName == "" {
-			return fmt.Errorf("Swift container name connot be empty")
+			return fmt.Errorf("swift container name connot be empty")
 		}
 
 		// source and destination parameters

@@ -98,7 +98,7 @@ func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs float64)
 
 func createVolumeSpeed(volume *volumes.Volume) {
 	// cinder doesn't update the UpdatedAt attribute, when the volume status is updated
-	t := time.Now().Sub(volume.CreatedAt)
+	t := time.Since(volume.CreatedAt)
 	log.Printf("Time to create a volume: %s", t)
 	size := float64(volume.Size * 1024)
 	log.Printf("Size of the volume: %.2f Mb", size)
@@ -415,7 +415,7 @@ func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imag
 	}
 	dstVolume, err := volumes.Create(imgToVolClient, dstVolumeCreateOpts).Extract()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create a destination volume: %s", err)
+		return nil, fmt.Errorf("failed to create a destination volume: %s", err)
 	}
 
 	dstVolume, err = waitForVolume(imgToVolClient, dstVolume.ID, waitForVolumeSec)

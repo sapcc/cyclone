@@ -124,14 +124,15 @@ func serverVolumeAttachments(client *gophercloud.ServiceClient, server *serverEx
 	vols := make([]string, len(volumes))
 
 	bootableVolume := false
+	re := regexp.MustCompile("/[a-z]{2}a$")
 	for i, v := range volumes {
 		// if server.Image is nil, then cinder volume is a bootable volume
 		if !bootableVolume {
-			if ok, _ := regexp.MatchString("/[a-z]{2}a$", v.Device); ok {
+			if re.MatchString(v.Device) {
 				if server.Image == nil {
 					bootableVolume = true
 				} else {
-					imageID, _ := server.Image["id"]
+					imageID := server.Image["id"]
 					log.Printf("Detected a bootable %q volume, but the server is booted from the local storage created from %q image", v.Device, imageID)
 				}
 			}
