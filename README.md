@@ -100,7 +100,7 @@ $ cyclone volume 97d682ae-840f-461f-b956-98af30533a22 --to-az eu-de-2a
 
 ```sh
 $ source openrc-of-the-source-project
-$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --to-az eu-de-2a
+$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --to-az eu-de-2a --to-key-name my-nova-keypair
 ```
 
 ### Clone a server with a local storage to a server with bootable Cinder storage
@@ -109,7 +109,7 @@ $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --to-az eu-de-2a
 
 ```sh
 $ source openrc-of-the-source-project
-$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
+$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16 --to-key-name my-nova-keypair
 ```
 
 ### Clone a server with a local disk or a bootable volume only
@@ -118,7 +118,7 @@ $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 16
 
 ```sh
 $ source openrc-of-the-source-project
-$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only
+$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only --to-key-name my-nova-keypair
 ```
 
 ### Clone a server with a bootable volume to a server with a local disk
@@ -127,7 +127,7 @@ $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-disk-only
 
 ```sh
 $ source openrc-of-the-source-project
-$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --local-disk
+$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --local-disk --to-key-name my-nova-keypair
 ```
 
 ### Upload a local image file into a backup
