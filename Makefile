@@ -3,7 +3,7 @@ APP_NAME:=cyclone
 PWD:=$(shell pwd)
 UID:=$(shell id -u)
 VERSION:=$(shell git describe --tags --always --dirty="-dev" | sed "s/^v//")
-LDFLAGS:=-X $(PKG)/pkg.Version=$(VERSION)
+LDFLAGS:=-X $(PKG)/pkg.Version=$(VERSION) -w -s
 
 export CGO_ENABLED:=0
 

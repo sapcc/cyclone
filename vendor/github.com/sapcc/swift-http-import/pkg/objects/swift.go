@@ -33,24 +33,25 @@ import (
 	"github.com/majewsky/schwift"
 	"github.com/majewsky/schwift/gopherschwift"
 	"github.com/sapcc/go-bits/logg"
+	"github.com/sapcc/go-bits/secrets"
 	"github.com/sapcc/swift-http-import/pkg/util"
 )
 
 //SwiftLocation contains all parameters required to establish a Swift connection.
 //It implements the Source interface, but is also used on the target side.
 type SwiftLocation struct {
-	AuthURL                     string       `yaml:"auth_url"`
-	UserName                    string       `yaml:"user_name"`
-	UserDomainName              string       `yaml:"user_domain_name"`
-	ProjectName                 string       `yaml:"project_name"`
-	ProjectDomainName           string       `yaml:"project_domain_name"`
-	Password                    AuthPassword `yaml:"password"`
-	ApplicationCredentialID     string       `yaml:"application_credential_id"`
-	ApplicationCredentialName   string       `yaml:"application_credential_name"`
-	ApplicationCredentialSecret AuthPassword `yaml:"application_credential_secret"`
-	RegionName                  string       `yaml:"region_name"`
-	ContainerName               string       `yaml:"container"`
-	ObjectNamePrefix            string       `yaml:"object_prefix"`
+	AuthURL                     string               `yaml:"auth_url"`
+	UserName                    string               `yaml:"user_name"`
+	UserDomainName              string               `yaml:"user_domain_name"`
+	ProjectName                 string               `yaml:"project_name"`
+	ProjectDomainName           string               `yaml:"project_domain_name"`
+	Password                    secrets.AuthPassword `yaml:"password"`
+	ApplicationCredentialID     string               `yaml:"application_credential_id"`
+	ApplicationCredentialName   string               `yaml:"application_credential_name"`
+	ApplicationCredentialSecret secrets.AuthPassword `yaml:"application_credential_secret"`
+	RegionName                  string               `yaml:"region_name"`
+	ContainerName               string               `yaml:"container"`
+	ObjectNamePrefix            string               `yaml:"object_prefix"`
 	//configuration for Validate()
 	ValidateIgnoreEmptyContainer bool `yaml:"-"`
 	//Account and Container is filled by Connect(). Container will be nil if ContainerName is empty.

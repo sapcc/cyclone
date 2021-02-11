@@ -9,6 +9,8 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/utils/env"
+	"github.com/gophercloud/utils/gnocchi"
+	"github.com/gophercloud/utils/internal"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -295,6 +297,16 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 	if cloud.Verify == nil {
 		iTrue := true
 		cloud.Verify = &iTrue
+	}
+
+	// merging per-region value overrides
+	if opts.RegionName != "" {
+		for _, v := range cloud.Regions {
+			if opts.RegionName == v.Name {
+				cloud, err = mergeClouds(v.Values, cloud)
+				break
+			}
+		}
 	}
 
 	// TODO: this is where reading vendor files should go be considered when not found in
@@ -742,8 +754,58 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 		}
 	}
 
+	// Check if a custom CA cert was provided.
+	// First, check if the CACERT environment variable is set.
+	var caCertPath string
+	if v := env.Getenv(envPrefix + "CACERT"); v != "" {
+		caCertPath = v
+	}
+	// Next, check if the cloud entry sets a CA cert.
+	if v := cloud.CACertFile; v != "" {
+		caCertPath = v
+	}
+
+	// Check if a custom client cert was provided.
+	// First, check if the CERT environment variable is set.
+	var clientCertPath string
+	if v := env.Getenv(envPrefix + "CERT"); v != "" {
+		clientCertPath = v
+	}
+	// Next, check if the cloud entry sets a client cert.
+	if v := cloud.ClientCertFile; v != "" {
+		clientCertPath = v
+	}
+
+	// Check if a custom client key was provided.
+	// First, check if the KEY environment variable is set.
+	var clientKeyPath string
+	if v := env.Getenv(envPrefix + "KEY"); v != "" {
+		clientKeyPath = v
+	}
+	// Next, check if the cloud entry sets a client key.
+	if v := cloud.ClientKeyFile; v != "" {
+		clientKeyPath = v
+	}
+
+	// Define whether or not SSL API requests should be verified.
+	var insecurePtr *bool
+	if cloud.Verify != nil {
+		// Here we take the boolean pointer negation.
+		insecure := !*cloud.Verify
+		insecurePtr = &insecure
+	}
+
+	tlsConfig, err := internal.PrepareTLSConfig(caCertPath, clientCertPath, clientKeyPath, insecurePtr)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get a Provider Client
-	pClient, err := AuthenticatedClient(opts)
+	ao, err := AuthOptions(opts)
+	if err != nil {
+		return nil, err
+	}
+	pClient, err := openstack.NewClient(ao.IdentityEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -751,6 +813,18 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 	// If an HTTPClient was specified, use it.
 	if opts.HTTPClient != nil {
 		pClient.HTTPClient = *opts.HTTPClient
+	} else {
+		// Otherwise create a new HTTP client with the generated TLS config.
+		pClient.HTTPClient = http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
+		}
+	}
+
+	err = openstack.Authenticate(pClient, *ao)
+	if err != nil {
+		return nil, err
 	}
 
 	// Determine the region to use.
@@ -807,6 +881,8 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 		return openstack.NewDBV1(pClient, eo)
 	case "dns":
 		return openstack.NewDNSV2(pClient, eo)
+	case "gnocchi":
+		return gnocchi.NewGnocchiV1(pClient, eo)
 	case "identity":
 		identityVersion := "3"
 		if v := cloud.IdentityAPIVersion; v != "" {

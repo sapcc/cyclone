@@ -25,45 +25,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"regexp"
 	"strconv"
 	"time"
 
 	"github.com/ulikunitz/xz"
 )
-
-//AuthPassword contains the password for some OpenStack Authentication credentials.
-type AuthPassword string
-
-//UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (p *AuthPassword) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	//plain text password
-	var plainTextInput string
-	err := unmarshal(&plainTextInput)
-	if err == nil {
-		*p = AuthPassword(plainTextInput)
-		return nil
-	}
-
-	//retrieve password from the given environment variable key
-	var envVariableInput struct {
-		Key string `yaml:"fromEnv"`
-	}
-	err = unmarshal(&envVariableInput)
-	if err != nil {
-		return err
-	}
-
-	passFromEnv := os.Getenv(envVariableInput.Key)
-	if passFromEnv == "" {
-		return fmt.Errorf(`environment variable %q is not set`, envVariableInput.Key)
-	}
-
-	*p = AuthPassword(passFromEnv)
-
-	return nil
-}
 
 //AgeSpec is a timestamp that is deserialized from a duration in the format
 //"<value> <unit>", e.g. "4 days" or "2 weeks".
