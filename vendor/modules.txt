@@ -73,7 +73,7 @@ github.com/howeyc/gopass
 github.com/inconshreveable/mousetrap
 # github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629
 github.com/jpillora/longestcommon
-# github.com/klauspost/compress v1.10.6
+# github.com/klauspost/compress v1.11.7
 ## explicit
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/zlib

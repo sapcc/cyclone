@@ -7,7 +7,7 @@ require (
 	github.com/gophercloud/gophercloud v0.15.1-0.20210205220151-18b16b34db5c
 	github.com/gophercloud/utils v0.0.0-20210209042946-13abf2251886
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
-	github.com/klauspost/compress v1.10.6
+	github.com/klauspost/compress v1.11.7
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift v0.0.0-20201014122716-bd1c74594efe
 	github.com/sapcc/go-bits v0.0.0-20201203204854-32575942fc71
