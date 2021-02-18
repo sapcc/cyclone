@@ -199,11 +199,13 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 	var sleep time.Duration = 15 * time.Second
 	for j := 0; j < retries; j++ {
 		uploadOpts := objects.CreateOpts{
+			// this is needed for retries
+			// bytes.Buffer doesn't have UnreadAll method
 			Content: bytes.NewReader(rb.Bytes()),
 		}
 		err = objects.Create(objClient, containerName, chunkPath, uploadOpts).Err
 		if err != nil {
-			log.Printf("failed to upload %q/%q data in %d retry: %s: sleeping %d seconds", containerName, chunkPath, j, err, sleep)
+			log.Printf("failed to upload %s/%s data in %d retry: %s: sleeping for %0.f seconds", containerName, chunkPath, j, err, sleep.Seconds())
 			time.Sleep(sleep)
 			continue
 		}
@@ -213,7 +215,7 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 	rb.Reset()
 
 	if err != nil {
-		errChan <- fmt.Errorf("failed to upload %q/%q data: %s", containerName, chunkPath, err)
+		errChan <- fmt.Errorf("failed to upload %s/%s data: %s", containerName, chunkPath, err)
 		return
 	}
 
@@ -247,8 +249,12 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 
 	progressReader := progress.NewReader(imageData.readCloser)
 	go func() {
+		var s int64
 		for p := range progress.NewTicker(context.Background(), progressReader, imageData.size, 1*time.Second) {
-			log.Printf("Progress: %d/%d (%.2f%%), remaining: %s", p.N(), p.Size(), p.Percent(), p.Remaining().Round(time.Second))
+			s = p.N() - s
+			speed := s / (1024 * 1024)
+			s = p.N()
+			log.Printf("Progress: %d/%d (%.2f%%), speed: %d MiB/sec, remaining: %s", p.N(), p.Size(), p.Percent(), speed, p.Remaining().Round(time.Second))
 		}
 	}()
 
@@ -304,14 +310,14 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	}
 
 	var i int
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 	contChan := make(chan bool, 1)
 	limitChan := make(chan struct{}, threads)
 	wg := &sync.WaitGroup{}
 
-	// start
-	contChan <- true
 	err = func() error {
+		// start
+		contChan <- true
 		for {
 			select {
 			case err := <-errChan:
@@ -353,7 +359,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	p := path + "_sha256file"
 	err = objects.Create(dstObjClient, containerName, p, createOpts).Err
 	if err != nil {
-		return nil, fmt.Errorf("failed to upload %q/%q data: %s", containerName, p, err)
+		return nil, fmt.Errorf("failed to upload %s/%s data: %s", containerName, p, err)
 	}
 	// free up the heap
 	buf = nil
@@ -372,7 +378,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	p = path + "_metadata"
 	err = objects.Create(dstObjClient, containerName, p, createOpts).Err
 	if err != nil {
-		return nil, fmt.Errorf("failed to upload %q/%q data: %s", containerName, p, err)
+		return nil, fmt.Errorf("failed to upload %s/%s data: %s", containerName, p, err)
 	}
 	// free up the heap
 	buf = nil
