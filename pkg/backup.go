@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"bytes"
 	"context"
 	"crypto/md5"
 	"crypto/sha256"
@@ -11,7 +10,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -152,6 +150,31 @@ func calcMd5Hash(myChunk []byte, meta *metadata, i int, done chan struct{}, chun
 	close(done)
 }
 
+func compress(data []byte) *io.PipeReader {
+	r, w := io.Pipe()
+	go func() {
+		zf, err := zlib.NewWriterLevel(w, compressionLevel)
+		defer w.CloseWithError(err)
+		if err != nil {
+			err = fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err)
+			return
+		}
+		_, err = zf.Write(data)
+		if err != nil {
+			err = fmt.Errorf("failed to write zlib compressed data: %s", err)
+			return
+		}
+		err = zf.Close()
+		if err != nil {
+			err = fmt.Errorf("failed to flush and close zlib compressed data: %s", err)
+			return
+		}
+		// free up the compressor
+		zf.Reset(nil)
+	}()
+	return r
+}
+
 func (c *chunk) process() {
 	defer func() {
 		c.wg.Done()
@@ -188,36 +211,17 @@ func (c *chunk) process() {
 	sha256done := make(chan struct{})
 	go calcSha256Hash(myChunk, c.sha256meta, c.i, sha256done)
 
-	rb := new(bytes.Buffer)
-	zf, err := zlib.NewWriterLevel(rb, compressionLevel)
-	if err != nil {
-		c.errChan <- fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err)
-		return
-	}
-	_, err = zf.Write(myChunk)
-	if err != nil {
-		c.errChan <- fmt.Errorf("failed to write zlib compressed data: %s", err)
-		return
-	}
-	err = zf.Close()
-	if err != nil {
-		c.errChan <- fmt.Errorf("failed to flush and close zlib compressed data: %s", err)
-		return
-	}
-	// free up the compressor
-	zf.Reset(nil)
-
 	// TODO: check if the remote object exists
 	// upload and retry when upload fails
 	var retries int = 5
 	var sleep time.Duration = 15 * time.Second
 	for j := 0; j < retries; j++ {
+		r := compress(myChunk)
 		uploadOpts := objects.CreateOpts{
-			// this is needed for retries
-			// bytes.Buffer doesn't have UnreadAll method
-			Content: bytes.NewReader(rb.Bytes()),
+			Content: r,
 		}
 		err = objects.Create(c.objClient, c.containerName, chunkPath, uploadOpts).Err
+		r.CloseWithError(err)
 		if err != nil {
 			log.Printf("failed to upload %s/%s data in %d retry: %s: sleeping for %0.f seconds", c.containerName, chunkPath, j, err, sleep.Seconds())
 			time.Sleep(sleep)
@@ -225,8 +229,6 @@ func (c *chunk) process() {
 		}
 		break
 	}
-	// free up the buffer
-	rb.Reset()
 
 	if err != nil {
 		c.errChan <- fmt.Errorf("failed to upload %s/%s data: %s", c.containerName, chunkPath, err)
@@ -237,6 +239,16 @@ func (c *chunk) process() {
 	<-sha256done
 
 	myChunk = nil
+}
+
+func marshall(data interface{}) *io.PipeReader {
+	r, w := io.Pipe()
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	go func() {
+		w.CloseWithError(enc.Encode(data))
+	}()
+	return r
 }
 
 func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gophercloud.ServiceClient, backupName, containerName, imageID, az string, properties map[string]string, size int, threads uint) (*backups.Backup, error) {
@@ -369,46 +381,31 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	wg.Wait()
 	imageData.readCloser.Close()
 
-	// run garbage collector before processing the potential memory consuming JSON marshalling
-	runtime.GC()
-
 	// write _sha256file
-	buf, err := json.MarshalIndent(sha256meta, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal sha256meta: %s", err)
-	}
-	sha256meta = nil
-
+	r := marshall(sha256meta)
 	createOpts := objects.CreateOpts{
-		Content: bytes.NewReader(buf),
+		Content: r,
 	}
 	p := path + "_sha256file"
 	err = objects.Create(dstObjClient, containerName, p, createOpts).Err
+	r.CloseWithError(err)
+	sha256meta = nil
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload %s/%s data: %s", containerName, p, err)
 	}
-	// free up the heap
-	buf = nil
-	runtime.GC()
 
 	// write _metadata
-	buf, err = json.MarshalIndent(meta, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal meta: %s", err)
-	}
-	meta = nil
-
+	r = marshall(meta)
 	createOpts = objects.CreateOpts{
-		Content: bytes.NewReader(buf),
+		Content: r,
 	}
 	p = path + "_metadata"
 	err = objects.Create(dstObjClient, containerName, p, createOpts).Err
+	r.CloseWithError(err)
+	meta = nil
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload %s/%s data: %s", containerName, p, err)
 	}
-	// free up the heap
-	buf = nil
-	runtime.GC()
 
 	// import the backup
 	service := "cinder.backup.drivers.swift.SwiftBackupDriver"
