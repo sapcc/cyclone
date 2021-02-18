@@ -44,6 +44,20 @@ const (
 	backupTimeFormat = "20060102150405"
 )
 
+type chunk struct {
+	wg            *sync.WaitGroup
+	i             int
+	path          string
+	containerName string
+	objClient     *gophercloud.ServiceClient
+	reader        *progress.Reader
+	meta          *metadata
+	sha256meta    *sha256file
+	contChan      chan bool
+	limitChan     chan struct{}
+	errChan       chan error
+}
+
 func createBackupSpeed(client *gophercloud.ServiceClient, backup *backups.Backup) {
 	if client != nil {
 		container, err := containers.Get(client, backup.Container, nil).Extract()
@@ -138,56 +152,56 @@ func calcMd5Hash(myChunk []byte, meta *metadata, i int, done chan struct{}, chun
 	close(done)
 }
 
-func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClient *gophercloud.ServiceClient, reader *progress.Reader, meta *metadata, sha256meta *sha256file, contChan chan bool, limitChan chan struct{}, errChan chan error) {
+func (c *chunk) process() {
 	defer func() {
-		wg.Done()
+		c.wg.Done()
 		// release the queue
-		<-limitChan
+		<-c.limitChan
 	}()
 
-	myChunk, err := ioutil.ReadAll(io.LimitReader(reader, backupChunk))
+	myChunk, err := ioutil.ReadAll(io.LimitReader(c.reader, backupChunk))
 	if err != nil {
 		if err != io.EOF {
-			errChan <- fmt.Errorf("failed to read file: %s", err)
+			c.errChan <- fmt.Errorf("failed to read file: %s", err)
 			return
 		}
 	}
 	if len(myChunk) == 0 {
 		// stop further reading, no data
-		contChan <- false
+		c.contChan <- false
 		return
 	} else if err == io.EOF {
 		// EOF, but we still need to process some data
-		contChan <- false
+		c.contChan <- false
 	} else {
 		// allow next go routine to process the input
-		contChan <- true
+		c.contChan <- true
 	}
 
-	chunkPath := fmt.Sprintf("%s-%05d", path, i)
+	chunkPath := fmt.Sprintf("%s-%05d", c.path, c.i)
 
 	// calculate md5 hash while we upload chunks
 	md5done := make(chan struct{})
-	go calcMd5Hash(myChunk, meta, i, md5done, chunkPath)
+	go calcMd5Hash(myChunk, c.meta, c.i, md5done, chunkPath)
 
 	// calculate sha256 hash while we upload chunks
 	sha256done := make(chan struct{})
-	go calcSha256Hash(myChunk, sha256meta, i, sha256done)
+	go calcSha256Hash(myChunk, c.sha256meta, c.i, sha256done)
 
 	rb := new(bytes.Buffer)
 	zf, err := zlib.NewWriterLevel(rb, compressionLevel)
 	if err != nil {
-		errChan <- fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err)
+		c.errChan <- fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err)
 		return
 	}
 	_, err = zf.Write(myChunk)
 	if err != nil {
-		errChan <- fmt.Errorf("failed to write zlib compressed data: %s", err)
+		c.errChan <- fmt.Errorf("failed to write zlib compressed data: %s", err)
 		return
 	}
 	err = zf.Close()
 	if err != nil {
-		errChan <- fmt.Errorf("failed to flush and close zlib compressed data: %s", err)
+		c.errChan <- fmt.Errorf("failed to flush and close zlib compressed data: %s", err)
 		return
 	}
 	// free up the compressor
@@ -203,9 +217,9 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 			// bytes.Buffer doesn't have UnreadAll method
 			Content: bytes.NewReader(rb.Bytes()),
 		}
-		err = objects.Create(objClient, containerName, chunkPath, uploadOpts).Err
+		err = objects.Create(c.objClient, c.containerName, chunkPath, uploadOpts).Err
 		if err != nil {
-			log.Printf("failed to upload %s/%s data in %d retry: %s: sleeping for %0.f seconds", containerName, chunkPath, j, err, sleep.Seconds())
+			log.Printf("failed to upload %s/%s data in %d retry: %s: sleeping for %0.f seconds", c.containerName, chunkPath, j, err, sleep.Seconds())
 			time.Sleep(sleep)
 			continue
 		}
@@ -215,7 +229,7 @@ func processChunk(wg *sync.WaitGroup, i int, path, containerName string, objClie
 	rb.Reset()
 
 	if err != nil {
-		errChan <- fmt.Errorf("failed to upload %s/%s data: %s", containerName, chunkPath, err)
+		c.errChan <- fmt.Errorf("failed to upload %s/%s data: %s", c.containerName, chunkPath, err)
 		return
 	}
 
@@ -330,8 +344,20 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 				wg.Add(1)
 				// consume the queue
 				limitChan <- struct{}{}
-				go processChunk(wg, i, path, containerName, dstObjClient,
-					progressReader, meta, sha256meta, contChan, limitChan, errChan)
+				c := &chunk{
+					wg,
+					i,
+					path,
+					containerName,
+					dstObjClient,
+					progressReader,
+					meta,
+					sha256meta,
+					contChan,
+					limitChan,
+					errChan,
+				}
+				go c.process()
 			}
 		}
 	}()
