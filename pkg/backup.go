@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"crypto/sha256"
@@ -150,19 +151,29 @@ func calcMd5Hash(myChunk []byte, meta *metadata, i int, done chan struct{}, chun
 	close(done)
 }
 
-func compress(data []byte) *io.PipeReader {
+func compress(data []byte) (*io.PipeReader, error) {
 	r, w := io.Pipe()
+
+	zf, err := zlib.NewWriterLevel(w, compressionLevel)
+	if err != nil {
+		w.CloseWithError(err)
+		r.CloseWithError(err)
+		return nil, fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err)
+	}
+
 	go func() {
-		zf, err := zlib.NewWriterLevel(w, compressionLevel)
+		var err error
 		defer w.CloseWithError(err)
-		if err != nil {
-			err = fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err)
-			return
-		}
-		_, err = zf.Write(data)
-		if err != nil {
-			err = fmt.Errorf("failed to write zlib compressed data: %s", err)
-			return
+		dataReader := bytes.NewReader(data)
+		for {
+			// compress data in 8MiB chunks
+			if _, e := io.CopyN(zf, dataReader, 8<<20); e != nil {
+				if e == io.EOF {
+					break
+				}
+				err = fmt.Errorf("failed to write zlib compressed data: %s", e)
+				return
+			}
 		}
 		err = zf.Close()
 		if err != nil {
@@ -172,7 +183,7 @@ func compress(data []byte) *io.PipeReader {
 		// free up the compressor
 		zf.Reset(nil)
 	}()
-	return r
+	return r, nil
 }
 
 func (c *chunk) process() {
@@ -216,7 +227,11 @@ func (c *chunk) process() {
 	var retries int = 5
 	var sleep time.Duration = 15 * time.Second
 	for j := 0; j < retries; j++ {
-		r := compress(myChunk)
+		r, err := compress(myChunk)
+		if err != nil {
+			c.errChan <- err
+			return
+		}
 		uploadOpts := objects.CreateOpts{
 			Content: r,
 		}
