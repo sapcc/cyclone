@@ -72,7 +72,8 @@ Use "cyclone [command] --help" for more information about a command.
 $ source openrc-of-the-source-project
 $ cyclone image 77c125f1-2c7b-473e-a56b-28a9a0bc4787 --to-region eu-de-2 --to-project destination-project-name --to-image-name image-from-source-project-name
 ```
-Please add image_admin and swiftoperator user roles before initiating the above command.
+
+~> **Note:** Please ensure that your OpenStack user has sufficient permissions (e.g. `image_admin` and `swiftoperator` user roles) before initiating the above command.
 
 ### Clone an image between regions using download/upload method
 
