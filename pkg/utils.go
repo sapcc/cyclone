@@ -160,6 +160,7 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 			IdentityEndpoint:            loc.AuthURL,
 			ApplicationCredentialID:     ac.ID,
 			ApplicationCredentialSecret: ac.Secret,
+			AllowReauth:                 true,
 		}
 
 		err = openstack.Authenticate(provider, *ao)
