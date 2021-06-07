@@ -320,7 +320,7 @@ func volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient *gophercloud
 	return srcImage, nil
 }
 
-func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, toVolumeName string, toVolumeType, az string, cloneViaSnapshot bool, loc Locations) (*volumes.Volume, error) {
+func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, dstObjectClient *gophercloud.ServiceClient, srcVolume *volumes.Volume, toVolumeName string, toVolumeType, az string, cloneViaSnapshot bool, loc Locations) (*volumes.Volume, error) {
 	newVolume, err := cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, toVolumeName, az, cloneViaSnapshot, loc)
 	if err != nil {
 		return nil, err
@@ -563,7 +563,7 @@ var VolumeCmd = &cobra.Command{
 
 		defer measureTime()
 
-		dstVolume, err := migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient, srcVolume, toVolumeName, toVolumeType, toAZ, cloneViaSnapshot, loc)
+		dstVolume, err := migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, dstObjectClient, srcVolume, toVolumeName, toVolumeType, toAZ, cloneViaSnapshot, loc)
 		if err != nil {
 			return err
 		}

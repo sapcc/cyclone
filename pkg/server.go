@@ -168,7 +168,7 @@ func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcOb
 	}
 
 	var srcImage *images.Image
-	srcImage, err = waitForImage(srcImageClient, dstObjectClient, imageID, 0, waitForImageSec)
+	srcImage, err = waitForImage(srcImageClient, srcObjectClient, imageID, 0, waitForImageSec)
 	if err != nil {
 		deleteSourceOnReturn()
 		return nil, fmt.Errorf("failed to wait for a %q server snapshot image: %s", imageID, err)
@@ -849,7 +849,7 @@ var ServerCmd = &cobra.Command{
 				return fmt.Errorf("failed to wait for a %q volume: %s", v, err)
 			}
 
-			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstObjectClient, dstImageClient, dstVolumeClient, srcVolume, srcVolume.Name, toVolumeType, toAZ, cloneViaSnapshot, loc)
+			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, dstObjectClient, srcVolume, srcVolume.Name, toVolumeType, toAZ, cloneViaSnapshot, loc)
 			if err != nil {
 				// if we don't fail here, then the resulting VM may not boot because of insuficient of volumes
 				return fmt.Errorf("failed to clone the %q volume: %s", srcVolume.ID, err)
