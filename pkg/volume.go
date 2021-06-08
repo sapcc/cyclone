@@ -139,6 +139,8 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 		VolumeType:  srcVolume.VolumeType,
 	}
 
+	reauthClient(srcVolumeClient, "cloneVolume")
+
 	if cloneViaSnapshot {
 		// clone via snapshot using cinder storage, because it was explicitly set
 		log.Printf("Cloning a %q volume using volume snapshot", srcVolume.ID)
@@ -216,6 +218,8 @@ func cloneVolume(srcVolumeClient, srcObjectClient *gophercloud.ServiceClient, sr
 		}
 	}
 
+	reauthClient(srcVolumeClient, "cloneVolume")
+
 	var newVolume *volumes.Volume
 	var err error
 	newVolume, err = volumes.Create(srcVolumeClient, volOpts).Extract()
@@ -275,6 +279,8 @@ func volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient *gophercloud
 	if v, ok := srcVolume.VolumeImageMetadata["disk_format"]; ok && v != "" {
 		createSrcImage.DiskFormat = v
 	}
+
+	reauthClient(srcVolumeClient, "volumeToImage")
 
 	srcVolumeClient.Microversion = "3.1" // required to set the image visibility
 	var srcVolumeImage volumeactions.VolumeImage
@@ -405,6 +411,8 @@ func migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageCli
 }
 
 func imageToVolume(imgToVolClient, imgDstClient *gophercloud.ServiceClient, imageID, volumeName, volumeDescription, volumeType, az string, volumeSize int, srcVolume *volumes.Volume) (*volumes.Volume, error) {
+	reauthClient(imgToVolClient, "imageToVolume")
+
 	dstVolumeCreateOpts := volumes.CreateOpts{
 		Size:             volumeSize,
 		Name:             volumeName,

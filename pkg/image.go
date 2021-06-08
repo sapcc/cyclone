@@ -283,6 +283,9 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClie
 		}
 	}()
 
+	reauthClient(srcImageClient, "migrateImage")
+	reauthClient(dstImageClient, "migrateImage")
+
 	if imageWebDownload {
 		if !isSliceContainsStr(dstImg.OpenStackImageImportMethods, string(imageimport.WebDownloadMethod)) {
 			return nil, fmt.Errorf("the %q import method is not supported, supported import methods: %q", imageimport.WebDownloadMethod, dstImg.OpenStackImageImportMethods)

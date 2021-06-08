@@ -452,6 +452,8 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 }
 
 func backupToVolume(dstVolClient *gophercloud.ServiceClient, backupObj *backups.Backup, volumeName, volumeType, az string) (*volumes.Volume, error) {
+	reauthClient(dstVolClient, "backupToVolume")
+
 	// create a volume from a backup
 	dstVolClient.Microversion = "3.47"
 	volOpts := volumes.CreateOpts{

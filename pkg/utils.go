@@ -172,6 +172,15 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 	return provider, nil
 }
 
+func reauthClient(client *gophercloud.ServiceClient, funcName string) {
+	// reauth the client before the long running action to avoid openstack internal auth issues
+	if client.ProviderClient.ReauthFunc != nil {
+		if err := client.ProviderClient.Reauthenticate(client.ProviderClient.TokenID); err != nil {
+			log.Printf("Failed to re-authenticate the provider client in the %s func: %v", err, funcName)
+		}
+	}
+}
+
 func newGlanceV2Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
 	return openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{
 		Region: region,
