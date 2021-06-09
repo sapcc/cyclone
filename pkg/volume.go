@@ -38,6 +38,15 @@ var (
 	waitForSnapshotSec float64
 )
 
+var volumeNormalStatuses = []string{
+	"available",
+	"in-use",
+}
+
+var snapshotNormalStatuses = []string{
+	"available",
+}
+
 func expandVolumeProperties(srcVolume *volumes.Volume) images.UpdateOpts {
 	// set min_disk and min_ram from a source volume
 	imgAttrUpdateOpts := images.UpdateOpts{
@@ -81,7 +90,7 @@ func waitForSnapshot(client *gophercloud.ServiceClient, id string, secs float64)
 		}
 
 		log.Printf("Intermediate snapshot status: %s", snapshot.Status)
-		if snapshot.Status == "available" {
+		if isSliceContainsStr(snapshotNormalStatuses, snapshot.Status) {
 			return true, nil
 		}
 
@@ -116,7 +125,7 @@ func waitForVolume(client *gophercloud.ServiceClient, id string, secs float64) (
 
 		log.Printf("Volume status: %s", volume.Status)
 		// TODO: specify target states in func params
-		if volume.Status == "available" || volume.Status == "in-use" {
+		if isSliceContainsStr(volumeNormalStatuses, volume.Status) {
 			return true, nil
 		}
 

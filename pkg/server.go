@@ -46,6 +46,11 @@ var serverNormalStatuses = []string{
 	"SHUTOFF",
 }
 
+var portNormalStatuses = []string{
+	"ACTIVE",
+	"DOWN",
+}
+
 var serverWaitStatuses = []string{
 	"BUILD",
 }
@@ -77,11 +82,11 @@ func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (
 		}
 
 		log.Printf("Server status: %s", server.Status)
-		if isSliceContainsStr(serverNormalStatuses, string(server.Status)) {
+		if isSliceContainsStr(serverNormalStatuses, server.Status) {
 			return true, nil
 		}
 
-		if !isSliceContainsStr(serverWaitStatuses, string(server.Status)) {
+		if !isSliceContainsStr(serverWaitStatuses, server.Status) {
 			return false, fmt.Errorf("server status is %q", server.Status)
 		}
 
@@ -102,7 +107,7 @@ func waitForPort(client *gophercloud.ServiceClient, id string, secs float64) (*p
 		}
 
 		log.Printf("Port status: %s", port.Status)
-		if port.Status == "ACTIVE" || port.Status == "DOWN" {
+		if isSliceContainsStr(portNormalStatuses, port.Status) {
 			return true, nil
 		}
 
