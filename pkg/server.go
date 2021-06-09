@@ -41,6 +41,11 @@ type serverExtended struct {
 	extendedstatus.ServerExtendedStatusExt
 }
 
+var serverNormalStatuses = []string{
+	"ACTIVE",
+	"SHUTOFF",
+}
+
 var serverWaitStatuses = []string{
 	"BUILD",
 }
@@ -72,7 +77,7 @@ func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (
 		}
 
 		log.Printf("Server status: %s", server.Status)
-		if server.Status == "ACTIVE" {
+		if isSliceContainsStr(serverNormalStatuses, string(server.Status)) {
 			return true, nil
 		}
 
