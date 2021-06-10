@@ -83,8 +83,9 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 	// debug logger is enabled by default and writes logs into a cyclone temp dir
 	provider.HTTPClient = http.Client{
 		Transport: &client.RoundTripper{
-			Rt:     &http.Transport{},
-			Logger: &logger{Prefix: loc.Origin},
+			MaxRetries: 5,
+			Rt:         &http.Transport{},
+			Logger:     &logger{Prefix: loc.Origin},
 		},
 	}
 
