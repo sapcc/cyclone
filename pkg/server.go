@@ -41,6 +41,11 @@ type serverExtended struct {
 	extendedstatus.ServerExtendedStatusExt
 }
 
+var serverNormalStates = []string{
+	"active",
+	"stopped",
+}
+
 var serverNormalStatuses = []string{
 	"ACTIVE",
 	"SHUTOFF",
@@ -72,7 +77,7 @@ func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (
 		// this is needed, because if new data contains a "null", the struct will contain an old data, e.g. `"OS-EXT-STS:task_state": null`
 		server = tmp
 
-		if server.VmState != "active" {
+		if !isSliceContainsStr(serverNormalStates, server.VmState) {
 			if server.TaskState != "" {
 				log.Printf("Server status: %s (%s, %s)", server.Status, server.VmState, server.TaskState)
 				return false, nil
