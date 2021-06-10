@@ -77,12 +77,8 @@ func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (
 		// this is needed, because if new data contains a "null", the struct will contain an old data, e.g. `"OS-EXT-STS:task_state": null`
 		server = tmp
 
-		if !isSliceContainsStr(serverNormalStates, server.VmState) {
-			if server.TaskState != "" {
-				log.Printf("Server status: %s (%s, %s)", server.Status, server.VmState, server.TaskState)
-				return false, nil
-			}
-			log.Printf("Server status: %s (%s)", server.Status, server.VmState)
+		if !isSliceContainsStr(serverNormalStates, server.VmState) || server.TaskState != "" {
+			log.Printf("Server status: %s (%s)", server.Status, joinSkipEmpty(", ", server.VmState, server.TaskState))
 			return false, nil
 		}
 

@@ -60,66 +60,79 @@ func waitForImageTask(client, swiftClient *gophercloud.ServiceClient, id string,
 		return false, nil
 	}
 
+	var taskListAccessDenied bool
 	var taskID string
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
 		var taskStatus string
-		err = tasks.List(client, tasks.ListOpts{}).EachPage(func(page pagination.Page) (bool, error) {
-			tl, err := tasks.ExtractTasks(page)
-			if err != nil {
-				return false, fmt.Errorf("failed to list image tasks: %s", err)
-			}
 
-			for _, task := range tl {
-				if taskID != "" && task.Status != string(tasks.TaskStatusFailure) {
-					taskStatus = fmt.Sprintf("Target image task status is: %s", task.Status)
-					return updateStatus(task)
-				}
-
-				tid := task.ID
-				if taskID != "" {
-					// we know the task ID
-					tid = taskID
-				}
-
-				t, err := tasks.Get(client, tid).Extract()
+		if !taskListAccessDenied {
+			err = tasks.List(client, tasks.ListOpts{}).EachPage(func(page pagination.Page) (bool, error) {
+				tl, err := tasks.ExtractTasks(page)
 				if err != nil {
-					// TODO: return an error?
-					log.Printf("Failed to get %q task details: %s", tid, err)
-					return false, nil
+					return false, fmt.Errorf("failed to list image tasks: %s", err)
 				}
 
-				if v, ok := t.Input["image_id"]; ok {
-					if v, ok := v.(string); ok {
-						if v == id {
-							taskStatus = fmt.Sprintf("Target image task status is: %s", t.Status)
+				for _, task := range tl {
+					if taskID != "" && task.Status != string(tasks.TaskStatusFailure) {
+						taskStatus = fmt.Sprintf("Target image task status is: %s", task.Status)
+						return updateStatus(task)
+					}
 
-							// save the correcsponding task id for next calls
-							taskID = t.ID
-							if t.Status == string(tasks.TaskStatusFailure) {
-								// set failed image status
-								img.Status = images.ImageStatus(t.Status)
-								return false, fmt.Errorf("target image import failed: %s", t.Message)
+					tid := task.ID
+					if taskID != "" {
+						// we know the task ID
+						tid = taskID
+					}
+
+					t, err := tasks.Get(client, tid).Extract()
+					if err != nil {
+						// TODO: return an error?
+						log.Printf("Failed to get %q task details: %s", tid, err)
+						return false, nil
+					}
+
+					if v, ok := t.Input["image_id"]; ok {
+						if v, ok := v.(string); ok {
+							if v == id {
+								taskStatus = fmt.Sprintf("Target image task status is: %s", t.Status)
+
+								// save the correcsponding task id for next calls
+								taskID = t.ID
+								if t.Status == string(tasks.TaskStatusFailure) {
+									// set failed image status
+									img.Status = images.ImageStatus(t.Status)
+									return false, fmt.Errorf("target image import failed: %s", t.Message)
+								}
+								return updateStatus(*t)
 							}
-							return updateStatus(*t)
 						}
 					}
 				}
+
+				// continue listing
+				return true, nil
+			})
+			if err != nil {
+				if _, ok := err.(gophercloud.ErrDefault403); !ok {
+					return false, err
+				}
+				// don't fail when tasks list is denied
+				taskListAccessDenied = true
 			}
-
-			// continue listing
-			return true, nil
-		})
-
-		if err != nil {
-			return false, err
+		} else {
+			// just update the image status, when tasks list is denied
+			img, err = images.Get(client, id).Extract()
+			if err != nil {
+				return false, err
+			}
 		}
 
 		// show user friendly status
 		containerSize := getContainerSize(swiftClient, id, srcSizeBytes)
 		if containerSize == "" {
-			log.Printf("Target image status: %s, %s", img.Status, taskStatus)
+			log.Printf("Target image status: %s", joinSkipEmpty(", ", string(img.Status), taskStatus))
 		} else {
-			log.Printf("Target image status: %s, %s, %s", img.Status, taskStatus, containerSize)
+			log.Printf("Target image status: %s", joinSkipEmpty(", ", string(img.Status), taskStatus, containerSize))
 		}
 
 		if img.Status == images.ImageStatusActive {

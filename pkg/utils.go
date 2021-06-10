@@ -384,3 +384,14 @@ func (eb *Backoff) WaitFor(predicate func() (bool, error)) error {
 		}
 	}
 }
+
+// joinSkipEmpty helper joins only non empty strings
+func joinSkipEmpty(sep string, args ...string) string {
+	var a []string
+	for _, s := range args {
+		if s := strings.TrimSpace(s); s != "" {
+			a = append(a, s)
+		}
+	}
+	return strings.Join(a, sep)
+}
