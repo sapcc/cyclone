@@ -635,6 +635,7 @@ var ServerCmd = &cobra.Command{
 		forceLocal := viper.GetBool("local-disk")
 		deleteVolOnTerm := viper.GetBool("delete-volume-on-termination")
 		bootableDiskOnly := viper.GetBool("bootable-disk-only")
+		skipServerCreation := viper.GetBool("skip-server-creation")
 
 		if forceBootable > 0 && forceLocal {
 			return fmt.Errorf("cannot use both --bootable-volume and --local-disk flags")
@@ -744,35 +745,38 @@ var ServerCmd = &cobra.Command{
 		var network servers.Network
 		// TODO: detect network settings from the source VM, when the same project is used
 		// TODO: do this only when specific subnet name was provided, otherwise use auto-allocation
-		if toSubnetName != "" {
-			// TODO: a regular server deletion doesn't delete the port, find the way to hard bind server and port
-			port, err = createServerPort(dstNetworkClient, toNetworkName, toSubnetName)
-			if err != nil {
-				return err
-			}
-			network.Port = port.ID
-			defer func() {
-				if err != nil {
-					// delete the port only on error
-					if err := ports.Delete(dstNetworkClient, port.ID).ExtractErr(); err != nil {
-						log.Printf("Error deleting target server port: %s", err)
-					}
-				}
-			}()
-		} else {
-			if toNetworkName == "" {
-				log.Printf("New server network name is empty, detecting the network name from the source server")
-				toNetworkName, err = getServerNetworkName(srcServerClient, srcServer)
+
+		if !skipServerCreation {
+			if toSubnetName != "" {
+				// TODO: a regular server deletion doesn't delete the port, find the way to hard bind server and port
+				port, err = createServerPort(dstNetworkClient, toNetworkName, toSubnetName)
 				if err != nil {
 					return err
 				}
-				log.Printf("Detected %q network name from the source server", toNetworkName)
+				network.Port = port.ID
+				defer func() {
+					if err != nil {
+						// delete the port only on error
+						if err := ports.Delete(dstNetworkClient, port.ID).ExtractErr(); err != nil {
+							log.Printf("Error deleting target server port: %s", err)
+						}
+					}
+				}()
+			} else {
+				if toNetworkName == "" {
+					log.Printf("New server network name is empty, detecting the network name from the source server")
+					toNetworkName, err = getServerNetworkName(srcServerClient, srcServer)
+					if err != nil {
+						return err
+					}
+					log.Printf("Detected %q network name from the source server", toNetworkName)
+				}
+				networkID, err = networks_utils.IDFromName(dstNetworkClient, toNetworkName)
+				if err != nil {
+					return err
+				}
+				network.UUID = networkID
 			}
-			networkID, err = networks_utils.IDFromName(dstNetworkClient, toNetworkName)
-			if err != nil {
-				return err
-			}
-			network.UUID = networkID
 		}
 
 		defer measureTime()
@@ -808,11 +812,13 @@ var ServerCmd = &cobra.Command{
 
 				// TODO: add an option to keep artifacts on failure
 				dstImageID := dstImage.ID
-				defer func() {
-					if err := images.Delete(dstImageClient, dstImageID).ExtractErr(); err != nil {
-						log.Printf("Error deleting migrated server snapshot: %s", err)
-					}
-				}()
+				if !skipServerCreation {
+					defer func() {
+						if err := images.Delete(dstImageClient, dstImageID).ExtractErr(); err != nil {
+							log.Printf("Error deleting migrated server snapshot: %s", err)
+						}
+					}()
+				}
 
 				// set bootable volume flag to false, because we set a proper dstImage var
 				bootableVolume = false
@@ -830,11 +836,13 @@ var ServerCmd = &cobra.Command{
 
 			// TODO: add an option to keep artifacts on failure
 			dstImageID := dstImage.ID
-			defer func() {
-				if err := images.Delete(dstImageClient, dstImageID).ExtractErr(); err != nil {
-					log.Printf("Error deleting migrated server snapshot: %s", err)
-				}
-			}()
+			if !skipServerCreation || forceBootable > 0 {
+				defer func() {
+					if err := images.Delete(dstImageClient, dstImageID).ExtractErr(); err != nil {
+						log.Printf("Error deleting migrated server snapshot: %s", err)
+					}
+				}()
+			}
 
 			if forceBootable > 0 {
 				if uint(srcFlavor.Disk) > forceBootable {
@@ -848,6 +856,9 @@ var ServerCmd = &cobra.Command{
 					return fmt.Errorf("failed to create a bootable volume for a VM: %s", err)
 				}
 				dstVolumes = append(dstVolumes, newBootableVolume)
+
+				log.Printf("Cloned %q server local storage to %q volume in %q availability zone", srcServer.ID, newBootableVolume.ID, toAZ)
+
 				// release dstImage pointer
 				dstImage = nil
 			}
@@ -871,7 +882,13 @@ var ServerCmd = &cobra.Command{
 			if toAZ == "" {
 				toAZ = dstVolumes[i].AvailabilityZone
 			}
+			log.Printf("Cloned %q volume to %q volume in %q availability zone", srcVolume.ID, dstVolume.ID, toAZ)
 			// TODO: defer delete volumes on failure?
+		}
+
+		if skipServerCreation {
+			log.Printf("Server artifacts were cloned to %q availability zone", toAZ)
+			return nil
 		}
 
 		createOpts := createServerOpts(srcServer, toName, flavor.ID, toKeyName, toAZ, network, dstVolumes, dstImage, bootableVolume, deleteVolOnTerm)
@@ -927,4 +944,5 @@ func initServerCmdFlags() {
 	ServerCmd.Flags().BoolP("local-disk", "", false, "convert the attached bootable volume to a local disk")
 	ServerCmd.Flags().BoolP("delete-volume-on-termination", "", true, "specifies whether or not to delete the attached bootable volume when the server is terminated")
 	ServerCmd.Flags().BoolP("bootable-disk-only", "", false, "clone only the bootable disk/volume, skipping the rest attached volumes")
+	ServerCmd.Flags().BoolP("skip-server-creation", "", false, "skip server creation, clone only server's artifacts: image and volumes")
 }

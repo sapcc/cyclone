@@ -132,6 +132,16 @@ $ source openrc-of-the-source-project
 $ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --local-disk --to-key-name my-nova-keypair
 ```
 
+### Clone only server artifacts
+
+The `--skip-server-creation` flag clones only images or volumes, which are used or attached to the source server. The destination server won't be created.
+The example below will convert the server's local bootable disk to a bootable block storage, which can be attached to some server lately.
+
+```sh
+$ source openrc-of-the-source-project
+$ cyclone server 6eb76733-95b7-4867-9f83-a6ab19804e2f --bootable-volume 64 --skip-server-creation
+```
+
 ### Upload a local image file into a backup
 
 Properties must be defined, when a backup supposed to be restored to a bootable volume.
