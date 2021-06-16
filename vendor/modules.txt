@@ -14,12 +14,15 @@ github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumeactio
 github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/volumetransfers
 github.com/gophercloud/gophercloud/openstack/blockstorage/v3/snapshots
 github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes
+github.com/gophercloud/gophercloud/openstack/common/extensions
+github.com/gophercloud/gophercloud/openstack/compute/v2/extensions
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedserverattributes
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs
+github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach
 github.com/gophercloud/gophercloud/openstack/compute/v2/flavors
 github.com/gophercloud/gophercloud/openstack/compute/v2/servers

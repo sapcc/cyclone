@@ -46,6 +46,7 @@ Flags:
   -d, --debug                                     print out request and response objects
   -h, --help                                      help for cyclone
       --image-web-download                        use Glance web-download image import method (default true)
+  -n, --no                                        assume "no" to all questions
       --timeout-backup string                     timeout to wait for a backup status (default "24h")
       --timeout-image string                      timeout to wait for an image status (default "24h")
       --timeout-server string                     timeout to wait for a server status (default "24h")
@@ -60,6 +61,7 @@ Flags:
       --to-project string                         destination project
       --to-region string                          destination region
       --to-username string                        destination username
+  -y, --yes                                       assume "yes" to all questions
 
 Use "cyclone [command] --help" for more information about a command.
 ```

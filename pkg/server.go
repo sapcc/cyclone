@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
@@ -13,6 +14,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedserverattributes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -552,6 +554,43 @@ func getServerNetworkName(srcServerClient *gophercloud.ServiceClient, server *se
 	return "", fmt.Errorf("failed to identify source server interface name")
 }
 
+func checkServerStatus(srcServerClient *gophercloud.ServiceClient, srcServer *serverExtended) error {
+	if srcServer.Status == "ACTIVE" {
+		if no {
+			log.Printf("Skipping the VM shutdown")
+			return nil
+		}
+
+		var ans string
+		if !yes {
+			fmt.Printf("It is recommended to shut down the VM before the migration\n")
+			fmt.Printf("Do you want to shut down the VM? ([y]/n): ")
+			var ans string
+			_, err := fmt.Scan(&ans)
+			if err != nil {
+				return err
+			}
+			ans = strings.ToLower(strings.TrimSpace(ans))
+		}
+
+		if yes || ans == "y" || ans == "yes" {
+			log.Printf("Shutting down the %q VM", srcServer.ID)
+			err := startstop.Stop(srcServerClient, srcServer.ID).ExtractErr()
+			if err != nil {
+				return fmt.Errorf("failed to stop the %q source VM: %v", srcServer.ID, err)
+			}
+			srcServer, err = waitForServer(srcServerClient, srcServer.ID, waitForServerSec)
+			if err != nil {
+				return fmt.Errorf("failed to wait for %q source server: %s", srcServer.ID, err)
+			}
+		} else {
+			log.Printf("Skipping the VM shutdown")
+		}
+	}
+
+	return nil
+}
+
 func bootableToLocal(srcVolumeClient, srcImageClient, srcObjectClient, dstImageClient, dstObjectClient *gophercloud.ServiceClient, cloneViaSnapshot bool, toAZ string, loc Locations, flavor *flavors.Flavor, vols *[]string) (*images.Image, error) {
 	log.Printf("Forcing the %q bootable volume to be a local disk", (*vols)[0])
 
@@ -715,6 +754,11 @@ var ServerCmd = &cobra.Command{
 		srcServer, err := waitForServer(srcServerClient, server, waitForServerSec)
 		if err != nil {
 			return fmt.Errorf("failed to wait for %q source server: %s", server, err)
+		}
+
+		err = checkServerStatus(srcServerClient, srcServer)
+		if err != nil {
+			return err
 		}
 
 		// check server flavors

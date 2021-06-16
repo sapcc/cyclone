@@ -42,6 +42,10 @@ var (
 		SilenceUsage: true,
 	}
 	cleanupFuncs []func(*sync.WaitGroup)
+	// unattended mode, assume yes to all questions
+	yes bool
+	// unattended mode, assume no to all questions
+	no bool
 )
 
 // Execute adds all child commands to the root command sets flags appropriately.
@@ -82,6 +86,8 @@ func Execute() {
 func initRootCmdFlags() {
 	// debug flag
 	RootCmd.PersistentFlags().BoolP("debug", "d", false, "print out request and response objects")
+	RootCmd.PersistentFlags().BoolP("yes", "y", false, "assume \"yes\" to all questions")
+	RootCmd.PersistentFlags().BoolP("no", "n", false, "assume \"no\" to all questions")
 	RootCmd.PersistentFlags().StringP("to-auth-url", "", "", "destination auth URL (if not provided, detected automatically from the source auth URL and destination region)")
 	RootCmd.PersistentFlags().StringP("to-region", "", "", "destination region")
 	RootCmd.PersistentFlags().StringP("to-domain", "", "", "destination domain")
@@ -98,6 +104,8 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("timeout-backup", "", "24h", "timeout to wait for a backup status")
 	RootCmd.PersistentFlags().BoolP("image-web-download", "", true, "use Glance web-download image import method")
 	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
+	viper.BindPFlag("yes", RootCmd.PersistentFlags().Lookup("yes"))
+	viper.BindPFlag("no", RootCmd.PersistentFlags().Lookup("no"))
 	viper.BindPFlag("to-auth-url", RootCmd.PersistentFlags().Lookup("to-auth-url"))
 	viper.BindPFlag("to-region", RootCmd.PersistentFlags().Lookup("to-region"))
 	viper.BindPFlag("to-domain", RootCmd.PersistentFlags().Lookup("to-domain"))
@@ -134,6 +142,11 @@ func parseTimeoutArg(arg string, dst *float64, errors *[]error) {
 
 func parseTimeoutArgs() error {
 	var errors []error
+	yes = viper.GetBool("yes")
+	no = viper.GetBool("no")
+	if yes && no {
+		errors = append(errors, fmt.Errorf("combining \"yes\" and \"no\" flags is not allowed"))
+	}
 	parseTimeoutArg("timeout-image", &waitForImageSec, &errors)
 	parseTimeoutArg("timeout-volume", &waitForVolumeSec, &errors)
 	parseTimeoutArg("timeout-server", &waitForServerSec, &errors)
