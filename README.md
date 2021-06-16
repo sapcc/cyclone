@@ -10,7 +10,7 @@ Here comes cyclone (**C**loud **Clone** or cclone) to help you with this task. I
 
 ## Help
 
-By default the tool uses a Glance V2 [web-download](https://docs.openstack.org/glance/latest/admin/interoperable-image-import.html#image-import-methods) method to clone images. This method allows Glance to download an image using a remote URL. Set the `--image-web-download` option to **false** to use the default download/upload method. In this case the whole image data will be streamed through cyclone.
+By default Glance image data will be streamed through cyclone and the traffic will be consumed on the execution side. To enable the Glance V2 [web-download](https://docs.openstack.org/glance/latest/admin/interoperable-image-import.html#image-import-methods) method, set the `--image-web-download` flag. This method allows Glance to download an image using a remote URL. It is not recommended to use **web-download** method for images bigger than 1-10GiB, since Glance service will try to download the image to its intermediate local storage and may cause insufficient disk space error.
 
 A remote URL can be generated using a Swift [Temporary URL](https://docs.openstack.org/swift/latest/api/temporary_url_middleware.html).
 
@@ -45,7 +45,7 @@ Available Commands:
 Flags:
   -d, --debug                                     print out request and response objects
   -h, --help                                      help for cyclone
-      --image-web-download                        use Glance web-download image import method (default true)
+      --image-web-download                        use Glance web-download image import method
   -n, --no                                        assume "no" to all questions
       --timeout-backup string                     timeout to wait for a backup status (default "24h")
       --timeout-image string                      timeout to wait for an image status (default "24h")
@@ -79,11 +79,9 @@ $ cyclone image 77c125f1-2c7b-473e-a56b-28a9a0bc4787 --to-region eu-de-2 --to-pr
 
 ### Clone an image between regions using download/upload method
 
-Pay attention that the image data will be streamed through cyclone. It is recommended to use this method, when cyclone is executed directly on the VM, located in the source or destination region.
-
 ```sh
 $ source openrc-of-the-source-project
-$ cyclone image 77c125f1-2c7b-473e-a56b-28a9a0bc4787 --to-region eu-de-2 --to-project destination-project-name --to-image-name image-from-source-project-name --image-web-download=false
+$ cyclone image 77c125f1-2c7b-473e-a56b-28a9a0bc4787 --to-region eu-de-2 --to-project destination-project-name --to-image-name image-from-source-project-name
 ```
 
 ### Clone a bootable volume between regions

@@ -102,7 +102,7 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("timeout-server", "", "24h", "timeout to wait for a server status")
 	RootCmd.PersistentFlags().StringP("timeout-snapshot", "", "24h", "timeout to wait for a snapshot status")
 	RootCmd.PersistentFlags().StringP("timeout-backup", "", "24h", "timeout to wait for a backup status")
-	RootCmd.PersistentFlags().BoolP("image-web-download", "", true, "use Glance web-download image import method")
+	RootCmd.PersistentFlags().BoolP("image-web-download", "", false, "use Glance web-download image import method")
 	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 	viper.BindPFlag("yes", RootCmd.PersistentFlags().Lookup("yes"))
 	viper.BindPFlag("no", RootCmd.PersistentFlags().Lookup("no"))
