@@ -366,8 +366,8 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 		Networks: []servers.Network{
 			network,
 		},
+		Metadata: srcServer.Metadata,
 		// TODO: security groups
-		// TODO: metadata
 		// TODO: userdata
 		// TODO: tags
 		// TODO: scheduler hints
