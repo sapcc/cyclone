@@ -565,7 +565,6 @@ func checkServerStatus(srcServerClient *gophercloud.ServiceClient, srcServer *se
 		if !yes {
 			fmt.Printf("It is recommended to shut down the VM before the migration\n")
 			fmt.Printf("Do you want to shut down the VM? ([y]/n): ")
-			var ans string
 			_, err := fmt.Scan(&ans)
 			if err != nil {
 				return err
