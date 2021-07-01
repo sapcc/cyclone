@@ -670,6 +670,10 @@ var ServerCmd = &cobra.Command{
 		toVolumeType := viper.GetString("to-volume-type")
 		cloneViaSnapshot := viper.GetBool("clone-via-snapshot")
 		forceBootable := viper.GetUint("bootable-volume")
+		tries := int(viper.GetUint("tries"))
+		if tries < 0 {
+			return fmt.Errorf("tries cannot be negative")
+		}
 		forceLocal := viper.GetBool("local-disk")
 		deleteVolOnTerm := viper.GetBool("delete-volume-on-termination")
 		bootableDiskOnly := viper.GetBool("bootable-disk-only")
@@ -935,16 +939,11 @@ var ServerCmd = &cobra.Command{
 		}
 
 		createOpts := createServerOpts(srcServer, toName, flavor.ID, toKeyName, toAZ, network, dstVolumes, dstImage, bootableVolume, deleteVolOnTerm)
-		dstServer := new(serverExtended)
-		err = servers.Create(dstServerClient, createOpts).ExtractInto(dstServer)
-		if err != nil {
-			return fmt.Errorf("failed to create a destination server: %s", err)
-		}
-
-		dstServer, err = waitForServer(dstServerClient, dstServer.ID, waitForServerSec)
+		var dstServer *serverExtended
+		dstServer, err = createServerRetry(dstServerClient, createOpts, tries)
 		if err != nil {
 			// nil an error and don't delete the port
-			retErr := fmt.Errorf("failed to wait for %q target server: %s", dstServer.ID, err)
+			retErr := err
 			err = nil
 			return retErr
 		}
@@ -967,6 +966,37 @@ var ServerCmd = &cobra.Command{
 	},
 }
 
+func createServerRetry(dstServerClient *gophercloud.ServiceClient, createOpts servers.CreateOptsBuilder, tries int) (*serverExtended, error) {
+	for i := 0; i <= tries; i++ {
+		if i > 0 {
+			log.Printf("Creating a new server, try %d of %d", i, tries)
+		}
+		dstServer := new(serverExtended)
+		err := servers.Create(dstServerClient, createOpts).ExtractInto(dstServer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create a destination server: %s", err)
+		}
+		dstServerID := dstServer.ID
+
+		dstServer, err = waitForServer(dstServerClient, dstServerID, waitForServerSec)
+		if err != nil {
+			if i == tries {
+				// no further tries, fail right away
+				return nil, fmt.Errorf("failed to wait for %q target server: %s", dstServerID, err)
+			}
+			// nil an error and don't delete the port
+			log.Printf("Failed to wait for %q target server: %s", dstServerID, err)
+			log.Printf("Deleting the failed %q server", dstServerID)
+			if err := servers.Delete(dstServerClient, dstServerID).ExtractErr(); err != nil {
+				log.Printf("Error deleting the failed %q server: %s", dstServerID, err)
+			}
+			continue
+		}
+		return dstServer, nil
+	}
+	return nil, fmt.Errorf("failed to create a server after %d tries", tries)
+}
+
 func init() {
 	initServerCmdFlags()
 	RootCmd.AddCommand(ServerCmd)
@@ -984,6 +1014,7 @@ func initServerCmdFlags() {
 	ServerCmd.Flags().StringP("disk-format", "", "vmdk", "image disk format, when source volume doesn't have this info")
 	ServerCmd.Flags().BoolP("clone-via-snapshot", "", false, "clone a volume, attached to a server, via snapshot")
 	ServerCmd.Flags().UintP("bootable-volume", "b", 0, "force a VM with a local storage to be cloned to a VM with a bootable volume with a size specified in GiB")
+	ServerCmd.Flags().UintP("tries", "", 0, "amount of tries while creating a new server (in case, when Nova creates a server in error state)")
 	ServerCmd.Flags().BoolP("local-disk", "", false, "convert the attached bootable volume to a local disk")
 	ServerCmd.Flags().BoolP("delete-volume-on-termination", "", true, "specifies whether or not to delete the attached bootable volume when the server is terminated")
 	ServerCmd.Flags().BoolP("bootable-disk-only", "", false, "clone only the bootable disk/volume, skipping the rest attached volumes")
