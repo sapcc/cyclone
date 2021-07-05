@@ -48,6 +48,10 @@ var serverNormalStates = []string{
 	"stopped",
 }
 
+var serverErrorStates = []string{
+	"error",
+}
+
 var serverNormalStatuses = []string{
 	"ACTIVE",
 	"SHUTOFF",
@@ -60,6 +64,10 @@ var portNormalStatuses = []string{
 
 var serverWaitStatuses = []string{
 	"BUILD",
+}
+
+var serverErrorStatuses = []string{
+	"ERROR",
 }
 
 func createServerSpeed(server *serverExtended) {
@@ -78,6 +86,10 @@ func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (
 		}
 		// this is needed, because if new data contains a "null", the struct will contain an old data, e.g. `"OS-EXT-STS:task_state": null`
 		server = tmp
+
+		if isSliceContainsStr(serverErrorStates, server.VmState) || isSliceContainsStr(serverErrorStatuses, server.Status) {
+			return false, fmt.Errorf("server status: %s (%s)", server.Status, joinSkipEmpty(", ", server.VmState, server.TaskState))
+		}
 
 		if !isSliceContainsStr(serverNormalStates, server.VmState) || server.TaskState != "" {
 			log.Printf("Server status: %s (%s)", server.Status, joinSkipEmpty(", ", server.VmState, server.TaskState))
