@@ -61,7 +61,10 @@ func prepareSwiftConfig(srcObjectClient, dstObjectClient *gophercloud.ServiceCli
 	}
 
 	// TODO: fail, when target file exists
-	rx, _ := regexp.Compile(fmt.Sprintf("%s.*", filepath.Base(prefix)))
+	rx, err := regexp.Compile(fmt.Sprintf("%s.*", filepath.Base(prefix)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile a regexp: %v", err)
+	}
 	config := &objects.Configuration{
 		Jobs: []*objects.Job{
 			{
@@ -167,6 +170,9 @@ func cloneBackup(srcVolumeClient, srcObjectClient, dstVolumeClient, dstObjectCli
 
 	if backupRecord.ObjectCount == nil {
 		return nil, fmt.Errorf("backup record contains nil object_count")
+	}
+	if backupRecord.Container == nil {
+		return nil, fmt.Errorf("backup record contains nil container")
 	}
 
 	if toContainerName == "" {
