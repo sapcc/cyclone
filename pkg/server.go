@@ -980,6 +980,8 @@ var ServerCmd = &cobra.Command{
 
 func createServerRetry(dstServerClient *gophercloud.ServiceClient, createOpts servers.CreateOptsBuilder, tries int) (*serverExtended, error) {
 	for i := 0; i <= tries; i++ {
+		// server creation may take a while, reauth in advance
+		reauthClient(dstServerClient, "createServerRetry")
 		if i > 0 {
 			log.Printf("Creating a new server, try %d of %d", i, tries)
 		}
