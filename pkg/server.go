@@ -1028,7 +1028,7 @@ func initServerCmdFlags() {
 	ServerCmd.Flags().UintP("bootable-volume", "b", 0, "force a VM with a local storage to be cloned to a VM with a bootable volume with a size specified in GiB")
 	ServerCmd.Flags().UintP("tries", "", 0, "amount of tries while creating a new server (in case, when Nova creates a server in error state)")
 	ServerCmd.Flags().BoolP("local-disk", "", false, "convert the attached bootable volume to a local disk")
-	ServerCmd.Flags().BoolP("delete-volume-on-termination", "", true, "specifies whether or not to delete the attached bootable volume when the server is terminated")
+	ServerCmd.Flags().BoolP("delete-volume-on-termination", "", false, "specifies whether or not to delete the attached bootable volume when the server is terminated")
 	ServerCmd.Flags().BoolP("bootable-disk-only", "", false, "clone only the bootable disk/volume, skipping the rest attached volumes")
 	ServerCmd.Flags().BoolP("skip-server-creation", "", false, "skip server creation, clone only server's artifacts: image and volumes")
 }
