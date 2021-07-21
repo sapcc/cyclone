@@ -75,6 +75,23 @@ func createServerSpeed(server *serverExtended) {
 	log.Printf("Time to create a server: %s", t)
 }
 
+func waitForServerDeleted(client *gophercloud.ServiceClient, id string, secs float64) error {
+	return NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
+		_, err := servers.Get(client, id).Extract()
+		if err != nil {
+			if _, ok := err.(gophercloud.ErrDefault404); ok {
+				// server was removed
+				return true, nil
+			}
+			// fail on non 404 error
+			return false, err
+		}
+
+		// continue status checks
+		return false, nil
+	})
+}
+
 func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (*serverExtended, error) {
 	var server serverExtended
 	var err error
@@ -1003,6 +1020,9 @@ func createServerRetry(dstServerClient *gophercloud.ServiceClient, createOpts se
 			log.Printf("Deleting the failed %q server", dstServerID)
 			if err := servers.Delete(dstServerClient, dstServerID).ExtractErr(); err != nil {
 				log.Printf("Error deleting the failed %q server: %s", dstServerID, err)
+			}
+			if err := waitForServerDeleted(dstServerClient, dstServerID, waitForServerSec); err != nil {
+				log.Printf("Error waiting for %q server to be deleted: %s", dstServerID, err)
 			}
 			continue
 		}
