@@ -299,11 +299,17 @@ func getAuthProjectID(client *gophercloud.ProviderClient) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if v == nil {
+			return "", nil
+		}
 		return v.ID, nil
 	case tokens.GetResult:
 		v, err := r.ExtractProject()
 		if err != nil {
 			return "", err
+		}
+		if v == nil {
+			return "", nil
 		}
 		return v.ID, nil
 	default:
