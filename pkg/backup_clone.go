@@ -51,22 +51,14 @@ func prepareSwiftConfig(srcObjectClient, dstObjectClient *gophercloud.ServiceCli
 		Account:          srcSchwift,
 		Container:        srcContainer,
 		ContainerName:    secrets.FromEnv(srcContainerName),
-		ObjectNamePrefix: secrets.FromEnv(filepath.Dir(prefix)),
-	}
-	errs := source.Validate("source")
-	if len(errs) > 0 {
-		return nil, fmt.Errorf("failed to validate source: %v", errs)
+		ObjectNamePrefix: secrets.FromEnv(filepath.Dir(prefix) + "/"),
 	}
 
 	target := objects.SwiftLocation{
 		Account:          dstSchwift,
 		Container:        dstContainer,
 		ContainerName:    secrets.FromEnv(dstContainerName),
-		ObjectNamePrefix: secrets.FromEnv(filepath.Dir(prefix)),
-	}
-	errs = target.Validate("target")
-	if len(errs) > 0 {
-		return nil, fmt.Errorf("failed to validate target: %v", errs)
+		ObjectNamePrefix: secrets.FromEnv(filepath.Dir(prefix) + "/"),
 	}
 
 	// TODO: fail, when target file exists
