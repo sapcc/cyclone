@@ -279,6 +279,7 @@ func migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClie
 		MinRAM:          srcImg.MinRAMMegabytes,
 		Visibility:      &visibility,
 		Properties:      expandImageProperties(srcImg.Properties),
+		Tags:            srcImg.Tags,
 	}
 
 	dstImg, err := images.Create(dstImageClient, createOpts).Extract()

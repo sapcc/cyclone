@@ -388,6 +388,10 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 		serverName = srcServer.Name
 	}
 	var createOpts servers.CreateOptsBuilder
+	var tags []string
+	if srcServer.Tags != nil {
+		tags = *srcServer.Tags
+	}
 	createOpts = &servers.CreateOpts{
 		Name:             serverName,
 		FlavorRef:        flavorID,
@@ -396,9 +400,9 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 			network,
 		},
 		Metadata: srcServer.Metadata,
+		Tags:     tags,
 		// TODO: security groups
 		// TODO: userdata
-		// TODO: tags
 		// TODO: scheduler hints
 	}
 
