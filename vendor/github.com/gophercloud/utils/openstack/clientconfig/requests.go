@@ -1,8 +1,10 @@
 package clientconfig
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 
@@ -122,7 +124,7 @@ func LoadCloudsYAML() (map[string]Cloud, error) {
 	var clouds Clouds
 	err = yaml.Unmarshal(content, &clouds)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
 	}
 
 	return clouds.Clouds, nil
@@ -138,7 +140,7 @@ func LoadSecureCloudsYAML() (map[string]Cloud, error) {
 
 	_, content, err := FindAndReadSecureCloudsYAML()
 	if err != nil {
-		if err.Error() == "no secure.yaml file found" {
+		if errors.Is(err, os.ErrNotExist) {
 			// secure.yaml is optional so just ignore read error
 			return secureClouds.Clouds, nil
 		}
@@ -147,7 +149,7 @@ func LoadSecureCloudsYAML() (map[string]Cloud, error) {
 
 	err = yaml.Unmarshal(content, &secureClouds)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
 	}
 
 	return secureClouds.Clouds, nil
@@ -163,7 +165,7 @@ func LoadPublicCloudsYAML() (map[string]Cloud, error) {
 
 	_, content, err := FindAndReadPublicCloudsYAML()
 	if err != nil {
-		if err.Error() == "no clouds-public.yaml file found" {
+		if errors.Is(err, os.ErrNotExist) {
 			// clouds-public.yaml is optional so just ignore read error
 			return publicClouds.Clouds, nil
 		}
@@ -173,7 +175,7 @@ func LoadPublicCloudsYAML() (map[string]Cloud, error) {
 
 	err = yaml.Unmarshal(content, &publicClouds)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal yaml: %v", err)
+		return nil, fmt.Errorf("failed to unmarshal yaml: %w", err)
 	}
 
 	return publicClouds.Clouds, nil
@@ -181,6 +183,10 @@ func LoadPublicCloudsYAML() (map[string]Cloud, error) {
 
 // GetCloudFromYAML will return a cloud entry from a clouds.yaml file.
 func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
+	if opts == nil {
+		opts = new(ClientOpts)
+	}
+
 	if opts.YAMLOpts == nil {
 		opts.YAMLOpts = new(YAMLOpts)
 	}
@@ -189,25 +195,24 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 
 	clouds, err := yamlOpts.LoadCloudsYAML()
 	if err != nil {
-		return nil, fmt.Errorf("unable to load clouds.yaml: %s", err)
+		return nil, fmt.Errorf("unable to load clouds.yaml: %w", err)
 	}
 
 	// Determine which cloud to use.
 	// First see if a cloud name was explicitly set in opts.
 	var cloudName string
-	if opts != nil && opts.Cloud != "" {
+	if opts.Cloud != "" {
 		cloudName = opts.Cloud
-	}
+	} else {
+		// If not, see if a cloud name was specified as an environment variable.
+		envPrefix := "OS_"
+		if opts.EnvPrefix != "" {
+			envPrefix = opts.EnvPrefix
+		}
 
-	// Next see if a cloud name was specified as an environment variable.
-	// This is supposed to override an explicit opts setting.
-	envPrefix := "OS_"
-	if opts.EnvPrefix != "" {
-		envPrefix = opts.EnvPrefix
-	}
-
-	if v := env.Getenv(envPrefix + "CLOUD"); v != "" {
-		cloudName = v
+		if v := env.Getenv(envPrefix + "CLOUD"); v != "" {
+			cloudName = v
+		}
 	}
 
 	var cloud *Cloud
@@ -236,7 +241,7 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 		if profileName != "" {
 			publicClouds, err := yamlOpts.LoadPublicCloudsYAML()
 			if err != nil {
-				return nil, fmt.Errorf("unable to load clouds-public.yaml: %s", err)
+				return nil, fmt.Errorf("unable to load clouds-public.yaml: %w", err)
 			}
 
 			publicCloud, ok := publicClouds[profileName]
@@ -255,7 +260,7 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 	// can be found or merged.
 	secureClouds, err := yamlOpts.LoadSecureCloudsYAML()
 	if err != nil {
-		return nil, fmt.Errorf("unable to load secure.yaml: %s", err)
+		return nil, fmt.Errorf("unable to load secure.yaml: %w", err)
 	}
 
 	if secureClouds != nil {
@@ -349,16 +354,17 @@ func AuthOptions(opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 	var cloudName string
 	if opts.Cloud != "" {
 		cloudName = opts.Cloud
-	}
+	} else {
+		// If not, see if a cloud name was specified as an environment
+		// variable.
+		envPrefix := "OS_"
+		if opts.EnvPrefix != "" {
+			envPrefix = opts.EnvPrefix
+		}
 
-	// Next see if a cloud name was specified as an environment variable.
-	envPrefix := "OS_"
-	if opts.EnvPrefix != "" {
-		envPrefix = opts.EnvPrefix
-	}
-
-	if v := env.Getenv(envPrefix + "CLOUD"); v != "" {
-		cloudName = v
+		if v := env.Getenv(envPrefix + "CLOUD"); v != "" {
+			cloudName = v
+		}
 	}
 
 	// If a cloud name was determined, try to look it up in clouds.yaml.
@@ -373,7 +379,7 @@ func AuthOptions(opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 
 	// If cloud.AuthInfo is nil, then no cloud was specified.
 	if cloud.AuthInfo == nil {
-		// If opts.Auth is not nil, then try using the auth settings from it.
+		// If opts.AuthInfo is not nil, then try using the auth settings from it.
 		if opts.AuthInfo != nil {
 			cloud.AuthInfo = opts.AuthInfo
 		}
@@ -510,6 +516,7 @@ func v2auth(cloud *Cloud, opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 		Password:         cloud.AuthInfo.Password,
 		TenantID:         cloud.AuthInfo.ProjectID,
 		TenantName:       cloud.AuthInfo.ProjectName,
+		AllowReauth:      cloud.AuthInfo.AllowReauth,
 	}
 
 	return ao, nil
@@ -637,6 +644,12 @@ func v3auth(cloud *Cloud, opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 		}
 	}
 
+	if cloud.AuthInfo.SystemScope == "" {
+		if v := env.Getenv(envPrefix + "SYSTEM_SCOPE"); v != "" {
+			cloud.AuthInfo.SystemScope = v
+		}
+	}
+
 	// Build a scope and try to do it correctly.
 	// https://github.com/openstack/os-client-config/blob/master/os_client_config/config.py#L595
 	scope := new(gophercloud.AuthScope)
@@ -652,6 +665,9 @@ func v3auth(cloud *Cloud, opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 				scope.DomainID = cloud.AuthInfo.DomainID
 			} else if cloud.AuthInfo.DomainName != "" {
 				scope.DomainName = cloud.AuthInfo.DomainName
+			}
+			if cloud.AuthInfo.SystemScope != "" {
+				scope.System = true
 			}
 		} else {
 			// If Domain* is set, but UserDomain* or ProjectDomain* aren't,
@@ -682,6 +698,7 @@ func v3auth(cloud *Cloud, opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 		ApplicationCredentialID:     cloud.AuthInfo.ApplicationCredentialID,
 		ApplicationCredentialName:   cloud.AuthInfo.ApplicationCredentialName,
 		ApplicationCredentialSecret: cloud.AuthInfo.ApplicationCredentialSecret,
+		AllowReauth:                 cloud.AuthInfo.AllowReauth,
 	}
 
 	// If an auth_type of "token" was specified, then make sure
@@ -815,11 +832,9 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 		pClient.HTTPClient = *opts.HTTPClient
 	} else {
 		// Otherwise create a new HTTP client with the generated TLS config.
-		pClient.HTTPClient = http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: tlsConfig,
-			},
-		}
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.TLSClientConfig = tlsConfig
+		pClient.HTTPClient = http.Client{Transport: transport}
 	}
 
 	err = openstack.Authenticate(pClient, *ao)
@@ -899,6 +914,8 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 		}
 	case "image":
 		return openstack.NewImageServiceV2(pClient, eo)
+	case "key-manager":
+		return openstack.NewKeyManagerV1(pClient, eo)
 	case "load-balancer":
 		return openstack.NewLoadBalancerV2(pClient, eo)
 	case "network":
@@ -907,10 +924,12 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 		return openstack.NewObjectStorageV1(pClient, eo)
 	case "orchestration":
 		return openstack.NewOrchestrationV1(pClient, eo)
+	case "placement":
+		return openstack.NewPlacementV1(pClient, eo)
 	case "sharev2":
 		return openstack.NewSharedFileSystemV2(pClient, eo)
 	case "volume":
-		volumeVersion := "2"
+		volumeVersion := "3"
 		if v := cloud.VolumeAPIVersion; v != "" {
 			volumeVersion = v
 		}

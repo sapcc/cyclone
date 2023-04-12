@@ -3,6 +3,7 @@ package pkg
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/gophercloud/utils/client"
 	"github.com/gophercloud/utils/openstack/clientconfig"
-	"github.com/howeyc/gopass"
+	"golang.org/x/term"
 )
 
 var (
@@ -92,7 +93,7 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 	if ao.ApplicationCredentialSecret == "" && ao.TokenID == "" &&
 		ao.Username != "" && ao.Password == "" {
 		fmt.Printf("Enter the %s password: ", loc.Origin)
-		v, err := gopass.GetPasswd()
+		v, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			return nil, err
 		}

@@ -19,17 +19,20 @@
 
 package actors
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
-//Actor is something that can be run in its own goroutine.
-//This package contains various structs that satisfy this interface,
-//and which make up the bulk of the behavior of swift-http-import.
+// Actor is something that can be run in its own goroutine.
+// This package contains various structs that satisfy this interface,
+// and which make up the bulk of the behavior of swift-http-import.
 type Actor interface {
-	Run()
+	Run(ctx context.Context)
 }
 
-//Start runs the given Actor in its own goroutine.
-func Start(a Actor, wgs ...*sync.WaitGroup) {
+// Start runs the given Actor in its own goroutine.
+func Start(ctx context.Context, a Actor, wgs ...*sync.WaitGroup) {
 	for _, wg := range wgs {
 		wg.Add(1)
 	}
@@ -39,6 +42,6 @@ func Start(a Actor, wgs ...*sync.WaitGroup) {
 				wg.Done()
 			}
 		}()
-		a.Run()
+		a.Run(ctx)
 	}()
 }

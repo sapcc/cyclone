@@ -24,7 +24,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"regexp"
 	"strconv"
 	"time"
@@ -32,34 +32,36 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
-//AgeSpec is a timestamp that is deserialized from a duration in the format
-//"<value> <unit>", e.g. "4 days" or "2 weeks".
+// AgeSpec is a timestamp that is deserialized from a duration in the format
+// "<value> <unit>", e.g. "4 days" or "2 weeks".
 type AgeSpec time.Duration
 
-var ageSpecRx = regexp.MustCompile(`^\s*([0-9]+)\s*(\w+)\s*$`)
-var ageSpecUnits = map[string]time.Duration{
-	"seconds": time.Second,
-	"second":  time.Second,
-	"s":       time.Second,
+var (
+	ageSpecRx    = regexp.MustCompile(`^\s*([0-9]+)\s*(\w+)\s*$`)
+	ageSpecUnits = map[string]time.Duration{
+		"seconds": time.Second,
+		"second":  time.Second,
+		"s":       time.Second,
 
-	"minutes": time.Minute,
-	"minute":  time.Minute,
-	"m":       time.Minute,
+		"minutes": time.Minute,
+		"minute":  time.Minute,
+		"m":       time.Minute,
 
-	"hours": time.Hour,
-	"hour":  time.Hour,
-	"h":     time.Hour,
+		"hours": time.Hour,
+		"hour":  time.Hour,
+		"h":     time.Hour,
 
-	"days": 24 * time.Hour,
-	"day":  24 * time.Hour,
-	"d":    24 * time.Hour,
+		"days": 24 * time.Hour,
+		"day":  24 * time.Hour,
+		"d":    24 * time.Hour,
 
-	"weeks": 24 * 7 * time.Hour,
-	"week":  24 * 7 * time.Hour,
-	"w":     24 * 7 * time.Hour,
-}
+		"weeks": 24 * 7 * time.Hour,
+		"week":  24 * 7 * time.Hour,
+		"w":     24 * 7 * time.Hour,
+	}
+)
 
-//UnmarshalYAML implements the yaml.Unmarshaler interface.
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (a *AgeSpec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var input string
 	err := unmarshal(&input)
@@ -88,15 +90,15 @@ func (a *AgeSpec) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 var gzipMagicNumber = []byte{0x1f, 0x8b, 0x08}
 
-//decompressGZipArchive decompresses and returns the contents of a slice of
-//gzip compressed bytes.
+// decompressGZipArchive decompresses and returns the contents of a slice of
+// gzip compressed bytes.
 func decompressGZipArchive(buf []byte) ([]byte, error) {
 	reader, err := gzip.NewReader(bytes.NewReader(buf))
 	if err != nil {
 		return nil, errors.New("error while decompressing GZip archive: " + err.Error())
 	}
 
-	decompBuf, err := ioutil.ReadAll(reader)
+	decompBuf, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errors.New("error while decompressing GZip archive: " + err.Error())
 	}
@@ -106,15 +108,15 @@ func decompressGZipArchive(buf []byte) ([]byte, error) {
 
 var xzMagicNumber = []byte{0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00}
 
-//decompressXZArchive decompresses and returns the contents of a slice of xz
-//compressed bytes.
+// decompressXZArchive decompresses and returns the contents of a slice of xz
+// compressed bytes.
 func decompressXZArchive(buf []byte) ([]byte, error) {
 	reader, err := xz.NewReader(bytes.NewReader(buf))
 	if err != nil {
 		return nil, errors.New("error while decompressing XZ archive: " + err.Error())
 	}
 
-	decompBuf, err := ioutil.ReadAll(reader)
+	decompBuf, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, errors.New("error while decompressing XZ archive: " + err.Error())
 	}

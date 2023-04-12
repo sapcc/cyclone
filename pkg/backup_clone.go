@@ -17,6 +17,7 @@ import (
 	backups_utils "github.com/gophercloud/utils/openstack/blockstorage/extensions/backups"
 	"github.com/majewsky/schwift/gopherschwift"
 	"github.com/sapcc/go-bits/logg"
+	"github.com/sapcc/go-bits/secrets"
 	"github.com/sapcc/swift-http-import/pkg/actors"
 	"github.com/sapcc/swift-http-import/pkg/objects"
 	"github.com/spf13/cobra"
@@ -49,15 +50,23 @@ func prepareSwiftConfig(srcObjectClient, dstObjectClient *gophercloud.ServiceCli
 	source := objects.SwiftLocation{
 		Account:          srcSchwift,
 		Container:        srcContainer,
-		ContainerName:    srcContainerName,
-		ObjectNamePrefix: filepath.Dir(prefix),
+		ContainerName:    secrets.FromEnv(srcContainerName),
+		ObjectNamePrefix: secrets.FromEnv(filepath.Dir(prefix)),
+	}
+	errs := source.Validate("source")
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("failed to validate source: %v", errs)
 	}
 
 	target := objects.SwiftLocation{
 		Account:          dstSchwift,
 		Container:        dstContainer,
-		ContainerName:    dstContainerName,
-		ObjectNamePrefix: filepath.Dir(prefix),
+		ContainerName:    secrets.FromEnv(dstContainerName),
+		ObjectNamePrefix: secrets.FromEnv(filepath.Dir(prefix)),
+	}
+	errs = target.Validate("target")
+	if len(errs) > 0 {
+		return nil, fmt.Errorf("failed to validate target: %v", errs)
 	}
 
 	// TODO: fail, when target file exists
@@ -92,19 +101,7 @@ func transferObjects(config *objects.Configuration) (int, actors.Stats) {
 		StartTime: startTime,
 	}
 	wgReport := &sync.WaitGroup{}
-	actors.Start(report, wgReport)
 
-	//do the work
-	runPipeline(config, reportChan)
-
-	//shutdown Report actor
-	close(reportChan)
-	wgReport.Wait()
-
-	return report.ExitCode, report.Stats()
-}
-
-func runPipeline(config *objects.Configuration, report chan<- actors.ReportEvent) {
 	//receive SIGINT/SIGTERM signals
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
@@ -118,32 +115,41 @@ func runPipeline(config *objects.Configuration, report chan<- actors.ReportEvent
 		cancelFunc()
 	}()
 
+	actors.Start(ctx, report, wgReport)
+
+	//do the work
+	runPipeline(ctx, config, reportChan)
+
+	//shutdown Report actor
+	close(reportChan)
+	wgReport.Wait()
+
+	return report.ExitCode, report.Stats()
+}
+
+func runPipeline(ctx context.Context, config *objects.Configuration, report chan<- actors.ReportEvent) {
 	//start the pipeline actors
 	var wg sync.WaitGroup
 	var wgTransfer sync.WaitGroup
 	queue1 := make(chan objects.File, 10)              //will be closed by scraper when it's done
 	queue2 := make(chan actors.FileInfoForCleaner, 10) //will be closed by us when all transferors are done
-
-	actors.Start(&actors.Scraper{
-		Context: ctx,
-		Jobs:    config.Jobs,
-		Output:  queue1,
-		Report:  report,
+	actors.Start(ctx, &actors.Scraper{
+		Jobs:   config.Jobs,
+		Output: queue1,
+		Report: report,
 	}, &wg)
 
 	for i := uint(0); i < config.WorkerCounts.Transfer; i++ {
-		actors.Start(&actors.Transferor{
-			Context: ctx,
-			Input:   queue1,
-			Output:  queue2,
-			Report:  report,
+		actors.Start(ctx, &actors.Transferor{
+			Input:  queue1,
+			Output: queue2,
+			Report: report,
 		}, &wg, &wgTransfer)
 	}
 
-	actors.Start(&actors.Cleaner{
-		Context: ctx,
-		Input:   queue2,
-		Report:  report,
+	actors.Start(ctx, &actors.Cleaner{
+		Input:  queue2,
+		Report: report,
 	}, &wg)
 
 	//wait for transfer phase to finish

@@ -25,25 +25,25 @@ import (
 
 	"github.com/majewsky/schwift"
 	"github.com/sapcc/go-bits/logg"
+
 	"github.com/sapcc/swift-http-import/pkg/objects"
 )
 
-//FileInfoForCleaner contains information about a transferred file for the Cleaner actor.
+// FileInfoForCleaner contains information about a transferred file for the Cleaner actor.
 type FileInfoForCleaner struct {
 	objects.File
 	Failed bool
 }
 
-//Cleaner is an actor that cleans up unknown objects on the target side (i.e.
-//those objects which do not exist on the source side).
+// Cleaner is an actor that cleans up unknown objects on the target side (i.e.
+// those objects which do not exist on the source side).
 type Cleaner struct {
-	Context context.Context
-	Input   <-chan FileInfoForCleaner
-	Report  chan<- ReportEvent
+	Input  <-chan FileInfoForCleaner
+	Report chan<- ReportEvent
 }
 
-//Run implements the Actor interface.
-func (c *Cleaner) Run() {
+// Run implements the Actor interface.
+func (c *Cleaner) Run(ctx context.Context) {
 	isJobFailed := make(map[*objects.Job]bool)
 	isFileTransferred := make(map[*objects.Job]map[string]bool) //string = object name incl. prefix (if any)
 
@@ -68,9 +68,20 @@ func (c *Cleaner) Run() {
 		}
 		m[info.File.TargetObject().Name()] = true
 	}
-	if c.Context.Err() != nil {
+	if ctx.Err() != nil {
 		logg.Info("skipping cleanup phase: interrupt was received")
 		return
+	}
+
+	//collect information about incomplete scrapes (this is not safe to do in the
+	//above loop because the scraper job might be writing the
+	//Job.IsScrapingIncomplete attribute concurrently; at this point the scraper
+	//is definitely done, so these attributes are safe to read without risking a
+	//data race)
+	for job := range isFileTransferred {
+		if job.IsScrapingIncomplete {
+			isJobFailed[job] = true
+		}
 	}
 	if len(isJobFailed) > 0 {
 		logg.Info(
@@ -80,7 +91,7 @@ func (c *Cleaner) Run() {
 
 	//perform cleanup if it is safe to do so
 	for job, transferred := range isFileTransferred {
-		if c.Context.Err() != nil {
+		if ctx.Err() != nil {
 			//interrupt received
 			return
 		}

@@ -20,16 +20,18 @@
 package actors
 
 import (
+	"context"
 	"strconv"
 	"time"
 
-	"github.com/cactus/go-statsd-client/v4/statsd"
+	"github.com/cactus/go-statsd-client/v5/statsd"
 	"github.com/sapcc/go-bits/logg"
+
 	"github.com/sapcc/swift-http-import/pkg/objects"
 )
 
-//ReportEvent counts either a directory that was scraped, or a file that was
-//found (and maybe transferred). It is consumed by the Report actor.
+// ReportEvent counts either a directory that was scraped, or a file that was
+// found (and maybe transferred). It is consumed by the Report actor.
 type ReportEvent struct {
 	IsJob      bool
 	JobSkipped bool
@@ -45,15 +47,15 @@ type ReportEvent struct {
 	CleanedUpObjectCount int64
 }
 
-//Report is an actor that counts scraped directories and transferred files.
-//It emits StatsD metrics (if desired), logs the final report, and decides
-//whether to exit with an error status.
+// Report is an actor that counts scraped directories and transferred files.
+// It emits StatsD metrics (if desired), logs the final report, and decides
+// whether to exit with an error status.
 //
-//Events are read from the `Input` channel until it is closed.
-//The `Done` channel can be closed to interrupt the actor.
-//If the `Statter` is not nil, statsd metrics will be emitted.
-//The `StartTime` is used to measure this run's duration at the end.
-//The `ExitCode` can be read after the actor is done.
+// Events are read from the `Input` channel until it is closed.
+// The `Done` channel can be closed to interrupt the actor.
+// If the `Statter` is not nil, statsd metrics will be emitted.
+// The `StartTime` is used to measure this run's duration at the end.
+// The `ExitCode` can be read after the actor is done.
 type Report struct {
 	Input     <-chan ReportEvent
 	Statsd    objects.StatsdConfiguration
@@ -62,7 +64,7 @@ type Report struct {
 	stats     Stats
 }
 
-//Stats contains the report statistics
+// Stats contains the report statistics
 type Stats struct {
 	DirectoriesScanned int64
 	DirectoriesFailed  int64
@@ -75,19 +77,22 @@ type Stats struct {
 	Duration           time.Duration
 }
 
-//Stats returns a copy of stats member.
+// Stats returns a copy of stats member.
 func (r *Report) Stats() Stats {
 	return r.stats
 }
 
-//Run implements the Actor interface.
-func (r *Report) Run() {
+// Run implements the Actor interface.
+func (r *Report) Run(ctx context.Context) {
 	var statter statsd.Statter
 
 	//initialize statsd client
 	if r.Statsd.HostName != "" {
 		var err error
-		statter, err = statsd.NewClient(r.Statsd.HostName+":"+strconv.Itoa(r.Statsd.Port), r.Statsd.Prefix)
+		statter, err = statsd.NewClientWithConfig(&statsd.ClientConfig{
+			Address: r.Statsd.HostName + ":" + strconv.Itoa(r.Statsd.Port),
+			Prefix:  r.Statsd.Prefix,
+		})
 		// handle any errors
 		if err != nil {
 			logg.Fatal(err.Error())
@@ -124,25 +129,25 @@ func (r *Report) Run() {
 	}
 
 	//send statistics
-	var gauge func(string, int64, float32) error
+	var gauge func(string, int64, float32, ...statsd.Tag) error
 	if statter != nil {
 		gauge = statter.Gauge
 	} else {
-		gauge = func(bucket string, value int64, rate float32) error { return nil }
+		gauge = func(bucket string, value int64, rate float32, tags ...statsd.Tag) error { return nil }
 	}
-	gauge("last_run.jobs_skipped", r.stats.JobsSkipped, 1.0)
-	gauge("last_run.dirs_scanned", r.stats.DirectoriesScanned, 1.0)
-	gauge("last_run.files_found", r.stats.FilesFound, 1.0)
-	gauge("last_run.files_transfered", r.stats.FilesTransferred, 1.0)
-	gauge("last_run.files_failed", r.stats.FilesFailed, 1.0)
-	gauge("last_run.files_cleaned_up", r.stats.FilesCleanedUp, 1.0)
-	gauge("last_run.bytes_transfered", r.stats.BytesTransferred, 1.0)
+	gauge("last_run.jobs_skipped", r.stats.JobsSkipped, 1.0)          //nolint:errcheck
+	gauge("last_run.dirs_scanned", r.stats.DirectoriesScanned, 1.0)   //nolint:errcheck
+	gauge("last_run.files_found", r.stats.FilesFound, 1.0)            //nolint:errcheck
+	gauge("last_run.files_transfered", r.stats.FilesTransferred, 1.0) //nolint:errcheck
+	gauge("last_run.files_failed", r.stats.FilesFailed, 1.0)          //nolint:errcheck
+	gauge("last_run.files_cleaned_up", r.stats.FilesCleanedUp, 1.0)   //nolint:errcheck
+	gauge("last_run.bytes_transfered", r.stats.BytesTransferred, 1.0) //nolint:errcheck
 	if r.stats.FilesFailed > 0 || r.stats.DirectoriesFailed > 0 {
-		gauge("last_run.success", 0, 1.0)
+		gauge("last_run.success", 0, 1.0) //nolint:errcheck
 		r.ExitCode = 1
 	} else {
-		gauge("last_run.success", 1, 1.0)
-		gauge("last_run.success_timestamp", time.Now().Unix(), 1.0)
+		gauge("last_run.success", 1, 1.0)                           //nolint:errcheck
+		gauge("last_run.success_timestamp", time.Now().Unix(), 1.0) //nolint:errcheck
 		r.ExitCode = 0
 	}
 
@@ -160,6 +165,6 @@ func (r *Report) Run() {
 	logg.Info("%d bytes transferred", r.stats.BytesTransferred)
 
 	r.stats.Duration = time.Since(r.StartTime)
-	gauge("last_run.duration_seconds", int64(r.stats.Duration.Seconds()), 1.0)
+	gauge("last_run.duration_seconds", int64(r.stats.Duration.Seconds()), 1.0) //nolint:errcheck
 	logg.Info("finished in %s", r.stats.Duration.String())
 }

@@ -522,7 +522,7 @@ func checKeyPair(client *gophercloud.ServiceClient, keyName string) error {
 		return nil
 	}
 
-	return keypairs.List(client).EachPage(func(page pagination.Page) (bool, error) {
+	return keypairs.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
 		keyPairs, err := keypairs.ExtractKeyPairs(page)
 		if err != nil {
 			return false, err

@@ -21,24 +21,22 @@ package schwift
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
-//RequestOptions is used to pass additional headers and values to a request.
+// RequestOptions is used to pass additional headers and values to a request.
 //
-//When preparing a RequestOptions instance with additional headers, the
-//preferred way is to create an AccountHeaders, ContainerHeaders and
-//ObjectHeaders instance and use the type-safe API on these types. Then use the
-//ToOpts() method on that instance. For example:
+// When preparing a RequestOptions instance with additional headers, the
+// preferred way is to create an AccountHeaders, ContainerHeaders and
+// ObjectHeaders instance and use the type-safe API on these types. Then use the
+// ToOpts() method on that instance. For example:
 //
 //	hdr := NewObjectHeaders()
 //	hdr.ContentType().Set("image/png")
 //	hdr.Metadata().Set("color", "blue")
 //	opts := hdr.ToOpts() //type *schwift.RequestOptions
-//
 type RequestOptions struct {
 	Headers Headers
 	Values  url.Values
@@ -65,7 +63,7 @@ func cloneRequestOptions(orig *RequestOptions, additional Headers) *RequestOptio
 	return &result
 }
 
-//Request contains the parameters that can be set in a request to the Swift API.
+// Request contains the parameters that can be set in a request to the Swift API.
 type Request struct {
 	Method        string //"GET", "HEAD", "PUT", "POST" or "DELETE"
 	ContainerName string //empty for requests on accounts
@@ -80,7 +78,7 @@ type Request struct {
 	DrainResponseBody bool
 }
 
-//URL returns the full URL for this request.
+// URL returns the full URL for this request.
 func (r Request) URL(backend Backend, values url.Values) (string, error) {
 	uri, err := url.Parse(backend.EndpointURL())
 	if err != nil {
@@ -98,14 +96,16 @@ func (r Request) URL(backend Backend, values url.Values) (string, error) {
 		if strings.Contains(r.ContainerName, "/") {
 			return "", ErrMalformedContainerName
 		}
-		uri.Path += r.ContainerName + "/" + r.ObjectName
+		// Encode path so that double slashes are encoded and handled correct by backend server
+		uri.RawPath = uri.Path + r.ContainerName + "/" + url.PathEscape(r.ObjectName)
+		uri.Path = uri.Path + r.ContainerName + "/" + r.ObjectName
 	}
 
 	uri.RawQuery = values.Encode()
 	return uri.String(), nil
 }
 
-//Do executes this request on the given Backend.
+// Do executes this request on the given Backend.
 func (r Request) Do(backend Backend) (*http.Response, error) {
 	//build URL
 	var values url.Values
@@ -168,7 +168,7 @@ func (r Request) Do(backend Backend) (*http.Response, error) {
 }
 
 func drainResponseBody(r *http.Response) error {
-	_, err := io.Copy(ioutil.Discard, r.Body)
+	_, err := io.Copy(io.Discard, r.Body)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func drainResponseBody(r *http.Response) error {
 }
 
 func collectResponseBody(r *http.Response) ([]byte, error) {
-	buf, err := ioutil.ReadAll(r.Body)
+	buf, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}

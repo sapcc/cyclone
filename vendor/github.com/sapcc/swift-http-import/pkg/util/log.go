@@ -32,8 +32,8 @@ func init() {
 	}
 }
 
-//LogIndividualTransfers is set to the boolean value of the
-//LOG_TRANSFERS environment variable.
+// LogIndividualTransfers is set to the boolean value of the
+// LOG_TRANSFERS environment variable.
 var LogIndividualTransfers = parseBool(os.Getenv("LOG_TRANSFERS"))
 
 func parseBool(str string) bool {

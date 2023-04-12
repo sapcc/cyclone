@@ -35,8 +35,8 @@ const (
 	maxRetryCount      = 3
 )
 
-//EnhancedGet is like http.Client.Get(), but recognizes if the HTTP server
-//understands range requests, and downloads the file in segments in that case.
+// EnhancedGet is like http.Client.Get(), but recognizes if the HTTP server
+// understands range requests, and downloads the file in segments in that case.
 func EnhancedGet(client *http.Client, uri string, requestHeaders http.Header, segmentBytes uint64) (*http.Response, error) {
 	d := downloader{
 		Client:         client,
@@ -94,12 +94,12 @@ func EnhancedGet(client *http.Client, uri string, requestHeaders http.Header, se
 	return resp, err
 }
 
-//downloader is an io.ReadCloser that downloads a file from a Source in
-//segments by using the HTTP request parameter "Range" [RFC 7233].
+// downloader is an io.ReadCloser that downloads a file from a Source in
+// segments by using the HTTP request parameter "Range" [RFC 7233].
 //
-//A downloader is usually constructed by DownloadFile() which probes the server
-//for Range support and otherwise falls back on downloading the entire file at
-//once.
+// A downloader is usually constructed by DownloadFile() which probes the server
+// for Range support and otherwise falls back on downloading the entire file at
+// once.
 type downloader struct {
 	//the original arguments to EnhancedGet()
 	Client         *http.Client
@@ -124,7 +124,7 @@ type parsedResponseHeaders struct {
 }
 
 func (d *downloader) buildRequest() (*http.Request, error) {
-	req, err := http.NewRequest("GET", d.URI, nil)
+	req, err := http.NewRequest(http.MethodGet, d.URI, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -160,12 +160,12 @@ func (d *downloader) getNextChunk() (*http.Response, *parsedResponseHeaders, err
 		d.Etag = etag
 	} else if d.Etag != etag {
 		resp.Body.Close()
-		return nil, nil, fmt.Errorf("Etag has changed mid-transfer: %q -> %q", d.Etag, etag)
+		return nil, nil, fmt.Errorf("value of Etag has changed mid-transfer: %q -> %q", d.Etag, etag)
 	}
 
 	//parse Content-Range header
 	var headers parsedResponseHeaders
-	if resp.StatusCode == 206 {
+	if resp.StatusCode == http.StatusPartialContent {
 		contentRange := resp.Header.Get("Content-Range")
 		start, stop, total, ok := parseContentRange(contentRange)
 		if !ok {
@@ -185,8 +185,8 @@ func (d *downloader) getNextChunk() (*http.Response, *parsedResponseHeaders, err
 	return resp, &headers, nil
 }
 
-//Matches values of Content-Range response header [RFC7233, section 4.2] for
-//successful range responses (i.e. HTTP status code 206, not 416).
+// Matches values of Content-Range response header [RFC7233, section 4.2] for
+// successful range responses (i.e. HTTP status code 206, not 416).
 var contentRangeRx = regexp.MustCompile(`^bytes ([0-9]+)-([0-9]+)/(\*|[0-9]+)$`)
 
 func parseContentRange(headerValue string) (start, stop, total int64, ok bool) {
@@ -214,7 +214,7 @@ func parseContentRange(headerValue string) (start, stop, total int64, ok bool) {
 	return start, stop, total, true
 }
 
-//Read implements the io.ReadCloser interface.
+// Read implements the io.ReadCloser interface.
 func (d *downloader) Read(buf []byte) (int, error) {
 	//if we don't have a response body, we're at EOF
 	if d.Reader == nil {
@@ -273,7 +273,7 @@ func (d *downloader) Read(buf []byte) (int, error) {
 	return bytesRead, nil
 }
 
-//Close implements the io.ReadCloser interface.
+// Close implements the io.ReadCloser interface.
 func (d *downloader) Close() error {
 	if d.Reader != nil {
 		return d.Reader.Close()
@@ -281,8 +281,8 @@ func (d *downloader) Close() error {
 	return nil
 }
 
-//This function is called when a read error is encountered, and decides whether
-//to retry or not.
+// This function is called when a read error is encountered, and decides whether
+// to retry or not.
 func (d *downloader) shouldRetry() bool {
 	//never restart transfer of the same file more than 10 times
 	d.TotalRetryCount++

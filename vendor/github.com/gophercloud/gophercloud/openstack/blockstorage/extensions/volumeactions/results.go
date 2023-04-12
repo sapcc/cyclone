@@ -209,3 +209,13 @@ func (r UploadImageResult) Extract() (VolumeImage, error) {
 type ForceDeleteResult struct {
 	gophercloud.ErrResult
 }
+
+// ChangeTypeResult contains the response body and error from an ChangeType request.
+type ChangeTypeResult struct {
+	gophercloud.ErrResult
+}
+
+// ReImageResult contains the response body and error from a ReImage request.
+type ReImageResult struct {
+	gophercloud.ErrResult
+}

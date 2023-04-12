@@ -22,29 +22,32 @@ package objects
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"time"
 
 	"github.com/majewsky/schwift"
 	"github.com/sapcc/go-bits/logg"
+
 	"github.com/sapcc/swift-http-import/pkg/util"
 )
 
-//File describes a single file which is mirrored as part of a Job.
+// File describes a single file which is mirrored as part of a Job.
 type File struct {
 	Job  *Job
 	Spec FileSpec
 }
 
-//FileSpec contains metadata for a File. The only required field is Path.
-//Sources that download some files early (during scraping) can pass the
-//downloaded contents and metadata in the remaining fields of the FileSpec to
-//avoid double download.
+// FileSpec contains metadata for a File. The only required field is Path.
+// Sources that download some files early (during scraping) can pass the
+// downloaded contents and metadata in the remaining fields of the FileSpec to
+// avoid double download.
 type FileSpec struct {
-	Path        string
-	IsDirectory bool
-	//only set for files in Swift sources (otherwise nil)
+	Path string
+	// DownloadPath is set for files whose path for downloading their contents is
+	// different from the Path variable which denotes their actual file path.
+	DownloadPath string
+	IsDirectory  bool
+	//only set for files in Swift and GitHub release sources (otherwise nil)
 	LastModified *time.Time
 	//only set for symlinks (refers to a path below the ObjectPrefix in the same container)
 	SymlinkTargetPath string
@@ -53,12 +56,12 @@ type FileSpec struct {
 	Headers  http.Header
 }
 
-//TargetObject returns the object corresponding to this file in the target container.
+// TargetObject returns the object corresponding to this file in the target container.
 func (f File) TargetObject() *schwift.Object {
 	return f.Job.Target.ObjectAtPath(f.Spec.Path)
 }
 
-//TransferResult is the return type for PerformTransfer().
+// TransferResult is the return type for PerformTransfer().
 type TransferResult uint
 
 const (
@@ -72,10 +75,10 @@ const (
 	TransferFailed
 )
 
-//PerformTransfer transfers this file from the source to the target.
-//It returns the TransferResult (which indicates if the transfer finished successfully)
-//and the number of bytes transferred.
-func (f File) PerformTransfer() (TransferResult, int64) {
+// PerformTransfer transfers this file from the source to the target.
+// It returns the TransferResult (which indicates if the transfer finished successfully)
+// and the number of bytes transferred.
+func (f File) PerformTransfer() (transferResult TransferResult, _ int64) {
 	object := f.TargetObject()
 
 	//check if this file needs transfer
@@ -154,7 +157,11 @@ func (f File) PerformTransfer() (TransferResult, int64) {
 		sourceState FileState
 	)
 	if f.Spec.Contents == nil {
-		body, sourceState, err = f.Job.Source.GetFile(f.Spec.Path, requestHeaders)
+		path := f.Spec.Path
+		if f.Spec.DownloadPath != "" {
+			path = f.Spec.DownloadPath
+		}
+		body, sourceState, err = f.Job.Source.GetFile(path, requestHeaders)
 	} else {
 		logg.Debug("using cached contents for %s", f.Spec.Path)
 		body, sourceState, err = f.Spec.toTransferFormat(requestHeaders)
@@ -253,11 +260,11 @@ func (s FileSpec) toTransferFormat(requestHeaders schwift.ObjectHeaders) (io.Rea
 		sourceState.SkipTransfer = targetMtime.Equal(sourceMtime)
 	}
 
-	return ioutil.NopCloser(bytes.NewReader(s.Contents)), sourceState, nil
+	return io.NopCloser(bytes.NewReader(s.Contents)), sourceState, nil
 }
 
-//StatusSwiftRateLimit is the non-standard HTTP status code used by Swift to
-//indicate Too Many Requests.
+// StatusSwiftRateLimit is the non-standard HTTP status code used by Swift to
+// indicate Too Many Requests.
 const StatusSwiftRateLimit = 498
 
 func (f File) uploadNormalObject(body io.Reader, hdr schwift.ObjectHeaders, cleanupOldSegments bool) (ok bool) {

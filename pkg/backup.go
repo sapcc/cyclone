@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"runtime"
 	"strconv"
@@ -159,7 +158,7 @@ func (c *chunk) process() {
 		<-c.limitChan
 	}()
 
-	myChunk, err := ioutil.ReadAll(io.LimitReader(c.reader, backupChunk))
+	myChunk, err := io.ReadAll(io.LimitReader(c.reader, backupChunk))
 	if err != nil {
 		if err != io.EOF {
 			c.errChan <- fmt.Errorf("failed to read file: %s", err)

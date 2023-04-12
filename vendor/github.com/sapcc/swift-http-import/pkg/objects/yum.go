@@ -28,13 +28,14 @@ import (
 
 	"github.com/majewsky/schwift"
 	"github.com/sapcc/go-bits/logg"
+
 	"github.com/sapcc/swift-http-import/pkg/util"
 )
 
-//YumSource is a URLSource containing a Yum repository. This type reuses the
-//Validate() and Connect() logic of URLSource, but adds a custom scraping
-//implementation that reads the Yum repository metadata instead of relying on
-//directory listings.
+// YumSource is a URLSource containing a Yum repository. This type reuses the
+// Validate() and Connect() logic of URLSource, but adds a custom scraping
+// implementation that reads the Yum repository metadata instead of relying on
+// directory listings.
 type YumSource struct {
 	//options from config file
 	URLString                string   `yaml:"url"`
@@ -49,7 +50,7 @@ type YumSource struct {
 	gpgKeyRing      *util.GPGKeyRing `yaml:"-"`
 }
 
-//Validate implements the Source interface.
+// Validate implements the Source interface.
 func (s *YumSource) Validate(name string) []error {
 	s.urlSource = &URLSource{
 		URLString:                s.URLString,
@@ -64,28 +65,24 @@ func (s *YumSource) Validate(name string) []error {
 	return s.urlSource.Validate(name)
 }
 
-//Connect implements the Source interface.
+// Connect implements the Source interface.
 func (s *YumSource) Connect(name string) error {
 	return s.urlSource.Connect(name)
 }
 
-//ListEntries implements the Source interface.
+// ListEntries implements the Source interface.
 func (s *YumSource) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesError) {
-	return nil, &ListEntriesError{
-		Location: s.urlSource.getURLForPath(directoryPath).String(),
-		Message:  "ListEntries is not implemented for YumSource",
-	}
+	return nil, ErrListEntriesNotSupported
 }
 
-//GetFile implements the Source interface.
-func (s *YumSource) GetFile(directoryPath string, requestHeaders schwift.ObjectHeaders) (body io.ReadCloser, sourceState FileState, err error) {
-	return s.urlSource.GetFile(directoryPath, requestHeaders)
+// GetFile implements the Source interface.
+func (s *YumSource) GetFile(path string, requestHeaders schwift.ObjectHeaders) (body io.ReadCloser, sourceState FileState, err error) {
+	return s.urlSource.GetFile(path, requestHeaders)
 }
 
-//ListAllFiles implements the Source interface.
-func (s *YumSource) ListAllFiles() ([]FileSpec, *ListEntriesError) {
+// ListAllFiles implements the Source interface.
+func (s *YumSource) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
 	cache := make(map[string]FileSpec)
-	var allFiles []string
 
 	repomdPath := "repodata/repomd.xml"
 	//parse repomd.xml to find paths of all other metadata files
@@ -99,43 +96,45 @@ func (s *YumSource) ListAllFiles() ([]FileSpec, *ListEntriesError) {
 	}
 	repomdBytes, repomdURL, lerr := s.downloadAndParseXML(repomdPath, &repomd, cache)
 	if lerr != nil {
-		return nil, lerr
+		return lerr
 	}
 
-	//verify repomd's GPG signature
-	if s.gpgVerification {
-		signaturePath := repomdPath + ".asc"
-		signatureBytes, signatureURI, lerr := s.urlSource.getFileContents(signaturePath, cache)
-		if lerr == nil {
-			err := util.VerifyDetachedGPGSignature(s.gpgKeyRing, repomdBytes, signatureBytes)
+	//we transfer the signature and it's key file (down below) regardless of
+	//whether GPG verification is enabled because some packages need it
+	signaturePath := repomdPath + ".asc"
+	signatureBytes, signatureURI, lerr := s.urlSource.getFileContents(signaturePath, cache)
+	if lerr == nil {
+		out <- getFileSpec(signaturePath, cache)
+		//verify repomd's GPG signature
+		if s.gpgVerification {
+			err := s.gpgKeyRing.VerifyDetachedGPGSignature(repomdBytes, signatureBytes)
 			if err != nil {
 				logg.Debug("could not verify GPG signature at %s for file %s", signatureURI, "-"+filepath.Base(repomdPath))
-				return nil, &ListEntriesError{
+				return &ListEntriesError{
 					Location: s.urlSource.getURLForPath("/").String(),
 					Message:  ErrMessageGPGVerificationFailed,
 					Inner:    err,
 				}
 			}
-			allFiles = append(allFiles, signaturePath)
-		} else {
-			if !strings.Contains(lerr.Message, "GET returned status 404") {
-				return nil, lerr
-			}
+			logg.Debug("successfully verified GPG signature at %s for file %s", signatureURI, "-"+filepath.Base(repomdPath))
 		}
-		logg.Debug("successfully verified GPG signature at %s for file %s", signatureURI, "-"+filepath.Base(repomdPath))
+	} else if !strings.Contains(lerr.Message, "GET returned status 404") {
+		//not all repos have signature files therefore we only return an err if
+		//not 404.
+		return lerr
 	}
 
 	//note metadata files for transfer
 	hrefsByType := make(map[string]string)
 	for _, entry := range repomd.Entries {
-		allFiles = append(allFiles, entry.Location.Href)
+		out <- getFileSpec(entry.Location.Href, cache)
 		hrefsByType[entry.Type] = entry.Location.Href
 	}
 
 	//parse primary.xml.gz to find paths of RPMs
 	href, exists := hrefsByType["primary"]
 	if !exists {
-		return nil, &ListEntriesError{
+		return &ListEntriesError{
 			Location: repomdURL,
 			Message:  "cannot find link to primary.xml.gz in repomd.xml",
 		}
@@ -150,11 +149,11 @@ func (s *YumSource) ListAllFiles() ([]FileSpec, *ListEntriesError) {
 	}
 	_, _, lerr = s.downloadAndParseXML(href, &primary, cache)
 	if lerr != nil {
-		return nil, lerr
+		return lerr
 	}
 	for _, pkg := range primary.Packages {
 		if s.handlesArchitecture(pkg.Architecture) {
-			allFiles = append(allFiles, pkg.Location.Href)
+			out <- getFileSpec(pkg.Location.Href, cache)
 		}
 	}
 
@@ -175,12 +174,12 @@ func (s *YumSource) ListAllFiles() ([]FileSpec, *ListEntriesError) {
 		}
 		_, _, lerr = s.downloadAndParseXML(href, &prestodelta, cache)
 		if lerr != nil {
-			return nil, lerr
+			return lerr
 		}
 		for _, pkg := range prestodelta.Packages {
 			if s.handlesArchitecture(pkg.Architecture) {
 				for _, d := range pkg.Deltas {
-					allFiles = append(allFiles, d.Href)
+					out <- getFileSpec(d.Href, cache)
 				}
 			}
 		}
@@ -192,34 +191,32 @@ func (s *YumSource) ListAllFiles() ([]FileSpec, *ListEntriesError) {
 	repomdKeyPath := repomdPath + ".key"
 	_, _, lerr = s.urlSource.getFileContents(repomdKeyPath, cache)
 	if lerr == nil {
-		allFiles = append(allFiles, repomdKeyPath)
-	} else {
-		if !strings.Contains(lerr.Message, "GET returned status 404") {
-			return nil, lerr
-		}
+		out <- getFileSpec(repomdKeyPath, cache)
+	} else if !strings.Contains(lerr.Message, "GET returned status 404") {
+		return lerr
 	}
-	allFiles = append(allFiles, repomdPath)
+	out <- getFileSpec(repomdPath, cache)
 
-	//for files that were already downloaded, pass the contents and HTTP headers
-	//into the transfer phase to avoid double download
-	//
-	//This also ensures that the transferred set of packages is consistent with
-	//the transferred repo metadata. If we were to download repomd.xml et al
-	//again during the transfer step, there is a chance that new metadata has
-	//been uploaded to the source in the meantime. In this case, we would be
-	//missing the packages referenced only in the new metadata.
-	result := make([]FileSpec, len(allFiles))
-	for idx, path := range allFiles {
-		var exists bool
-		result[idx], exists = cache[path]
-		if !exists {
-			result[idx] = FileSpec{Path: path}
-		}
-	}
-	return result, nil
+	return nil
 }
 
-//Helper function for YumSource.ListAllFiles().
+// getFileSpec returns a FileSpec for a given path.
+//
+// It checks the cache for a existing FileSpec for the given path to avoid
+// double download. For Debian/Yum, this also ensures that the transferred set
+// of packages is consistent with the transferred repo metadata. If we were to
+// download metadata file(s) again during the transfer step, there is a chance
+// that new metadata has been uploaded to the source in the meantime. In this
+// case, we would be missing the packages referenced only in the new metadata.
+func getFileSpec(path string, cache map[string]FileSpec) FileSpec {
+	f, exists := cache[path]
+	if !exists {
+		f = FileSpec{Path: path}
+	}
+	return f
+}
+
+// Helper function for YumSource.ListAllFiles().
 func (s *YumSource) handlesArchitecture(arch string) bool {
 	if len(s.Architectures) == 0 || arch == "" {
 		return true
@@ -232,7 +229,7 @@ func (s *YumSource) handlesArchitecture(arch string) bool {
 	return false
 }
 
-//Helper function for YumSource.ListAllFiles().
+// Helper function for YumSource.ListAllFiles().
 func (s *YumSource) downloadAndParseXML(path string, data interface{}, cache map[string]FileSpec) (contents []byte, uri string, e *ListEntriesError) {
 	buf, uri, lerr := s.urlSource.getFileContents(path, cache)
 	if lerr != nil {

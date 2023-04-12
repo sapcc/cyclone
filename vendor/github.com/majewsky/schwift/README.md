@@ -6,10 +6,6 @@ This is a Go client library for [OpenStack Swift](https://github.com/openstack/s
 frustrated with the inflexible API design of [`ncw/swift`](https://github.com/ncw/swift); see [near the
 bottom](#why-another-swift-client-library) for details.
 
-This library is currently in **beta**: It's already used by some projects, and I'm working towards a
-stable 1.0 version with API compatibility promises, but [a few things are still
-missing](https://github.com/majewsky/schwift/issues/1).
-
 ## Installation
 
 You can get this with `go get github.com/majewsky/schwift`. When using this in an application, vendoring is recommended.
@@ -53,14 +49,18 @@ account, err := gopherschwift.Wrap(client, nil)
 ```
 
 From this point, follow the [API documentation](https://godoc.org/github.com/majewsky/schwift) for what you can do with
-the `schwift.Account` object.
+the `schwift.Account` object. For example, to download an object's contents into a string:
+
+```go
+text, err := account.Container("foo").Object("bar.txt").Download(nil).AsString()
+```
 
 ## Why another Swift client library?
 
 The most popular Swift client library is [`ncw/swift`](https://github.com/ncw/swift). I have [used
 it](https://github.com/docker/distribution/pull/2441) [extensively](https://github.com/sapcc/swift-http-import) and my
 main gripe with it is that its API is mostly based on single functions. When your API is a function, you cannot easily
-add further arguments to it without breaking backwards compatiblity. Whenever someone wants to do something slightly
+add further arguments to it without breaking backwards compatibility. Whenever someone wants to do something slightly
 different, an entirely new function needs to be added. To witness, ncw/swift has five functions for listing objects,
 four functions for downloading objects, and three functions for uploading objects. (And that's without considering the
 separate API for large objects.) And still, when you try to do something that's not one of the 10 most common things,
@@ -70,9 +70,9 @@ missing something](https://github.com/ncw/swift/issues?utf8=%E2%9C%93&q=is%3Aiss
 
 Schwift improves on ncw/swift by:
 
-- allowing the user to set arbitary headers and URL parameters in every request method,
+- allowing the user to set arbitrary headers and URL parameters in every request method,
 - including a pointer to `RequestOpts` in every request method, which can later be extended with new members without
-  breaking backwards compatiblity, and
+  breaking backwards compatibility, and
 - providing a generic `Request.Do()` method as a last resort for users who need to do a request that absolutely cannot
   be made with the existing request methods.
 

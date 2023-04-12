@@ -19,7 +19,7 @@
 
 package objects
 
-//Directory describes a directory on the source side which can be scraped.
+// Directory describes a directory on the source side which can be scraped.
 type Directory struct {
 	Job  *Job
 	Path string

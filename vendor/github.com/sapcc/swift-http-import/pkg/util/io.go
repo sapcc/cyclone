@@ -21,13 +21,13 @@ package util
 
 import "io"
 
-//FullReader is an io.ReadCloser whose Read() implementation always fills the read
-//buffer as much as possible by calling Base.Read() repeatedly.
+// FullReader is an io.ReadCloser whose Read() implementation always fills the read
+// buffer as much as possible by calling Base.Read() repeatedly.
 type FullReader struct {
 	Base io.ReadCloser
 }
 
-//Read implements the io.Reader interface.
+// Read implements the io.Reader interface.
 func (r *FullReader) Read(buf []byte) (int, error) {
 	numRead := 0
 	for numRead < len(buf) {
@@ -40,7 +40,7 @@ func (r *FullReader) Read(buf []byte) (int, error) {
 	return numRead, nil
 }
 
-//Close implements the io.Reader interface.
+// Close implements the io.Reader interface.
 func (r *FullReader) Close() error {
 	return r.Base.Close()
 }

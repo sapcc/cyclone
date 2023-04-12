@@ -22,28 +22,25 @@
 package secrets
 
 import (
-	"fmt"
-	"os"
+	"github.com/sapcc/go-bits/osext"
 )
 
-//AuthPassword holds either a plain text password or a key for the environment
-//variable that has the password as its value.
-//The key has the format: `{ fromEnv: ENVIRONMENT_VARIABLE }`.
-//
-//If a key is given then the password is retrieved from that env variable.
-type AuthPassword string
+// FromEnv holds either a plain text value or a key for the environment
+// variable from which the value can be retrieved.
+// The key has the format: `{ fromEnv: ENVIRONMENT_VARIABLE }`.
+type FromEnv string
 
-//UnmarshalYAML implements the yaml.Unmarshaler interface.
-func (p *AuthPassword) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	//plain text password
+// UnmarshalYAML implements the yaml.Unmarshaler interface.
+func (p *FromEnv) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	//plain text value
 	var plainTextInput string
 	err := unmarshal(&plainTextInput)
 	if err == nil {
-		*p = AuthPassword(plainTextInput)
+		*p = FromEnv(plainTextInput)
 		return nil
 	}
 
-	//retrieve password from the given environment variable key
+	//retrieve value from the given environment variable key
 	var envVariableInput struct {
 		Key string `yaml:"fromEnv"`
 	}
@@ -52,12 +49,12 @@ func (p *AuthPassword) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	passFromEnv := os.Getenv(envVariableInput.Key)
-	if passFromEnv == "" {
-		return fmt.Errorf(`environment variable %q is not set`, envVariableInput.Key)
+	valFromEnv, err := osext.NeedGetenv(envVariableInput.Key)
+	if err != nil {
+		return err
 	}
 
-	*p = AuthPassword(passFromEnv)
+	*p = FromEnv(valFromEnv)
 
 	return nil
 }

@@ -7,40 +7,44 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 )
 
-// IDFromName is a convienience function that returns a server's ID given its
-// name.
+// IDFromName is a convenience function that returns a server's ID given its
+// name. Errors when the number of items found is not one.
 func IDFromName(client *gophercloud.ServiceClient, name string) (string, error) {
-	count := 0
-	id := ""
-
-	listOpts := servers.ListOpts{
-		// nova list uses a name field as an regexp
-		Name: fmt.Sprintf("^%s$", name),
-	}
-
-	allPages, err := servers.List(client, listOpts).AllPages()
+	IDs, err := IDsFromName(client, name)
 	if err != nil {
 		return "", err
 	}
 
-	all, err := servers.ExtractServers(allPages)
-	if err != nil {
-		return "", err
-	}
-
-	for _, f := range all {
-		if f.Name == name {
-			count++
-			id = f.ID
-		}
-	}
-
-	switch count {
+	switch count := len(IDs); count {
 	case 0:
 		return "", gophercloud.ErrResourceNotFound{Name: name, ResourceType: "server"}
 	case 1:
-		return id, nil
+		return IDs[0], nil
 	default:
 		return "", gophercloud.ErrMultipleResourcesFound{Name: name, Count: count, ResourceType: "server"}
 	}
+}
+
+// IDsFromName returns zero or more IDs corresponding to a name. The returned
+// error is only non-nil in case of failure.
+func IDsFromName(client *gophercloud.ServiceClient, name string) ([]string, error) {
+	pages, err := servers.List(client, servers.ListOpts{
+		// nova list uses a name field as a regexp
+		Name: fmt.Sprintf("^%s$", name),
+	}).AllPages()
+	if err != nil {
+		return nil, err
+	}
+
+	all, err := servers.ExtractServers(pages)
+	if err != nil {
+		return nil, err
+	}
+
+	IDs := make([]string, len(all))
+	for i := range all {
+		IDs[i] = all[i].ID
+	}
+
+	return IDs, nil
 }

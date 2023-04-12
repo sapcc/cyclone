@@ -138,7 +138,7 @@ func FindAndReadYAML(yamlFile string) (string, []byte, error) {
 	// current directory
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", nil, fmt.Errorf("unable to determine working directory: %s", err)
+		return "", nil, fmt.Errorf("unable to determine working directory: %w", err)
 	}
 
 	filename := filepath.Join(cwd, yamlFile)
@@ -166,7 +166,7 @@ func FindAndReadYAML(yamlFile string) (string, []byte, error) {
 		return filename, content, err
 	}
 
-	return "", nil, fmt.Errorf("no " + yamlFile + " file found")
+	return "", nil, fmt.Errorf("no %s file found: %w", yamlFile, os.ErrNotExist)
 }
 
 // fileExists checks for the existence of a file at a given location.

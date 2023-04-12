@@ -28,23 +28,25 @@ import (
 
 	"github.com/majewsky/schwift"
 	"github.com/sapcc/go-bits/logg"
-	"github.com/sapcc/swift-http-import/pkg/util"
 	"pault.ag/go/debian/control"
+
+	"github.com/sapcc/swift-http-import/pkg/util"
 )
 
-//'Packages' indices
-//Reference:
-//  For '$COMP/binary-$ARCH/Packages.(gz|xz)' or
-//  '$COMP/debian-installer/binary-$ARCH/Packages.(gz|xz)'.
+// 'Packages' indices
+// Reference:
 //
-//  matchList[1] = "$COMP"
-//  matchList[3] = "$ARCH"
+//	For '$COMP/binary-$ARCH/Packages.(gz|xz)' or
+//	'$COMP/debian-installer/binary-$ARCH/Packages.(gz|xz)'.
+//
+//	matchList[1] = "$COMP"
+//	matchList[3] = "$ARCH"
 var debReleasePackagesEntryRx = regexp.MustCompile(`^([a-zA-Z]+)/(debian-installer/)?binary-(\w+)/Packages(\.gz|\.xz)$`)
 
-//DebianSource is a URLSource containing a Debian repository. This type reuses
-//the Validate() and Connect() logic of URLSource, but adds a custom scraping
-//implementation that reads the Debian repository metadata instead of relying
-//on directory listings.
+// DebianSource is a URLSource containing a Debian repository. This type reuses
+// the Validate() and Connect() logic of URLSource, but adds a custom scraping
+// implementation that reads the Debian repository metadata instead of relying
+// on directory listings.
 type DebianSource struct {
 	//options from config file
 	URLString                string   `yaml:"url"`
@@ -60,7 +62,7 @@ type DebianSource struct {
 	gpgKeyRing      *util.GPGKeyRing `yaml:"-"`
 }
 
-//Validate implements the Source interface.
+// Validate implements the Source interface.
 func (s *DebianSource) Validate(name string) []error {
 	s.urlSource = &URLSource{
 		URLString:                s.URLString,
@@ -75,28 +77,25 @@ func (s *DebianSource) Validate(name string) []error {
 	return s.urlSource.Validate(name)
 }
 
-//Connect implements the Source interface.
+// Connect implements the Source interface.
 func (s *DebianSource) Connect(name string) error {
 	return s.urlSource.Connect(name)
 }
 
-//ListEntries implements the Source interface.
+// ListEntries implements the Source interface.
 func (s *DebianSource) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesError) {
-	return nil, &ListEntriesError{
-		Location: s.urlSource.getURLForPath(directoryPath).String(),
-		Message:  "ListEntries is not implemented for DebianSource",
-	}
+	return nil, ErrListEntriesNotSupported
 }
 
-//GetFile implements the Source interface.
-func (s *DebianSource) GetFile(directoryPath string, requestHeaders schwift.ObjectHeaders) (body io.ReadCloser, sourceState FileState, err error) {
-	return s.urlSource.GetFile(directoryPath, requestHeaders)
+// GetFile implements the Source interface.
+func (s *DebianSource) GetFile(path string, requestHeaders schwift.ObjectHeaders) (body io.ReadCloser, sourceState FileState, err error) {
+	return s.urlSource.GetFile(path, requestHeaders)
 }
 
-//ListAllFiles implements the Source interface.
-func (s *DebianSource) ListAllFiles() ([]FileSpec, *ListEntriesError) {
+// ListAllFiles implements the Source interface.
+func (s *DebianSource) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
 	if len(s.Distributions) == 0 {
-		return nil, &ListEntriesError{
+		return &ListEntriesError{
 			Location: s.URLString,
 			Message:  "no distributions specified in the config file",
 		}
@@ -105,42 +104,30 @@ func (s *DebianSource) ListAllFiles() ([]FileSpec, *ListEntriesError) {
 	cache := make(map[string]FileSpec)
 
 	//since package and source files for different distributions are kept in
-	//the common '$REPO_ROOT/pool' directory therefore a record is kept of
-	//unique files in order to avoid duplicates in the allFiles slice
-	var allFiles []string
-	isDuplicate := make(map[string]bool)
+	//the common '$REPO_ROOT/pool' directory therefore a record of unique files
+	//is kept in order to avoid duplicates.
+	transferred := make(map[string]bool)
 
 	//index files for different distributions as specified in the config file
 	for _, distName := range s.Distributions {
 		distRootPath := filepath.Join("dists", distName)
 		distFiles, lerr := s.listDistFiles(distRootPath, cache)
 		if lerr != nil {
-			return nil, lerr
+			return lerr
 		}
 
 		for _, file := range distFiles {
-			if !isDuplicate[file] {
-				allFiles = append(allFiles, file)
-				isDuplicate[file] = true
+			if !transferred[file] {
+				out <- getFileSpec(file, cache)
+				transferred[file] = true
 			}
 		}
 	}
 
-	//for files that were already downloaded, pass the contents and HTTP headers
-	//into the transfer phase to avoid double download
-	result := make([]FileSpec, len(allFiles))
-	for idx, path := range allFiles {
-		var exists bool
-		result[idx], exists = cache[path]
-		if !exists {
-			result[idx] = FileSpec{Path: path}
-		}
-	}
-
-	return result, nil
+	return nil
 }
 
-//Helper function for DebianSource.ListAllFiles().
+// Helper function for DebianSource.ListAllFiles().
 func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileSpec) ([]string, *ListEntriesError) {
 	var distFiles []string
 
@@ -166,6 +153,7 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 	if s.gpgVerification {
 		var signatureURI string
 		var err error
+		//InRelease files are signed in-line while Release files have an accompanying Release.gpg file.
 		if filepath.Base(releasePath) == "Release" {
 			var signatureBytes []byte
 			signaturePath := filepath.Join(distRootPath, "Release.gpg")
@@ -173,10 +161,10 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 			if lerr != nil {
 				return nil, lerr
 			}
-			err = util.VerifyDetachedGPGSignature(s.gpgKeyRing, releaseBytes, signatureBytes)
+			err = s.gpgKeyRing.VerifyDetachedGPGSignature(releaseBytes, signatureBytes)
 		} else {
 			signatureURI = releaseURI
-			err = util.VerifyClearSignedGPGSignature(s.gpgKeyRing, releaseBytes)
+			err = s.gpgKeyRing.VerifyClearSignedGPGSignature(releaseBytes)
 		}
 		if err != nil {
 			logg.Debug("could not verify GPG signature at %s for file %s", signatureURI, "-"+filepath.Base(releasePath))
@@ -230,7 +218,7 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 			Filename string `control:"Filename"`
 		}
 		//get package index from 'Packages.xz'
-		_, _, lerr := s.downloadAndParseDCF(pkgIndexPath+".xz", &packageIndex, cache)
+		_, _, lerr = s.downloadAndParseDCF(pkgIndexPath+".xz", &packageIndex, cache)
 		if lerr != nil {
 			//some older distros only have 'Packages.gz'
 			_, _, lerr = s.downloadAndParseDCF(pkgIndexPath+".gz", &packageIndex, cache)
@@ -252,7 +240,7 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 		}
 
 		//get source index from 'Sources.xz'
-		_, _, lerr := s.downloadAndParseDCF(srcIndexPath+".xz", &sourceIndex, cache)
+		_, _, lerr = s.downloadAndParseDCF(srcIndexPath+".xz", &sourceIndex, cache)
 		if lerr != nil {
 			//some older distros only have 'Sources.gz'
 			_, _, lerr = s.downloadAndParseDCF(srcIndexPath+".gz", &sourceIndex, cache)
@@ -272,7 +260,8 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 	//files have already been uploaded (to avoid situations where a client
 	//might see repository metadata without being able to see the referenced
 	//packages)
-	entries, lerr := s.recursivelyListEntries(distRootPath)
+	var entries []string
+	entries, lerr = s.recursivelyListEntries(distRootPath)
 	if lerr != nil {
 		if !strings.Contains(lerr.Message, "GET returned status 404") {
 			return nil, lerr
@@ -283,7 +272,7 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 	return distFiles, nil
 }
 
-//Helper function for DebianSource.ListAllFiles().
+// Helper function for DebianSource.ListAllFiles().
 func (s *DebianSource) downloadAndParseDCF(path string, data interface{}, cache map[string]FileSpec) (contents []byte, uri string, e *ListEntriesError) {
 	buf, uri, lerr := s.urlSource.getFileContents(path, cache)
 	if lerr != nil {
@@ -320,7 +309,7 @@ func (s *DebianSource) downloadAndParseDCF(path string, data interface{}, cache 
 	return buf, uri, nil
 }
 
-//Helper function for DebianSource.ListAllFiles().
+// Helper function for DebianSource.ListAllFiles().
 func stripFileExtension(fileName string) string {
 	ext := filepath.Ext(fileName)
 	if ext == "" {
@@ -330,7 +319,7 @@ func stripFileExtension(fileName string) string {
 	return strings.TrimSuffix(fileName, ext)
 }
 
-//Helper function for DebianSource.ListAllFiles().
+// Helper function for DebianSource.ListAllFiles().
 func (s *DebianSource) recursivelyListEntries(path string) ([]string, *ListEntriesError) {
 	var files []string
 
