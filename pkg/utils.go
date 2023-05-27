@@ -13,6 +13,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/applicationcredentials"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
+	shareAZ "github.com/gophercloud/gophercloud/openstack/sharedfilesystems/v2/availabilityzones"
 	"github.com/gophercloud/utils/client"
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	"golang.org/x/term"
@@ -213,6 +214,12 @@ func newNetworkV2Client(provider *gophercloud.ProviderClient, region string) (*g
 	})
 }
 
+func newSharedFileSystemV2Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
+	return openstack.NewSharedFileSystemV2(provider, gophercloud.EndpointOpts{
+		Region: region,
+	})
+}
+
 func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstAZ *string, loc *Locations) error {
 	if *dstAZ == "" {
 		if strings.HasPrefix(srcAZ, loc.Dst.Region) {
@@ -245,6 +252,51 @@ func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstA
 			zonesNames = append(zonesNames, z.ZoneName)
 		}
 		if z.ZoneName == *dstAZ {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("failed to find %q availability zone, supported availability zones: %q", *dstAZ, zonesNames)
+	}
+
+	if srcAZ == *dstAZ {
+		loc.SameAZ = true
+	}
+
+	return nil
+}
+
+func checkShareAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstAZ *string, loc *Locations) error {
+	if *dstAZ == "" {
+		if strings.HasPrefix(srcAZ, loc.Dst.Region) {
+			*dstAZ = srcAZ
+			loc.SameAZ = true
+			return nil
+		}
+		// use as a default
+		return nil
+	}
+
+	if client == nil {
+		return fmt.Errorf("no service client provided")
+	}
+
+	// check availability zone name
+	allPages, err := shareAZ.List(client).AllPages()
+	if err != nil {
+		return fmt.Errorf("error retrieving availability zones: %s", err)
+	}
+	zones, err := shareAZ.ExtractAvailabilityZones(allPages)
+	if err != nil {
+		return fmt.Errorf("error extracting availability zones from response: %s", err)
+	}
+
+	var zonesNames []string
+	var found bool
+	for _, z := range zones {
+		zonesNames = append(zonesNames, z.Name)
+		if z.Name == *dstAZ {
 			found = true
 			break
 		}

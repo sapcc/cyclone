@@ -52,3 +52,5 @@ require (
 	pault.ag/go/debian v0.12.0 // indirect
 	pault.ag/go/topsort v0.0.0-20160530003732-f98d2ad46e1a // indirect
 )
+
+replace github.com/gophercloud/gophercloud => github.com/kayrus/gophercloud v1.4.1-0.20230527062253-2dbc38a0d297
