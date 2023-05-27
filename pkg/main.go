@@ -102,6 +102,9 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("timeout-server", "", "24h", "timeout to wait for a server status")
 	RootCmd.PersistentFlags().StringP("timeout-snapshot", "", "24h", "timeout to wait for a snapshot status")
 	RootCmd.PersistentFlags().StringP("timeout-backup", "", "24h", "timeout to wait for a backup status")
+	RootCmd.PersistentFlags().StringP("timeout-share", "", "24h", "timeout to wait for a share status")
+	RootCmd.PersistentFlags().StringP("timeout-share-snapshot", "", "24h", "timeout to wait for a share snapshot status")
+	RootCmd.PersistentFlags().StringP("timeout-share-replica", "", "24h", "timeout to wait for a share replica status")
 	RootCmd.PersistentFlags().BoolP("image-web-download", "", false, "use Glance web-download image import method")
 	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 	viper.BindPFlag("yes", RootCmd.PersistentFlags().Lookup("yes"))
@@ -120,6 +123,9 @@ func initRootCmdFlags() {
 	viper.BindPFlag("timeout-server", RootCmd.PersistentFlags().Lookup("timeout-server"))
 	viper.BindPFlag("timeout-snapshot", RootCmd.PersistentFlags().Lookup("timeout-snapshot"))
 	viper.BindPFlag("timeout-backup", RootCmd.PersistentFlags().Lookup("timeout-backup"))
+	viper.BindPFlag("timeout-share", RootCmd.PersistentFlags().Lookup("timeout-share"))
+	viper.BindPFlag("timeout-share-snapshot", RootCmd.PersistentFlags().Lookup("timeout-share-snapshot"))
+	viper.BindPFlag("timeout-share-replica", RootCmd.PersistentFlags().Lookup("timeout-share-replica"))
 	viper.BindPFlag("image-web-download", RootCmd.PersistentFlags().Lookup("image-web-download"))
 }
 
@@ -152,6 +158,9 @@ func parseTimeoutArgs() error {
 	parseTimeoutArg("timeout-server", &waitForServerSec, &errors)
 	parseTimeoutArg("timeout-snapshot", &waitForSnapshotSec, &errors)
 	parseTimeoutArg("timeout-backup", &waitForBackupSec, &errors)
+	parseTimeoutArg("timeout-share", &waitForShareSec, &errors)
+	parseTimeoutArg("timeout-share-snapshot", &waitForShareSnapshotSec, &errors)
+	parseTimeoutArg("timeout-share-replica", &waitForShareReplicaSec, &errors)
 	if len(errors) > 0 {
 		return fmt.Errorf("%q", errors)
 	}

@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/google/uuid v1.3.0
-	github.com/gophercloud/gophercloud v1.3.1-0.20230409194245-e5cad997df12
+	github.com/gophercloud/gophercloud v1.4.1-0.20230614092438-44d55f08cdc0
 	github.com/gophercloud/utils v0.0.0-20230330070308-5bd5e1d608f8
 	github.com/klauspost/compress v1.16.4
 	github.com/machinebox/progress v0.2.0

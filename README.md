@@ -36,9 +36,11 @@ Usage:
 
 Available Commands:
   backup      
+  completion  Generate the autocompletion script for the specified shell
   help        Help about any command
   image       Clone an image
   server      Clone a server
+  share       Clone a share
   version     Print version information
   volume      Clone a volume
 
@@ -50,6 +52,9 @@ Flags:
       --timeout-backup string                     timeout to wait for a backup status (default "24h")
       --timeout-image string                      timeout to wait for an image status (default "24h")
       --timeout-server string                     timeout to wait for a server status (default "24h")
+      --timeout-share string                      timeout to wait for a share status (default "24h")
+      --timeout-share-replica string              timeout to wait for a share replica status (default "24h")
+      --timeout-share-snapshot string             timeout to wait for a share snapshot status (default "24h")
       --timeout-snapshot string                   timeout to wait for a snapshot status (default "24h")
       --timeout-volume string                     timeout to wait for a volume status (default "24h")
       --to-application-credential-id string       destination application credential ID
@@ -205,6 +210,29 @@ $ cyclone backup restore my-backup
 ```sh
 $ source openrc-of-the-source-project
 $ cyclone backup clone my-backup --to-region my-region-1 --threads=16
+```
+
+### Manila shares support
+
+Manila share type must support replicas, i.e.
+
+```sh
+$ openstack share type show default -c optional_extra_specs -f json | jq '.optional_extra_specs.replication_type'
+"dr"
+```
+
+#### Clone a Manila share to a new share in a new availability zone
+
+```sh
+$ source openrc-of-the-source-project
+$ cyclone share my-share --to-share-name my-new-share --to-az my-region-1b
+```
+
+#### Move an existing Manila share to a new availability zone
+
+```sh
+$ source openrc-of-the-source-project
+$ cyclone share move my-share --to-az my-region-1b
 ```
 
 ## Build
