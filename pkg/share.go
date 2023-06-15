@@ -432,6 +432,11 @@ var ShareMoveCmd = &cobra.Command{
 			return err
 		}
 
+		// check the source and destination projects/regions
+		if !loc.SameRegion || !loc.SameProject {
+			return fmt.Errorf("shares can be copied only within the same OpenStack region and project")
+		}
+
 		srcProvider, err := newOpenStackClient(loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
