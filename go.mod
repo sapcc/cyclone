@@ -13,7 +13,7 @@ require (
 	github.com/majewsky/schwift v1.2.0
 	github.com/sapcc/go-bits v0.0.0-20240411072115-07d6ca906595
 	github.com/sapcc/swift-http-import v0.0.0-20230411093003-435ad4fdfc60
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.15.0
 	golang.org/x/term v0.18.0
 )
