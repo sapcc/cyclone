@@ -126,8 +126,8 @@ github.com/inconshreveable/mousetrap
 # github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629
 ## explicit
 github.com/jpillora/longestcommon
-# github.com/klauspost/compress v1.16.4
-## explicit; go 1.18
+# github.com/klauspost/compress v1.17.8
+## explicit; go 1.20
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/zlib
 # github.com/machinebox/progress v0.2.0
