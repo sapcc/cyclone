@@ -94,7 +94,7 @@ github.com/gophercloud/gophercloud/openstack/sharedfilesystems/v2/shares
 github.com/gophercloud/gophercloud/openstack/sharedfilesystems/v2/snapshots
 github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
-# github.com/gophercloud/utils v0.0.0-20230330070308-5bd5e1d608f8
+# github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 ## explicit; go 1.15
 github.com/gophercloud/utils/client
 github.com/gophercloud/utils/env
@@ -108,6 +108,9 @@ github.com/gophercloud/utils/openstack/imageservice/v2/images
 github.com/gophercloud/utils/openstack/networking/v2/networks
 github.com/gophercloud/utils/openstack/networking/v2/subnets
 github.com/gophercloud/utils/openstack/sharedfilesystems/v2/shares
+# github.com/hashicorp/go-uuid v1.0.3
+## explicit
+github.com/hashicorp/go-uuid
 # github.com/hashicorp/hcl v1.0.0
 ## explicit
 github.com/hashicorp/hcl
@@ -136,11 +139,12 @@ github.com/machinebox/progress
 # github.com/magiconair/properties v1.8.7
 ## explicit; go 1.19
 github.com/magiconair/properties
-# github.com/majewsky/schwift v1.2.0
-## explicit; go 1.16
+# github.com/majewsky/schwift v1.3.0
+## explicit; go 1.20
 github.com/majewsky/schwift
 github.com/majewsky/schwift/capabilities
 github.com/majewsky/schwift/gopherschwift
+github.com/majewsky/schwift/internal/errext
 # github.com/matryer/is v1.4.1
 ## explicit; go 1.14
 # github.com/mitchellh/go-homedir v1.1.0

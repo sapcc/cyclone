@@ -7,10 +7,10 @@ toolchain go1.22.2
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.11.0
-	github.com/gophercloud/utils v0.0.0-20230330070308-5bd5e1d608f8
+	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/klauspost/compress v1.17.8
 	github.com/machinebox/progress v0.2.0
-	github.com/majewsky/schwift v1.2.0
+	github.com/majewsky/schwift v1.3.0
 	github.com/sapcc/go-bits v0.0.0-20240411072115-07d6ca906595
 	github.com/sapcc/swift-http-import v0.0.0-20230411093003-435ad4fdfc60
 	github.com/spf13/cobra v1.8.0
@@ -26,6 +26,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-github/v51 v51.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
