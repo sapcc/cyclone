@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gophercloud/gophercloud v1.11.0
 	github.com/gophercloud/utils v0.0.0-20230330070308-5bd5e1d608f8
-	github.com/klauspost/compress v1.16.4
+	github.com/klauspost/compress v1.17.8
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift v1.2.0
 	github.com/sapcc/go-bits v0.0.0-20240411072115-07d6ca906595
