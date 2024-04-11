@@ -58,7 +58,7 @@ func ReadConfiguration(path string) (*Configuration, []error) {
 		return nil, []error{err}
 	}
 
-	//set default values
+	// set default values
 	if cfg.WorkerCounts.Transfer == 0 {
 		cfg.WorkerCounts.Transfer = 1
 	}
@@ -72,8 +72,8 @@ func ReadConfiguration(path string) (*Configuration, []error) {
 	cfg.Swift.ValidateIgnoreEmptyContainer = true
 	errors := cfg.Swift.Validate("swift")
 
-	//gpgKeyRing is used to cache GPG public keys. It is passed on and shared
-	//across all Debian/Yum jobs.
+	// gpgKeyRing is used to cache GPG public keys. It is passed on and shared
+	// across all Debian/Yum jobs.
 	var gpgCacheContainer *schwift.Container
 	if cfg.GPG.CacheContainerName != nil && *cfg.GPG.CacheContainerName != "" {
 		cntrName := *cfg.GPG.CacheContainerName
@@ -119,10 +119,10 @@ type GPGConfiguration struct {
 
 // JobConfiguration describes a transfer job in the configuration file.
 type JobConfiguration struct {
-	//basic options
+	// basic options
 	Source SourceUnmarshaler `yaml:"from"`
 	Target *SwiftLocation    `yaml:"to"`
-	//behavior options
+	// behavior options
 	ExcludePattern       string                   `yaml:"except"`
 	IncludePattern       string                   `yaml:"only"`
 	ImmutableFilePattern string                   `yaml:"immutable"`
@@ -130,8 +130,8 @@ type JobConfiguration struct {
 	Segmenting           *SegmentingConfiguration `yaml:"segmenting"`
 	Expiration           ExpirationConfiguration  `yaml:"expiration"`
 	Cleanup              CleanupConfiguration     `yaml:"cleanup"`
-	//gpgKeyRing is the common key ring cache that is passed on to the
-	//custom source type Job(s).
+	// gpgKeyRing is the common key ring cache that is passed on to the
+	// custom source type Job(s).
 	gpgKeyRing *util.GPGKeyRing
 }
 
@@ -146,7 +146,7 @@ type SegmentingConfiguration struct {
 	MinObjectSize uint64 `yaml:"min_bytes"`
 	SegmentSize   uint64 `yaml:"segment_bytes"`
 	ContainerName string `yaml:"container"`
-	//Container is initialized by JobConfiguration.Compile().
+	// Container is initialized by JobConfiguration.Compile().
 	Container *schwift.Container `yaml:"-"`
 }
 
@@ -161,11 +161,11 @@ type ExpirationConfiguration struct {
 type CleanupStrategy string
 
 const (
-	//KeepUnknownFiles is the default cleanup strategy.
+	// KeepUnknownFiles is the default cleanup strategy.
 	KeepUnknownFiles CleanupStrategy = ""
-	//DeleteUnknownFiles is another strategy.
+	// DeleteUnknownFiles is another strategy.
 	DeleteUnknownFiles CleanupStrategy = "delete"
-	//ReportUnknownFiles is another strategy.
+	// ReportUnknownFiles is another strategy.
 	ReportUnknownFiles CleanupStrategy = "report"
 )
 
@@ -181,7 +181,7 @@ type SourceUnmarshaler struct {
 
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (u *SourceUnmarshaler) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	//unmarshal a few indicative fields
+	// unmarshal a few indicative fields
 	var probe struct {
 		URL  string `yaml:"url"`
 		Type string `yaml:"type"`
@@ -191,7 +191,7 @@ func (u *SourceUnmarshaler) UnmarshalYAML(unmarshal func(interface{}) error) err
 		return err
 	}
 
-	//look at keys to determine whether this is a URLSource or a SwiftSource
+	// look at keys to determine whether this is a URLSource or a SwiftSource
 	if probe.URL == "" {
 		u.Source = &SwiftLocation{}
 	} else {
@@ -233,7 +233,7 @@ func (cfg JobConfiguration) Compile(name string, swift SwiftLocation) (job *Job,
 	if cfg.Target == nil {
 		errors = append(errors, fmt.Errorf("missing value for %s.to", name))
 	} else {
-		//target inherits connection parameters from global Swift credentials
+		// target inherits connection parameters from global Swift credentials
 		cfg.Target.AuthURL = swift.AuthURL
 		cfg.Target.UserName = swift.UserName
 		cfg.Target.UserDomainName = swift.UserDomainName
@@ -303,7 +303,7 @@ func (cfg JobConfiguration) Compile(name string, swift SwiftLocation) (job *Job,
 		Cleanup:    cfg.Cleanup,
 	}
 
-	//compile patterns into regexes
+	// compile patterns into regexes
 	compileOptionalRegex := func(key, pattern string) *regexp.Regexp {
 		if pattern == "" {
 			return nil
@@ -328,12 +328,12 @@ func (cfg JobConfiguration) Compile(name string, swift SwiftLocation) (job *Job,
 		jobSrc.(*GithubReleaseSource).notOlderThan = job.Matcher.NotOlderThan
 	}
 
-	//do not try connecting to Swift if credentials are invalid etc.
+	// do not try connecting to Swift if credentials are invalid etc.
 	if len(errors) > 0 {
 		return
 	}
 
-	//ensure that connection to Swift exists and that target container(s) is/are available
+	// ensure that connection to Swift exists and that target container(s) is/are available
 	err := job.Source.Connect(name + ".from")
 	if err != nil {
 		errors = append(errors, err)

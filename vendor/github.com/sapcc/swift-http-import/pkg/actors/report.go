@@ -86,7 +86,7 @@ func (r *Report) Stats() Stats {
 func (r *Report) Run(ctx context.Context) {
 	var statter statsd.Statter
 
-	//initialize statsd client
+	// initialize statsd client
 	if r.Statsd.HostName != "" {
 		var err error
 		statter, err = statsd.NewClientWithConfig(&statsd.ClientConfig{
@@ -102,7 +102,7 @@ func (r *Report) Run(ctx context.Context) {
 		defer statter.Close()
 	}
 
-	//collect tally marks until done or aborted
+	// collect tally marks until done or aborted
 	for mark := range r.Input {
 		switch {
 		case mark.IsDirectory:
@@ -128,7 +128,7 @@ func (r *Report) Run(ctx context.Context) {
 		}
 	}
 
-	//send statistics
+	// send statistics
 	var gauge func(string, int64, float32, ...statsd.Tag) error
 	if statter != nil {
 		gauge = statter.Gauge
@@ -151,7 +151,7 @@ func (r *Report) Run(ctx context.Context) {
 		r.ExitCode = 0
 	}
 
-	//report results
+	// report results
 	logg.Info("%d jobs skipped", r.stats.JobsSkipped)
 	logg.Info("%d dirs scanned, %d failed",
 		r.stats.DirectoriesScanned, r.stats.DirectoriesFailed,

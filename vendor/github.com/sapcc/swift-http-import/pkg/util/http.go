@@ -20,6 +20,7 @@
 package util
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -37,32 +38,33 @@ const (
 
 // EnhancedGet is like http.Client.Get(), but recognizes if the HTTP server
 // understands range requests, and downloads the file in segments in that case.
-func EnhancedGet(client *http.Client, uri string, requestHeaders http.Header, segmentBytes uint64) (*http.Response, error) {
+func EnhancedGet(ctx context.Context, client *http.Client, uri string, requestHeaders http.Header, segmentBytes uint64) (*http.Response, error) {
 	d := downloader{
 		Client:         client,
 		URI:            uri,
 		RequestHeaders: requestHeaders,
 		SegmentBytes:   int64(segmentBytes),
 		BytesTotal:     -1,
+		ctx:            ctx,
 	}
 
-	//make initial HTTP request that detects whether the source server supports
-	//range requests
-	resp, headers, err := d.getNextChunk()
-	//if we receive a 416 (Requested Range Not Satisfiable), the most likely cause
-	//is that the object is 0 bytes long, so even byte index 0 is already over
-	//EOF -> fall back to a plain HTTP request in this case
+	// make initial HTTP request that detects whether the source server supports
+	// range requests
+	resp, headers, err := d.getNextChunk(ctx)
+	// if we receive a 416 (Requested Range Not Satisfiable), the most likely cause
+	// is that the object is 0 bytes long, so even byte index 0 is already over
+	// EOF -> fall back to a plain HTTP request in this case
 	if resp != nil && resp.StatusCode == http.StatusRequestedRangeNotSatisfiable {
 		logg.Info("received status code 416 -> falling back to plain GET for %s", uri)
 		resp.Body.Close()
-		req, err := d.buildRequest()
+		req, err := d.buildRequest(ctx)
 		if err != nil {
 			return nil, err
 		}
 		return d.Client.Do(req)
 	}
 
-	//we're done here unless we receive a 206 (Partial Content) response; possible causes:
+	// we're done here unless we receive a 206 (Partial Content) response; possible causes:
 	//  * resp.StatusCode == 200 (server does not understand Range header)
 	//  * resp.StatusCode == 304 (target is already up-to-date)
 	//  * resp.StatusCode > 400 (other error)
@@ -70,24 +72,24 @@ func EnhancedGet(client *http.Client, uri string, requestHeaders http.Header, se
 		return resp, err
 	}
 
-	//actual response is 206, but we simulate the behavior of a 200 response
+	// actual response is 206, but we simulate the behavior of a 200 response
 	resp.Status = "200 OK"
 	resp.StatusCode = 200
 
-	//if the current chunk contains the entire file, we do not need to hijack the body
+	// if the current chunk contains the entire file, we do not need to hijack the body
 	if d.BytesTotal > 0 && headers.ContentRangeLength == d.BytesTotal {
 		return resp, err
 	}
 
-	//return the original response, but:
-	//1. hijack the response body so that the next segments will be loaded once
-	//the current response body is exhausted (the `struct downloader` is wrapped
-	//into a util.FullReader because ncw/swift seems to get confused when Read()
-	//does not fill the provided buffer completely)
+	// return the original response, but:
+	// 1. hijack the response body so that the next segments will be loaded once
+	// the current response body is exhausted (the `struct downloader` is wrapped
+	// into a util.FullReader because ncw/swift seems to get confused when Read()
+	// does not fill the provided buffer completely)
 	d.Reader = resp.Body
 	resp.Body = &FullReader{&d}
-	//2. report the total file size in the response, so that the caller can
-	//decide whether to PUT this directly or as a large object
+	// 2. report the total file size in the response, so that the caller can
+	// decide whether to PUT this directly or as a large object
 	if d.BytesTotal > 0 {
 		resp.ContentLength = d.BytesTotal
 	}
@@ -101,21 +103,22 @@ func EnhancedGet(client *http.Client, uri string, requestHeaders http.Header, se
 // for Range support and otherwise falls back on downloading the entire file at
 // once.
 type downloader struct {
-	//the original arguments to EnhancedGet()
+	// the original arguments to EnhancedGet()
 	Client         *http.Client
 	URI            string
 	RequestHeaders http.Header
 	SegmentBytes   int64
-	//this object's internal state
-	Etag       string        //we track the source URL's Etag to detect changes mid-transfer
-	BytesRead  int64         //how many bytes have already been read out of this Reader
-	BytesTotal int64         //the total Content-Length the file, or -1 if not known
-	Reader     io.ReadCloser //current, not-yet-exhausted, response.Body, or nil after EOF or error
-	Err        error         //non-nil after error
-	//retry handling
-	LastErrorAtBytesRead int64 //at which offset the last read error occurred
-	LastErrorRetryCount  int   //retry counter for said offset, or 0 if no error occurred before
-	TotalRetryCount      int   //retry counter for all read errors encountered at any offset
+	// this object's internal state
+	Etag       string          // we track the source URL's Etag to detect changes mid-transfer
+	BytesRead  int64           // how many bytes have already been read out of this Reader
+	BytesTotal int64           // the total Content-Length the file, or -1 if not known
+	Reader     io.ReadCloser   // current, not-yet-exhausted, response.Body, or nil after EOF or error
+	Err        error           // non-nil after error
+	ctx        context.Context //nolint:containedctx // we cannot supply it any other way for the Read() function because the interface does not allow it
+	// retry handling
+	LastErrorAtBytesRead int64 // at which offset the last read error occurred
+	LastErrorRetryCount  int   // retry counter for said offset, or 0 if no error occurred before
+	TotalRetryCount      int   // retry counter for all read errors encountered at any offset
 }
 
 type parsedResponseHeaders struct {
@@ -123,8 +126,8 @@ type parsedResponseHeaders struct {
 	ContentRangeLength int64
 }
 
-func (d *downloader) buildRequest() (*http.Request, error) {
-	req, err := http.NewRequest(http.MethodGet, d.URI, http.NoBody)
+func (d *downloader) buildRequest(ctx context.Context) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.URI, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -134,27 +137,27 @@ func (d *downloader) buildRequest() (*http.Request, error) {
 	return req, nil
 }
 
-func (d *downloader) getNextChunk() (*http.Response, *parsedResponseHeaders, error) {
-	req, err := d.buildRequest()
+func (d *downloader) getNextChunk(ctx context.Context) (*http.Response, *parsedResponseHeaders, error) {
+	req, err := d.buildRequest(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	//add Range header
+	// add Range header
 	start := d.BytesRead
 	end := start + d.SegmentBytes
 	if d.BytesTotal > 0 && end > d.BytesTotal {
 		end = d.BytesTotal
 	}
-	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end-1)) //end index is inclusive!
+	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end-1)) // end index is inclusive!
 
-	//execute request
+	// execute request
 	resp, err := d.Client.Do(req)
 	if err != nil {
 		return resp, nil, err
 	}
 
-	//check Etag
+	// check Etag
 	etag := resp.Header.Get("Etag")
 	if d.Etag == "" {
 		d.Etag = etag
@@ -163,7 +166,7 @@ func (d *downloader) getNextChunk() (*http.Response, *parsedResponseHeaders, err
 		return nil, nil, fmt.Errorf("value of Etag has changed mid-transfer: %q -> %q", d.Etag, etag)
 	}
 
-	//parse Content-Range header
+	// parse Content-Range header
 	var headers parsedResponseHeaders
 	if resp.StatusCode == http.StatusPartialContent {
 		contentRange := resp.Header.Get("Content-Range")
@@ -173,7 +176,7 @@ func (d *downloader) getNextChunk() (*http.Response, *parsedResponseHeaders, err
 			return nil, nil, errors.New("malformed response header: Content-Range: " + contentRange)
 		}
 		headers.ContentRangeStart = start
-		headers.ContentRangeLength = stop - start + 1 //stop index is inclusive!
+		headers.ContentRangeLength = stop - start + 1 // stop index is inclusive!
 		if d.BytesTotal == -1 {
 			d.BytesTotal = total
 		} else if d.BytesTotal != total {
@@ -216,19 +219,19 @@ func parseContentRange(headerValue string) (start, stop, total int64, ok bool) {
 
 // Read implements the io.ReadCloser interface.
 func (d *downloader) Read(buf []byte) (int, error) {
-	//if we don't have a response body, we're at EOF
+	// if we don't have a response body, we're at EOF
 	if d.Reader == nil {
 		return 0, io.EOF
 	}
 
-	//read from the current response body
+	// read from the current response body
 	bytesRead, err := d.Reader.Read(buf)
 	d.BytesRead += int64(bytesRead)
-	switch err {
-	case nil:
-		return bytesRead, err
-	case io.EOF:
-		//current response body is EOF -> close it
+	switch {
+	case err == nil:
+		return bytesRead, nil
+	case errors.Is(err, io.EOF):
+		// current response body is EOF -> close it
 		err = d.Reader.Close()
 		d.Reader = nil
 		if err != nil {
@@ -236,7 +239,7 @@ func (d *downloader) Read(buf []byte) (int, error) {
 		}
 		d.Reader = nil
 	default:
-		//unexpected read error
+		// unexpected read error
 		if !d.shouldRetry() {
 			return bytesRead, err
 		}
@@ -252,13 +255,13 @@ func (d *downloader) Read(buf []byte) (int, error) {
 		}
 	}
 
-	//is there a next chunk?
+	// is there a next chunk?
 	if d.BytesRead == d.BytesTotal {
 		return bytesRead, io.EOF
 	}
 
-	//get next chunk
-	resp, headers, err := d.getNextChunk()
+	// get next chunk
+	resp, headers, err := d.getNextChunk(d.ctx)
 	if err != nil {
 		return bytesRead, err
 	}
@@ -284,21 +287,21 @@ func (d *downloader) Close() error {
 // This function is called when a read error is encountered, and decides whether
 // to retry or not.
 func (d *downloader) shouldRetry() bool {
-	//never restart transfer of the same file more than 10 times
+	// never restart transfer of the same file more than 10 times
 	d.TotalRetryCount++
 	if d.TotalRetryCount > maxTotalRetryCount {
 		logg.Info("giving up on GET %s after %d read errors", d.URI, maxTotalRetryCount)
 		return false
 	}
 
-	//if there was no error at this offset before, always retry
+	// if there was no error at this offset before, always retry
 	if d.LastErrorAtBytesRead != d.BytesRead {
 		d.LastErrorAtBytesRead = d.BytesRead
 		d.LastErrorRetryCount = 0
 		return true
 	}
 
-	//only retry an error at the same offset for 3 times
+	// only retry an error at the same offset for 3 times
 	d.LastErrorRetryCount++
 	if d.LastErrorRetryCount > maxRetryCount {
 		logg.Info("giving up on GET %s after %d read errors at the same offset (%d)",

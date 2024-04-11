@@ -41,7 +41,7 @@ type BinaryIndex struct {
 	Package        string
 	Source         string
 	Version        version.Version
-	InstalledSize  string `control:"Installed-Size"`
+	InstalledSize  int     `control:"Installed-Size"`
 	Maintainer     string
 	Architecture   dependency.Arch
 	MultiArch      string `control:"Multi-Arch"`
@@ -52,12 +52,17 @@ type BinaryIndex struct {
 	Section        string
 	Priority       string
 	Filename       string
-	Size           string
+	Size           int
 	MD5sum         string
 	SHA1           string
 	SHA256         string
 
 	DebugBuildIds []string `control:"Build-Ids" delim:" "`
+}
+
+// Parse the Conflicts Dependency relation on this package.
+func (index *BinaryIndex) GetConflicts() dependency.Dependency {
+	return index.getOptionalDependencyField("Conflicts")
 }
 
 // Parse the Depends Dependency relation on this package.

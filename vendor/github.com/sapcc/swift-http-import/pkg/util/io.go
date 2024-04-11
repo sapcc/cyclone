@@ -33,7 +33,7 @@ func (r *FullReader) Read(buf []byte) (int, error) {
 	for numRead < len(buf) {
 		n, err := r.Base.Read(buf[numRead:])
 		numRead += n
-		if err != nil { //including io.EOF
+		if err != nil { // including io.EOF
 			return numRead, err
 		}
 	}

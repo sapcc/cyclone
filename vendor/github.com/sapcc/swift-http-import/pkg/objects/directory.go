@@ -23,7 +23,7 @@ package objects
 type Directory struct {
 	Job  *Job
 	Path string
-	//RetryCounter is increased by the actors.Scraper when scraping of this
-	//directory fails.
+	// RetryCounter is increased by the actors.Scraper when scraping of this
+	// directory fails.
 	RetryCounter uint
 }

@@ -29,7 +29,7 @@ import (
 
 // Matcher determines if files shall be included or excluded in a transfer.
 type Matcher struct {
-	ExcludeRx            *regexp.Regexp //pointers because nil signifies absence
+	ExcludeRx            *regexp.Regexp // pointers because nil signifies absence
 	IncludeRx            *regexp.Regexp
 	ImmutableFileRx      *regexp.Regexp
 	NotOlderThan         *time.Time
@@ -58,8 +58,8 @@ func (e MatchError) Error() string {
 // For directories, `lastModified` must be nil. For files, `lastModified` may be
 // non-nil and will then be checked against `m.NotOlderThan`.
 func (m Matcher) Check(path string, lastModified *time.Time) error {
-	//The path "/" may be produced by the loop in CheckRecursive(), but it is
-	//always considered included.
+	// The path "/" may be produced by the loop in CheckRecursive(), but it is
+	// always considered included.
 	if filepath.Clean(path) == "/" {
 		return nil
 	}

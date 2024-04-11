@@ -21,6 +21,7 @@ package objects
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"path/filepath"
 	"regexp"
@@ -48,7 +49,7 @@ var debReleasePackagesEntryRx = regexp.MustCompile(`^([a-zA-Z]+)/(debian-install
 // implementation that reads the Debian repository metadata instead of relying
 // on directory listings.
 type DebianSource struct {
-	//options from config file
+	// options from config file
 	URLString                string   `yaml:"url"`
 	ClientCertificatePath    string   `yaml:"cert"`
 	ClientCertificateKeyPath string   `yaml:"key"`
@@ -56,7 +57,7 @@ type DebianSource struct {
 	Distributions            []string `yaml:"dist"`
 	Architectures            []string `yaml:"arch"`
 	VerifySignature          *bool    `yaml:"verify_signature"`
-	//compiled configuration
+	// compiled configuration
 	urlSource       *URLSource       `yaml:"-"`
 	gpgVerification bool             `yaml:"-"`
 	gpgKeyRing      *util.GPGKeyRing `yaml:"-"`
@@ -83,17 +84,17 @@ func (s *DebianSource) Connect(name string) error {
 }
 
 // ListEntries implements the Source interface.
-func (s *DebianSource) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesError) {
+func (s *DebianSource) ListEntries(_ context.Context, directoryPath string) ([]FileSpec, *ListEntriesError) {
 	return nil, ErrListEntriesNotSupported
 }
 
 // GetFile implements the Source interface.
-func (s *DebianSource) GetFile(path string, requestHeaders schwift.ObjectHeaders) (body io.ReadCloser, sourceState FileState, err error) {
-	return s.urlSource.GetFile(path, requestHeaders)
+func (s *DebianSource) GetFile(ctx context.Context, path string, requestHeaders schwift.ObjectHeaders) (body io.ReadCloser, sourceState FileState, err error) {
+	return s.urlSource.GetFile(ctx, path, requestHeaders)
 }
 
 // ListAllFiles implements the Source interface.
-func (s *DebianSource) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
+func (s *DebianSource) ListAllFiles(ctx context.Context, out chan<- FileSpec) *ListEntriesError {
 	if len(s.Distributions) == 0 {
 		return &ListEntriesError{
 			Location: s.URLString,
@@ -103,15 +104,15 @@ func (s *DebianSource) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
 
 	cache := make(map[string]FileSpec)
 
-	//since package and source files for different distributions are kept in
-	//the common '$REPO_ROOT/pool' directory therefore a record of unique files
-	//is kept in order to avoid duplicates.
+	// since package and source files for different distributions are kept in
+	// the common '$REPO_ROOT/pool' directory therefore a record of unique files
+	// is kept in order to avoid duplicates.
 	transferred := make(map[string]bool)
 
-	//index files for different distributions as specified in the config file
+	// index files for different distributions as specified in the config file
 	for _, distName := range s.Distributions {
 		distRootPath := filepath.Join("dists", distName)
-		distFiles, lerr := s.listDistFiles(distRootPath, cache)
+		distFiles, lerr := s.listDistFiles(ctx, distRootPath, cache)
 		if lerr != nil {
 			return lerr
 		}
@@ -128,10 +129,10 @@ func (s *DebianSource) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
 }
 
 // Helper function for DebianSource.ListAllFiles().
-func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileSpec) ([]string, *ListEntriesError) {
+func (s *DebianSource) listDistFiles(ctx context.Context, distRootPath string, cache map[string]FileSpec) ([]string, *ListEntriesError) {
 	var distFiles []string
 
-	//parse 'inRelease' file to find paths of other control files
+	// parse 'inRelease' file to find paths of other control files
 	releasePath := filepath.Join(distRootPath, "InRelease")
 
 	var release struct {
@@ -139,32 +140,32 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 		Entries       []control.SHA256FileHash `control:"SHA256" delim:"\n" strip:"\n\r\t "`
 	}
 
-	releaseBytes, releaseURI, lerr := s.downloadAndParseDCF(releasePath, &release, cache)
+	releaseBytes, releaseURI, lerr := s.downloadAndParseDCF(ctx, releasePath, &release, cache)
 	if lerr != nil {
-		//some older distros only have the legacy 'Release' file
+		// some older distros only have the legacy 'Release' file
 		releasePath = filepath.Join(distRootPath, "Release")
-		releaseBytes, releaseURI, lerr = s.downloadAndParseDCF(releasePath, &release, cache)
+		releaseBytes, releaseURI, lerr = s.downloadAndParseDCF(ctx, releasePath, &release, cache)
 		if lerr != nil {
 			return nil, lerr
 		}
 	}
 
-	//verify release file's GPG signature
+	// verify release file's GPG signature
 	if s.gpgVerification {
 		var signatureURI string
 		var err error
-		//InRelease files are signed in-line while Release files have an accompanying Release.gpg file.
+		// InRelease files are signed in-line while Release files have an accompanying Release.gpg file.
 		if filepath.Base(releasePath) == "Release" {
 			var signatureBytes []byte
 			signaturePath := filepath.Join(distRootPath, "Release.gpg")
-			signatureBytes, signatureURI, lerr = s.urlSource.getFileContents(signaturePath, cache)
+			signatureBytes, signatureURI, lerr = s.urlSource.getFileContents(ctx, signaturePath, cache)
 			if lerr != nil {
 				return nil, lerr
 			}
-			err = s.gpgKeyRing.VerifyDetachedGPGSignature(releaseBytes, signatureBytes)
+			err = s.gpgKeyRing.VerifyDetachedGPGSignature(ctx, releaseBytes, signatureBytes)
 		} else {
 			signatureURI = releaseURI
-			err = s.gpgKeyRing.VerifyClearSignedGPGSignature(releaseBytes)
+			err = s.gpgKeyRing.VerifyClearSignedGPGSignature(ctx, releaseBytes)
 		}
 		if err != nil {
 			logg.Debug("could not verify GPG signature at %s for file %s", signatureURI, "-"+filepath.Base(releasePath))
@@ -177,31 +178,31 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 		logg.Debug("successfully verified GPG signature at %s for file %s", signatureURI, "-"+filepath.Base(releasePath))
 	}
 
-	//the architectures that we are interested in
+	// the architectures that we are interested in
 	architectures := release.Architectures
 	if len(s.Architectures) != 0 {
 		architectures = s.Architectures
 	}
 
-	//some repos offer multiple compression types for the same 'Sources' and
-	//'Packages' indices. These maps contain the indices with out their file
-	//extension. This allows us to choose a compression type at the time of
-	//parsing and avoids parsing the same index multiple times.
+	// some repos offer multiple compression types for the same 'Sources' and
+	// 'Packages' indices. These maps contain the indices with out their file
+	// extension. This allows us to choose a compression type at the time of
+	// parsing and avoids parsing the same index multiple times.
 	sourceIndices := make(map[string]bool)
 	packageIndices := make(map[string]bool)
 
-	//note control files for transfer
+	// note control files for transfer
 	for _, entry := range release.Entries {
-		//entry.Filename is relative to distRootPath therefore
+		// entry.Filename is relative to distRootPath therefore
 		fileName := stripFileExtension(filepath.Join(distRootPath, entry.Filename))
 
-		//note all 'Sources' indices as they are architecture independent
+		// note all 'Sources' indices as they are architecture independent
 		if strings.HasSuffix(entry.Filename, "Sources.gz") || strings.HasSuffix(entry.Filename, "Sources.xz") {
 			sourceIndices[fileName] = true
 			continue // to next entry
 		}
 
-		//note architecture specific 'Packages' indices
+		// note architecture specific 'Packages' indices
 		matchList := debReleasePackagesEntryRx.FindStringSubmatch(entry.Filename)
 		if matchList != nil {
 			for _, arch := range architectures {
@@ -212,16 +213,16 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 		}
 	}
 
-	//parse 'Packages' indices to find paths for package files (.deb)
+	// parse 'Packages' indices to find paths for package files (.deb)
 	for pkgIndexPath := range packageIndices {
 		var packageIndex []struct {
 			Filename string `control:"Filename"`
 		}
-		//get package index from 'Packages.xz'
-		_, _, lerr = s.downloadAndParseDCF(pkgIndexPath+".xz", &packageIndex, cache)
+		// get package index from 'Packages.xz'
+		_, _, lerr = s.downloadAndParseDCF(ctx, pkgIndexPath+".xz", &packageIndex, cache)
 		if lerr != nil {
-			//some older distros only have 'Packages.gz'
-			_, _, lerr = s.downloadAndParseDCF(pkgIndexPath+".gz", &packageIndex, cache)
+			// some older distros only have 'Packages.gz'
+			_, _, lerr = s.downloadAndParseDCF(ctx, pkgIndexPath+".gz", &packageIndex, cache)
 			if lerr != nil {
 				return nil, lerr
 			}
@@ -232,18 +233,18 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 		}
 	}
 
-	//parse 'Sources' indices to find paths for source files (.dsc, .tar.gz, etc.)
+	// parse 'Sources' indices to find paths for source files (.dsc, .tar.gz, etc.)
 	for srcIndexPath := range sourceIndices {
 		var sourceIndex []struct {
 			Directory string                `control:"Directory"`
 			Files     []control.MD5FileHash `control:"Files" delim:"\n" strip:"\n\r\t "`
 		}
 
-		//get source index from 'Sources.xz'
-		_, _, lerr = s.downloadAndParseDCF(srcIndexPath+".xz", &sourceIndex, cache)
+		// get source index from 'Sources.xz'
+		_, _, lerr = s.downloadAndParseDCF(ctx, srcIndexPath+".xz", &sourceIndex, cache)
 		if lerr != nil {
-			//some older distros only have 'Sources.gz'
-			_, _, lerr = s.downloadAndParseDCF(srcIndexPath+".gz", &sourceIndex, cache)
+			// some older distros only have 'Sources.gz'
+			_, _, lerr = s.downloadAndParseDCF(ctx, srcIndexPath+".gz", &sourceIndex, cache)
 			if lerr != nil {
 				return nil, lerr
 			}
@@ -256,12 +257,12 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 		}
 	}
 
-	//transfer files in '$DIST_ROOT' at the very end, when package and source
-	//files have already been uploaded (to avoid situations where a client
-	//might see repository metadata without being able to see the referenced
-	//packages)
+	// transfer files in '$DIST_ROOT' at the very end, when package and source
+	// files have already been uploaded (to avoid situations where a client
+	// might see repository metadata without being able to see the referenced
+	// packages)
 	var entries []string
-	entries, lerr = s.recursivelyListEntries(distRootPath)
+	entries, lerr = s.recursivelyListEntries(ctx, distRootPath)
 	if lerr != nil {
 		if !strings.Contains(lerr.Message, "GET returned status 404") {
 			return nil, lerr
@@ -273,13 +274,13 @@ func (s *DebianSource) listDistFiles(distRootPath string, cache map[string]FileS
 }
 
 // Helper function for DebianSource.ListAllFiles().
-func (s *DebianSource) downloadAndParseDCF(path string, data interface{}, cache map[string]FileSpec) (contents []byte, uri string, e *ListEntriesError) {
-	buf, uri, lerr := s.urlSource.getFileContents(path, cache)
+func (s *DebianSource) downloadAndParseDCF(ctx context.Context, path string, data interface{}, cache map[string]FileSpec) (contents []byte, uri string, e *ListEntriesError) {
+	buf, uri, lerr := s.urlSource.getFileContents(ctx, path, cache)
 	if lerr != nil {
 		return nil, uri, lerr
 	}
 
-	//if `buf` has the magic number for XZ, decompress before parsing as DCF
+	// if `buf` has the magic number for XZ, decompress before parsing as DCF
 	if bytes.HasPrefix(buf, xzMagicNumber) {
 		var err error
 		buf, err = decompressXZArchive(buf)
@@ -288,7 +289,7 @@ func (s *DebianSource) downloadAndParseDCF(path string, data interface{}, cache 
 		}
 	}
 
-	//if `buf` has the magic number for GZip, decompress before parsing as DCF
+	// if `buf` has the magic number for GZip, decompress before parsing as DCF
 	if bytes.HasPrefix(buf, gzipMagicNumber) {
 		var err error
 		buf, err = decompressGZipArchive(buf)
@@ -320,17 +321,17 @@ func stripFileExtension(fileName string) string {
 }
 
 // Helper function for DebianSource.ListAllFiles().
-func (s *DebianSource) recursivelyListEntries(path string) ([]string, *ListEntriesError) {
+func (s *DebianSource) recursivelyListEntries(ctx context.Context, path string) ([]string, *ListEntriesError) {
 	var files []string
 
-	entries, lerr := s.urlSource.ListEntries(path)
+	entries, lerr := s.urlSource.ListEntries(ctx, path)
 	if lerr != nil {
 		return nil, lerr
 	}
 
 	for _, entry := range entries {
 		if entry.IsDirectory {
-			tmpFiles, lerr := s.recursivelyListEntries(entry.Path)
+			tmpFiles, lerr := s.recursivelyListEntries(ctx, entry.Path)
 			if lerr != nil {
 				return nil, lerr
 			}

@@ -29,7 +29,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v51/github"
+	"github.com/google/go-github/v61/github"
 	"github.com/majewsky/schwift"
 	"github.com/sapcc/go-api-declarations/bininfo"
 	"github.com/sapcc/go-bits/secrets"
@@ -116,7 +116,7 @@ func (s *GithubReleaseSource) Connect(name string) error {
 		baseURL.RawPath = ""
 		baseURLStr := baseURL.String()
 		var err error
-		s.client, err = github.NewEnterpriseClient(baseURLStr, baseURLStr, c)
+		s.client, err = github.NewClient(c).WithEnterpriseURLs(baseURLStr, baseURLStr)
 		if err != nil {
 			return err
 		}
@@ -127,12 +127,12 @@ func (s *GithubReleaseSource) Connect(name string) error {
 }
 
 // ListEntries implements the Source interface.
-func (s *GithubReleaseSource) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesError) {
+func (s *GithubReleaseSource) ListEntries(_ context.Context, directoryPath string) ([]FileSpec, *ListEntriesError) {
 	return nil, ErrListEntriesNotSupported
 }
 
 // ListAllFiles implements the Source interface.
-func (s *GithubReleaseSource) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
+func (s *GithubReleaseSource) ListAllFiles(_ context.Context, out chan<- FileSpec) *ListEntriesError {
 	releases, err := s.getReleases()
 	if err != nil {
 		return &ListEntriesError{
@@ -163,7 +163,8 @@ func (s *GithubReleaseSource) ListAllFiles(out chan<- FileSpec) *ListEntriesErro
 				DownloadPath: strconv.FormatInt(a.GetID(), 10),
 			}
 			if a.UpdatedAt != nil {
-				fs.LastModified = &a.UpdatedAt.Time
+				updatedAtTime := a.UpdatedAt.Time
+				fs.LastModified = &updatedAtTime
 			}
 			out <- fs
 		}
@@ -173,7 +174,7 @@ func (s *GithubReleaseSource) ListAllFiles(out chan<- FileSpec) *ListEntriesErro
 }
 
 // GetFile implements the Source interface.
-func (s *GithubReleaseSource) GetFile(path string, requestHeaders schwift.ObjectHeaders) (io.ReadCloser, FileState, error) {
+func (s *GithubReleaseSource) GetFile(_ context.Context, path string, requestHeaders schwift.ObjectHeaders) (io.ReadCloser, FileState, error) {
 	u := fmt.Sprintf("repos/%s/%s/releases/assets/%s", s.owner, s.repo, path)
 	req, err := s.client.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
@@ -210,7 +211,7 @@ func (s *GithubReleaseSource) GetFile(path string, requestHeaders schwift.Object
 		Etag:         resp.Header.Get("Etag"),
 		LastModified: resp.Header.Get("Last-Modified"),
 		SizeBytes:    resp.ContentLength,
-		ExpiryTime:   nil, //no way to get this information via HTTP only
+		ExpiryTime:   nil, // no way to get this information via HTTP only
 		SkipTransfer: resp.StatusCode == http.StatusNotModified,
 		ContentType:  resp.Header.Get("Content-Type"),
 	}, nil

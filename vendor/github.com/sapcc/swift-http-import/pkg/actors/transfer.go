@@ -41,8 +41,8 @@ type Transferor struct {
 func (t *Transferor) Run(ctx context.Context) {
 	done := ctx.Done()
 
-	//main transfer loop - report successful and skipped transfers immediately,
-	//but push back failed transfers for later retry
+	// main transfer loop - report successful and skipped transfers immediately,
+	// but push back failed transfers for later retry
 	aborted := false
 	var filesToRetry []objects.File
 LOOP:
@@ -55,7 +55,7 @@ LOOP:
 			if !ok {
 				break LOOP
 			}
-			result, size := file.PerformTransfer()
+			result, size := file.PerformTransfer(ctx)
 			if result == objects.TransferFailed {
 				filesToRetry = append(filesToRetry, file)
 			} else {
@@ -65,26 +65,26 @@ LOOP:
 		}
 	}
 
-	//retry transfer of failed files one more time
+	// retry transfer of failed files one more time
 	if !aborted && len(filesToRetry) > 0 {
 		logg.Info("retrying %d failed file transfers...", len(filesToRetry))
 	}
 	for _, file := range filesToRetry {
 		result := objects.TransferFailed
 		var size int64
-		//...but only if we were not aborted (this is checked in every loop
-		//iteration because the abort signal (i.e. Ctrl-C) could also happen
-		//during this loop)
+		// ...but only if we were not aborted (this is checked in every loop
+		// iteration because the abort signal (i.e. Ctrl-C) could also happen
+		// during this loop)
 		if !aborted && ctx.Err() == nil {
-			result, size = file.PerformTransfer()
+			result, size = file.PerformTransfer(ctx)
 		}
 		t.Output <- FileInfoForCleaner{File: file, Failed: result == objects.TransferFailed}
 		t.Report <- ReportEvent{IsFile: true, FileTransferResult: result, FileTransferBytes: size}
 	}
 
-	//if interrupt was received, consume all remaining input to get the Scraper
-	//moving (it might be stuck trying to send into the File channel while the
-	//channel's buffer is full)
+	// if interrupt was received, consume all remaining input to get the Scraper
+	// moving (it might be stuck trying to send into the File channel while the
+	// channel's buffer is full)
 	for range t.Input {
 	}
 }
