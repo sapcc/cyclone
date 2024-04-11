@@ -20,6 +20,7 @@
 package objects
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -45,29 +46,29 @@ import (
 
 // Source describes a place from which files can be fetched.
 type Source interface {
-	//Validate reports errors if this source is malspecified.
+	// Validate reports errors if this source is malspecified.
 	Validate(name string) []error
-	//Connect performs source-specific one-time setup.
+	// Connect performs source-specific one-time setup.
 	Connect(name string) error
-	//ListAllFiles returns all files in the source (as paths relative to the
-	//source's root). If this returns ErrListAllFilesNotSupported, ListEntries
-	//must be used instead.
-	ListAllFiles(out chan<- FileSpec) *ListEntriesError
-	//ListEntries returns all files and subdirectories at this path in the
-	//source. Each result value must have a "/" prefix for subdirectories, or
-	//none for files.
-	ListEntries(directoryPath string) ([]FileSpec, *ListEntriesError)
-	//GetFile retrieves the contents and metadata for the file at the given path
-	//in the source. The `headers` map contains additional HTTP request headers
-	//that shall be passed to the source in the GET request.
-	GetFile(path string, headers schwift.ObjectHeaders) (body io.ReadCloser, sourceState FileState, err error)
+	// ListAllFiles returns all files in the source (as paths relative to the
+	// source's root). If this returns ErrListAllFilesNotSupported, ListEntries
+	// must be used instead.
+	ListAllFiles(ctx context.Context, out chan<- FileSpec) *ListEntriesError
+	// ListEntries returns all files and subdirectories at this path in the
+	// source. Each result value must have a "/" prefix for subdirectories, or
+	// none for files.
+	ListEntries(ctx context.Context, directoryPath string) ([]FileSpec, *ListEntriesError)
+	// GetFile retrieves the contents and metadata for the file at the given path
+	// in the source. The `headers` map contains additional HTTP request headers
+	// that shall be passed to the source in the GET request.
+	GetFile(ctx context.Context, path string, headers schwift.ObjectHeaders) (body io.ReadCloser, sourceState FileState, err error)
 }
 
 // ListEntriesError is an error that occurs while scraping a directory.
 type ListEntriesError struct {
-	//the location of the directory (e.g. an URL)
+	// the location of the directory (e.g. an URL)
 	Location string
-	//error message (either of those is optional, but at least one must be set)
+	// error message (either of those is optional, but at least one must be set)
 	Message string
 	Inner   error
 }
@@ -108,8 +109,8 @@ type FileState struct {
 	Etag         string
 	LastModified string
 	SizeBytes    int64      //-1 if not known
-	ExpiryTime   *time.Time //nil if not set
-	//the following fields are only used in `sourceState`, not `targetState`
+	ExpiryTime   *time.Time // nil if not set
+	// the following fields are only used in `sourceState`, not `targetState`
 	SkipTransfer bool
 	ContentType  string
 }
@@ -120,17 +121,17 @@ type FileState struct {
 type URLSource struct {
 	URLString string   `yaml:"url"`
 	URL       *url.URL `yaml:"-"`
-	//auth options
+	// auth options
 	ClientCertificatePath    string       `yaml:"cert"`
 	ClientCertificateKeyPath string       `yaml:"key"`
 	ServerCAPath             string       `yaml:"ca"`
 	HTTPClient               *http.Client `yaml:"-"`
-	//transfer options
+	// transfer options
 	SegmentingIn *bool  `yaml:"segmenting"`
 	Segmenting   bool   `yaml:"-"`
 	SegmentSize  uint64 `yaml:"segment_bytes"`
 	//NOTE: All attributes that can be deserialized from YAML also need to be in
-	//the custom source types (e.g. YumSource) with the same YAML field names.
+	// the custom source types (e.g. YumSource) with the same YAML field names.
 }
 
 // Validate implements the Source interface.
@@ -138,14 +139,14 @@ func (u *URLSource) Validate(name string) (result []error) {
 	if u.URLString == "" {
 		result = append(result, fmt.Errorf("missing value for %s.url", name))
 	} else {
-		//parse URL
+		// parse URL
 		var err error
 		u.URL, err = url.Parse(u.URLString)
 		if err != nil {
 			result = append(result, fmt.Errorf("invalid value for %s.url: %s", name, err.Error()))
 		}
 
-		//URL must refer to a directory, i.e. have a trailing slash
+		// URL must refer to a directory, i.e. have a trailing slash
 		if u.URL.Path == "" {
 			u.URL.Path = "/"
 			u.URL.RawPath = ""
@@ -226,18 +227,18 @@ func (u *URLSource) Connect(name string) error {
 var dotdotRx = regexp.MustCompile(`(?:^|/)\.\.(?:$|/)`)
 
 // ListAllFiles implements the Source interface.
-func (u URLSource) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
+func (u URLSource) ListAllFiles(_ context.Context, out chan<- FileSpec) *ListEntriesError {
 	return ErrListAllFilesNotSupported
 }
 
 // ListEntries implements the Source interface.
-func (u URLSource) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesError) {
-	//get full URL of this subdirectory
+func (u URLSource) ListEntries(ctx context.Context, directoryPath string) ([]FileSpec, *ListEntriesError) {
+	// get full URL of this subdirectory
 	uri := u.getURLForPath(directoryPath)
-	//to get a well-formatted directory listing, the directory URL must have a
-	//trailing slash (most web servers automatically redirect from the URL
-	//without trailing slash to the URL with trailing slash; others show a
-	//slightly different directory listing that we cannot parse correctly)
+	// to get a well-formatted directory listing, the directory URL must have a
+	// trailing slash (most web servers automatically redirect from the URL
+	// without trailing slash to the URL with trailing slash; others show a
+	// slightly different directory listing that we cannot parse correctly)
 	if !strings.HasSuffix(uri.Path, "/") {
 		uri.Path += "/"
 		if uri.RawPath != "" {
@@ -247,42 +248,45 @@ func (u URLSource) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesEr
 
 	logg.Debug("scraping %s", uri)
 
-	//retrieve directory listing
-	//TODO: This should send "Accept: text/html", but at least Apache and nginx
-	//don't care about the Accept header, anyway, as far as my testing showed.
-	response, err := u.HTTPClient.Get(uri.String())
+	// retrieve directory listing
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri.String(), http.NoBody)
 	if err != nil {
 		return nil, &ListEntriesError{uri.String(), "GET failed", err}
 	}
-	defer response.Body.Close()
-
-	//check that we actually got a directory listing
-	if !strings.HasPrefix(response.Status, "2") {
-		//DebianSource parses error message strings that end in "GET returned
-		//status 404". Changes to this error format will break things on the
-		//DebianSource end
-		return nil, &ListEntriesError{uri.String(), "GET returned status " + response.Status, nil}
+	req.Header.Set("Accept", "text/html")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, &ListEntriesError{uri.String(), "GET failed", err}
 	}
-	contentType := response.Header.Get("Content-Type")
+	defer resp.Body.Close()
+
+	// check that we actually got a directory listing
+	if !strings.HasPrefix(resp.Status, "2") {
+		// DebianSource parses error message strings that end in "GET returned
+		// status 404". Changes to this error format will break things on the
+		// DebianSource end
+		return nil, &ListEntriesError{uri.String(), "GET returned status " + resp.Status, nil}
+	}
+	contentType := resp.Header.Get("Content-Type")
 	if !strings.HasPrefix(contentType, "text/html") {
 		return nil, &ListEntriesError{uri.String(), "GET returned unexpected Content-Type: " + contentType, nil}
 	}
 
-	//find links inside the HTML document
-	tokenizer := html.NewTokenizer(response.Body)
+	// find links inside the HTML document
+	tokenizer := html.NewTokenizer(resp.Body)
 	var result []FileSpec
 	for {
 		tokenType := tokenizer.Next()
 
 		switch tokenType {
 		case html.ErrorToken:
-			//end of document
+			// end of document
 			return result, nil
 		case html.StartTagToken:
 			token := tokenizer.Token()
 
 			if token.DataAtom == atom.A {
-				//found an <a> tag -- retrieve its href
+				// found an <a> tag -- retrieve its href
 				var href string
 				for _, attr := range token.Attr {
 					if attr.Key == "href" {
@@ -300,26 +304,26 @@ func (u URLSource) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesEr
 					continue
 				}
 
-				//filter external links with full URLs
+				// filter external links with full URLs
 				if hrefURL.Scheme != "" || hrefURL.Host != "" {
 					continue
 				}
-				//ignore internal links, and links with a query part (Apache directory
-				//listings use these for adjustable sorting)
+				// ignore internal links, and links with a query part (Apache directory
+				// listings use these for adjustable sorting)
 				if hrefURL.RawQuery != "" || hrefURL.Fragment != "" {
 					continue
 				}
-				//ignore absolute paths to the toplevel of this server, e.g. "/static/site.css")
+				// ignore absolute paths to the toplevel of this server, e.g. "/static/site.css")
 				if strings.HasPrefix(hrefURL.Path, "/") {
 					continue
 				}
 
-				//cleanup path, but retain trailing slash to tell directories and files apart
+				// cleanup path, but retain trailing slash to tell directories and files apart
 				linkPath := path.Clean(hrefURL.Path)
 				if strings.HasSuffix(hrefURL.Path, "/") {
 					linkPath += "/"
 				}
-				//ignore links leading outside the current directory
+				// ignore links leading outside the current directory
 				if dotdotRx.MatchString(hrefURL.Path) {
 					continue
 				}
@@ -334,17 +338,17 @@ func (u URLSource) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesEr
 }
 
 // GetFile implements the Source interface.
-func (u URLSource) GetFile(filePath string, requestHeaders schwift.ObjectHeaders) (respBody io.ReadCloser, fileState FileState, err error) {
+func (u URLSource) GetFile(ctx context.Context, filePath string, requestHeaders schwift.ObjectHeaders) (respBody io.ReadCloser, fileState FileState, err error) {
 	uri := u.getURLForPath(filePath).String()
 	requestHeaders.Set("User-Agent", "swift-http-import/"+bininfo.VersionOr("dev"))
 
-	//retrieve file from source
+	// retrieve file from source
 	var response *http.Response
 	if u.Segmenting {
-		response, err = util.EnhancedGet(u.HTTPClient, uri, requestHeaders.ToHTTP(), u.SegmentSize) //nolint:bodyclose // response.Body is returned and can't be closed yet
+		response, err = util.EnhancedGet(ctx, u.HTTPClient, uri, requestHeaders.ToHTTP(), u.SegmentSize) //nolint:bodyclose // response.Body is returned and can't be closed yet
 	} else {
 		var req *http.Request
-		req, err = http.NewRequest(http.MethodGet, uri, http.NoBody)
+		req, err = http.NewRequestWithContext(ctx, http.MethodGet, uri, http.NoBody)
 		if err == nil {
 			for key, val := range requestHeaders.Headers {
 				req.Header.Set(key, val)
@@ -367,7 +371,7 @@ func (u URLSource) GetFile(filePath string, requestHeaders schwift.ObjectHeaders
 		Etag:         response.Header.Get("Etag"),
 		LastModified: response.Header.Get("Last-Modified"),
 		SizeBytes:    response.ContentLength,
-		ExpiryTime:   nil, //no way to get this information via HTTP only
+		ExpiryTime:   nil, // no way to get this information via HTTP only
 		SkipTransfer: response.StatusCode == 304,
 		ContentType:  response.Header.Get("Content-Type"),
 	}, nil
@@ -379,10 +383,10 @@ func (u URLSource) getURLForPath(filePath string) *url.URL {
 }
 
 // Helper function for custom source types.
-func (u URLSource) getFileContents(filePath string, cache map[string]FileSpec) (contents []byte, uri string, e *ListEntriesError) {
+func (u URLSource) getFileContents(ctx context.Context, filePath string, cache map[string]FileSpec) (contents []byte, uri string, e *ListEntriesError) {
 	uri = u.getURLForPath(filePath).String()
 
-	req, err := http.NewRequest(http.MethodGet, uri, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, http.NoBody)
 	if err != nil {
 		return nil, uri, &ListEntriesError{uri, "GET failed", err}
 	}

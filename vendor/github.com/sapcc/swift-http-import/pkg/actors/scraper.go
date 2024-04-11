@@ -42,7 +42,7 @@ type Scraper struct {
 
 // Run implements the Actor interface.
 func (s *Scraper) Run(ctx context.Context) {
-	//push jobs in *reverse* order so that the first job will be processed first
+	// push jobs in *reverse* order so that the first job will be processed first
 	stack := make(directoryStack, 0, len(s.Jobs))
 	for idx := range s.Jobs {
 		stack = stack.Push(objects.Directory{
@@ -52,17 +52,17 @@ func (s *Scraper) Run(ctx context.Context) {
 	}
 
 	for !stack.IsEmpty() {
-		//check if state.Context.Done() is closed
+		// check if state.Context.Done() is closed
 		if ctx.Err() != nil {
 			break
 		}
 
-		//fetch next directory from stack
+		// fetch next directory from stack
 		var directory objects.Directory
 		stack, directory = stack.Pop()
-		job := directory.Job //shortcut
+		job := directory.Job // shortcut
 
-		//handle file/subdirectory that was found
+		// handle file/subdirectory that was found
 		handleFileSpec := func(fs objects.FileSpec) {
 			excludeReason := job.Matcher.CheckFile(fs)
 			if excludeReason != nil {
@@ -83,8 +83,8 @@ func (s *Scraper) Run(ctx context.Context) {
 			}
 		}
 
-		//list entries for the directory. At the top level, try ListAllFiles if
-		//supported by job.Source.
+		// list entries for the directory. At the top level, try ListAllFiles if
+		// supported by job.Source.
 		var err *objects.ListEntriesError
 		switch {
 		case directory.Path == "/":
@@ -98,16 +98,16 @@ func (s *Scraper) Run(ctx context.Context) {
 				wg.Done()
 			}()
 
-			err = job.Source.ListAllFiles(c)
-			close(c)  //terminate receiver loop
-			wg.Wait() //wait for receiver goroutine to finish
+			err = job.Source.ListAllFiles(ctx, c)
+			close(c)  // terminate receiver loop
+			wg.Wait() // wait for receiver goroutine to finish
 			if err != objects.ErrListAllFilesNotSupported {
 				break
 			}
-			fallthrough //try ListEntries() if err == objects.ErrListAllFilesNotSupported
+			fallthrough // try ListEntries() if err == objects.ErrListAllFilesNotSupported
 		default:
 			var entries []objects.FileSpec
-			entries, err = job.Source.ListEntries(directory.Path)
+			entries, err = job.Source.ListEntries(ctx, directory.Path)
 			if err == nil {
 				for _, entry := range entries {
 					handleFileSpec(entry)
@@ -115,12 +115,12 @@ func (s *Scraper) Run(ctx context.Context) {
 			}
 		}
 
-		//if listing failed, maybe retry later
+		// if listing failed, maybe retry later
 		if err != nil {
 			if err.Message == objects.ErrMessageGPGVerificationFailed {
 				logg.Error("skipping job for source %s: %s", err.Location, err.FullMessage())
 				job.IsScrapingIncomplete = true
-				//report that a job was skipped
+				// report that a job was skipped
 				s.Report <- ReportEvent{IsJob: true, JobSkipped: true}
 				continue
 			}
@@ -136,11 +136,11 @@ func (s *Scraper) Run(ctx context.Context) {
 			continue
 		}
 
-		//report that a directory was successfully scraped
+		// report that a directory was successfully scraped
 		s.Report <- ReportEvent{IsDirectory: true}
 	}
 
-	//signal to consumers that we're done
+	// signal to consumers that we're done
 	close(s.Output)
 }
 

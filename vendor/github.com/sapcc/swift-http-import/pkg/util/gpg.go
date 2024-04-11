@@ -21,6 +21,9 @@ package util
 
 import (
 	"bytes"
+	"context"
+
+	//nolint:depguard
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -63,7 +66,7 @@ func NewGPGKeyRing(cntr *schwift.Container, keyserverURLPatterns []string) *GPGK
 			"https://pgp.mit.edu/pks/lookup?search=0x{keyid}&options=mr&op=get")
 	}
 
-	//Get cached public keys from Swift container.
+	// Get cached public keys from Swift container.
 	var entityList openpgp.EntityList
 	if cntr != nil {
 		logg.Info("restoring GPG public keys from %s", cntr.Name())
@@ -101,9 +104,9 @@ func NewGPGKeyRing(cntr *schwift.Container, keyserverURLPatterns []string) *GPGK
 // If the key ring does not contain the concerning public key then the key is downloaded
 // from a pool server and added to the existing key ring.
 // A non-nil error is returned, if signature verification was unsuccessful.
-func (k *GPGKeyRing) VerifyClearSignedGPGSignature(messageWithSignature []byte) error {
+func (k *GPGKeyRing) VerifyClearSignedGPGSignature(ctx context.Context, messageWithSignature []byte) error {
 	block, _ := clearsign.Decode(messageWithSignature)
-	return k.verifyGPGSignature(block.Bytes, block.ArmoredSignature)
+	return k.verifyGPGSignature(ctx, block.Bytes, block.ArmoredSignature)
 }
 
 // VerifyDetachedGPGSignature takes a message along with its detached signature
@@ -112,15 +115,15 @@ func (k *GPGKeyRing) VerifyClearSignedGPGSignature(messageWithSignature []byte) 
 // If the key ring does not contain the concerning public key then the key is downloaded
 // from a pool server and added to the existing key ring.
 // A non-nil error is returned, if signature verification was unsuccessful.
-func (k *GPGKeyRing) VerifyDetachedGPGSignature(message, armoredSignature []byte) error {
+func (k *GPGKeyRing) VerifyDetachedGPGSignature(ctx context.Context, message, armoredSignature []byte) error {
 	block, err := armor.Decode(bytes.NewReader(armoredSignature))
 	if err != nil {
 		return err
 	}
-	return k.verifyGPGSignature(message, block)
+	return k.verifyGPGSignature(ctx, message, block)
 }
 
-func (k *GPGKeyRing) verifyGPGSignature(message []byte, signature *armor.Block) error {
+func (k *GPGKeyRing) verifyGPGSignature(ctx context.Context, message []byte, signature *armor.Block) error {
 	if signature.Type != openpgp.SignatureType {
 		return fmt.Errorf("invalid OpenPGP armored structure: expected %q, got %q", openpgp.SignatureType, signature.Type)
 	}
@@ -134,7 +137,7 @@ func (k *GPGKeyRing) verifyGPGSignature(message []byte, signature *armor.Block) 
 	for {
 		p, err := r.Next()
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return err
@@ -150,12 +153,12 @@ func (k *GPGKeyRing) verifyGPGSignature(message []byte, signature *armor.Block) 
 			return fmt.Errorf("invalid OpenPGP packet type: expected %q, got %T", "*packet.Signature", p)
 		}
 
-		//only download the public key if not found in the existing key ring
+		// only download the public key if not found in the existing key ring
 		k.Mux.RLock()
 		foundKeys := k.EntityList.KeysById(issuerKeyID)
 		k.Mux.RUnlock()
 		if len(foundKeys) == 0 {
-			b, err := k.getPublicKey(fmt.Sprintf("%X", issuerKeyID))
+			b, err := k.getPublicKey(ctx, fmt.Sprintf("%X", issuerKeyID))
 			if err != nil {
 				return err
 			}
@@ -163,7 +166,7 @@ func (k *GPGKeyRing) verifyGPGSignature(message []byte, signature *armor.Block) 
 		}
 	}
 
-	//add the downloaded keys to the existing key ring
+	// add the downloaded keys to the existing key ring
 	if len(publicKeyBytes) != 0 {
 		el, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(publicKeyBytes))
 		if err != nil {
@@ -181,12 +184,12 @@ func (k *GPGKeyRing) verifyGPGSignature(message []byte, signature *armor.Block) 
 	return err
 }
 
-func (k *GPGKeyRing) getPublicKey(id string) ([]byte, error) {
+func (k *GPGKeyRing) getPublicKey(ctx context.Context, id string) ([]byte, error) {
 	logg.Info("retrieving public key for ID %q", id)
 
 	for i, v := range k.KeyserverURLPatterns {
-		url := strings.Replace(v, "{keyid}", id, -1)
-		buf, err := getPublicKeyFromServer(url)
+		url := strings.ReplaceAll(v, "{keyid}", id)
+		buf, err := getPublicKeyFromServer(ctx, url)
 		if err == nil {
 			return uploadPublicKey(k.SwiftContainer, buf)
 		}
@@ -206,8 +209,12 @@ var (
 	errNoSuchPublicKey = errors.New("no such public key")
 )
 
-func getPublicKeyFromServer(uri string) ([]byte, error) {
-	resp, err := http.Get(uri) //nolint:gosec // potential servers are hardcoded in configuration and URL needs to be variable
+func getPublicKeyFromServer(ctx context.Context, uri string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, uri, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

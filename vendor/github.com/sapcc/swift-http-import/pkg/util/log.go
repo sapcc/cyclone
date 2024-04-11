@@ -19,27 +19,8 @@
 
 package util
 
-import (
-	"os"
-	"strconv"
-
-	"github.com/sapcc/go-bits/logg"
-)
-
-func init() {
-	if parseBool(os.Getenv("DEBUG")) {
-		logg.ShowDebug = true
-	}
-}
+import "github.com/sapcc/go-bits/osext"
 
 // LogIndividualTransfers is set to the boolean value of the
 // LOG_TRANSFERS environment variable.
-var LogIndividualTransfers = parseBool(os.Getenv("LOG_TRANSFERS"))
-
-func parseBool(str string) bool {
-	b, err := strconv.ParseBool(str)
-	if err != nil {
-		b = false
-	}
-	return b
-}
+var LogIndividualTransfers = osext.GetenvBool("LOG_TRANSFERS")

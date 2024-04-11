@@ -20,6 +20,7 @@
 package objects
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -54,13 +55,13 @@ type SwiftLocation struct {
 	RegionName                  secrets.FromEnv `yaml:"region_name"`
 	ContainerName               secrets.FromEnv `yaml:"container"`
 	ObjectNamePrefix            secrets.FromEnv `yaml:"object_prefix"`
-	//configuration for Validate()
+	// configuration for Validate()
 	ValidateIgnoreEmptyContainer bool `yaml:"-"`
-	//Account and Container is filled by Connect(). Container will be nil if ContainerName is empty.
+	// Account and Container is filled by Connect(). Container will be nil if ContainerName is empty.
 	Account   *schwift.Account   `yaml:"-"`
 	Container *schwift.Container `yaml:"-"`
-	//FileExists is filled by DiscoverExistingFiles(). The keys are object names
-	//including the ObjectNamePrefix, if any.
+	// FileExists is filled by DiscoverExistingFiles(). The keys are object names
+	// including the ObjectNamePrefix, if any.
 	FileExists map[string]bool `yaml:"-"`
 }
 
@@ -101,9 +102,9 @@ func (s *SwiftLocation) Validate(name string) []error {
 	}
 
 	if s.ApplicationCredentialID != "" || s.ApplicationCredentialName != "" {
-		//checking application credential requirements
+		// checking application credential requirements
 		if s.ApplicationCredentialID == "" {
-			//if application_credential_id is not set, then we need to know user_name and user_domain_name
+			// if application_credential_id is not set, then we need to know user_name and user_domain_name
 			if s.UserName == "" {
 				result = append(result, fmt.Errorf("missing value for %s.user_name", name))
 			}
@@ -161,7 +162,7 @@ func (s *SwiftLocation) Connect(name string) error {
 		return nil
 	}
 
-	//connect to Swift account (but re-use connection if cached)
+	// connect to Swift account (but re-use connection if cached)
 	key := s.cacheKey(name)
 	s.Account = accountCache[key]
 	if s.Account == nil {
@@ -239,7 +240,7 @@ func (s *SwiftLocation) Connect(name string) error {
 		accountCache[key] = s.Account
 	}
 
-	//create target container if missing
+	// create target container if missing
 	if s.ContainerName == "" {
 		s.Container = nil
 		return nil
@@ -257,7 +258,7 @@ func (s *SwiftLocation) ObjectAtPath(path string) *schwift.Object {
 }
 
 // ListAllFiles implements the Source interface.
-func (s *SwiftLocation) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
+func (s *SwiftLocation) ListAllFiles(_ context.Context, out chan<- FileSpec) *ListEntriesError {
 	objectPath := string(s.ObjectNamePrefix)
 	if objectPath != "" && !strings.HasSuffix(objectPath, "/") {
 		objectPath += "/"
@@ -282,13 +283,13 @@ func (s *SwiftLocation) ListAllFiles(out chan<- FileSpec) *ListEntriesError {
 }
 
 // ListEntries implements the Source interface.
-func (s *SwiftLocation) ListEntries(directoryPath string) ([]FileSpec, *ListEntriesError) {
+func (s *SwiftLocation) ListEntries(_ context.Context, directoryPath string) ([]FileSpec, *ListEntriesError) {
 	return nil, ErrListEntriesNotSupported
 }
 
 func (s *SwiftLocation) getFileSpec(info schwift.ObjectInfo) FileSpec {
 	var f FileSpec
-	//strip ObjectNamePrefix from the resulting objects
+	// strip ObjectNamePrefix from the resulting objects
 	if info.SubDirectory != "" {
 		f.Path = strings.TrimPrefix(info.SubDirectory, string(s.ObjectNamePrefix))
 		f.IsDirectory = true
@@ -308,7 +309,7 @@ func (s *SwiftLocation) getFileSpec(info schwift.ObjectInfo) FileSpec {
 }
 
 // GetFile implements the Source interface.
-func (s *SwiftLocation) GetFile(path string, requestHeaders schwift.ObjectHeaders) (io.ReadCloser, FileState, error) {
+func (s *SwiftLocation) GetFile(_ context.Context, path string, requestHeaders schwift.ObjectHeaders) (io.ReadCloser, FileState, error) {
 	object := s.ObjectAtPath(path)
 
 	body, err := object.Download(requestHeaders.ToOpts()).AsReadCloser()
@@ -319,7 +320,7 @@ func (s *SwiftLocation) GetFile(path string, requestHeaders schwift.ObjectHeader
 		return nil, FileState{}, err
 	}
 	//NOTE: Download() uses a GET request, so object metadata has already been
-	//received and cached, so Headers() is cheap now and will never fail.
+	// received and cached, so Headers() is cheap now and will never fail.
 	hdr, err := object.Headers()
 	if err != nil {
 		body.Close()
