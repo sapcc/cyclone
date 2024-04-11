@@ -7,7 +7,7 @@ toolchain go1.22.2
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.11.0
-	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
+	github.com/gophercloud/utils c2cbb9f23ff9
 	github.com/klauspost/compress v1.17.8
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift v1.3.0
