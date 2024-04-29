@@ -221,10 +221,14 @@ github.com/sapcc/go-api-declarations v1.5.0 h1:inQyaR2khF4z2FE3GMFf5oMrWYgCo0qmu
 github.com/sapcc/go-api-declarations v1.5.0/go.mod h1:EA4x5xxJGyG/3JTteUOYBg6cJLJgsBHrDj3ryfNU4dQ=
 github.com/sapcc/go-api-declarations v1.10.11 h1:fxPTNfsriHX/a/eZo/9ugrGyS3oxh5z0xOTJkGmGUlQ=
 github.com/sapcc/go-api-declarations v1.10.11/go.mod h1:83R3hTANhuRXt/pXDby37IJetw8l7DG41s33Tp9NXxI=
+github.com/sapcc/go-api-declarations v1.11.0 h1:k/U/Hdv2UbBdAyxfnWUyhs8hl74fCrNn8aIWj+k42u4=
+github.com/sapcc/go-api-declarations v1.11.0/go.mod h1:83R3hTANhuRXt/pXDby37IJetw8l7DG41s33Tp9NXxI=
 github.com/sapcc/go-bits v0.0.0-20230411092955-08960517159d h1:0uGWEqyEcrFnPe1ViNhPmnx98AJ3AFWNxaU/V2IhdPg=
 github.com/sapcc/go-bits v0.0.0-20230411092955-08960517159d/go.mod h1:TFG6rVp6EiNXnWG5b2sGM6DjIUAt78Yqw0iCbLR8NkU=
 github.com/sapcc/go-bits v0.0.0-20240411072115-07d6ca906595 h1:VriQxjWAG/3ugTh2pPvB7J1HsaJdy2VyESHGVhflJ+E=
 github.com/sapcc/go-bits v0.0.0-20240411072115-07d6ca906595/go.mod h1:7ejtcgmK6MNAVVCeUUC0R8E8Y5ltDB7/vpSrok291DY=
+github.com/sapcc/go-bits v0.0.0-20240429130232-fdc0102c61a4 h1:h7xYkyFcGmqPcgNPL3LLrOTANeuZwKYq5WriV0e2Dvg=
+github.com/sapcc/go-bits v0.0.0-20240429130232-fdc0102c61a4/go.mod h1:4gsmI0EEDRETgw6+TWm/l627KZMA9/MAxNxMsY1S7bs=
 github.com/sapcc/swift-http-import v0.0.0-20230411093003-435ad4fdfc60 h1:RMsmZZCGfF3+7XqQh0yeVbohK/UMLE3NB+skuVzCcfA=
 github.com/sapcc/swift-http-import v0.0.0-20230411093003-435ad4fdfc60/go.mod h1:gsPmonRyWAWNY6AnwqLvmIUZh+iuFwSKsNoU22tdWpc=
 github.com/sapcc/swift-http-import v0.0.0-20240410093908-aa97664258da h1:aAZc1EO5kMc8C9RdQ1MATUyg7K+u64WMN3e1WSnWbMw=
