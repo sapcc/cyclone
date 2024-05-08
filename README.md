@@ -39,6 +39,7 @@ Available Commands:
   completion  Generate the autocompletion script for the specified shell
   help        Help about any command
   image       Clone an image
+  secret      Clone a secret
   server      Clone a server
   share       Clone a share
   version     Print version information
@@ -51,6 +52,7 @@ Flags:
   -n, --no                                        assume "no" to all questions
       --timeout-backup string                     timeout to wait for a backup status (default "24h")
       --timeout-image string                      timeout to wait for an image status (default "24h")
+      --timeout-secret string                     timeout to wait for a secret status (default "24h")
       --timeout-server string                     timeout to wait for a server status (default "24h")
       --timeout-share string                      timeout to wait for a share status (default "24h")
       --timeout-share-replica string              timeout to wait for a share replica status (default "24h")
