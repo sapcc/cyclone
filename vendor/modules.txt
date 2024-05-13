@@ -1,17 +1,9 @@
-# github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8
-## explicit; go 1.13
 # github.com/cactus/go-statsd-client/v5 v5.1.0
 ## explicit; go 1.11
 github.com/cactus/go-statsd-client/v5/statsd
-# github.com/cloudflare/circl v1.3.3
-## explicit; go 1.19
 # github.com/fsnotify/fsnotify v1.7.0
 ## explicit; go 1.17
 github.com/fsnotify/fsnotify
-# github.com/golang/protobuf v1.5.3
-## explicit; go 1.9
-# github.com/google/go-github/v51 v51.0.0
-## explicit; go 1.17
 # github.com/google/go-github/v61 v61.0.0
 ## explicit; go 1.21
 github.com/google/go-github/v61/github
@@ -52,6 +44,8 @@ github.com/gophercloud/gophercloud/openstack/imageservice/v2/imagedata
 github.com/gophercloud/gophercloud/openstack/imageservice/v2/imageimport
 github.com/gophercloud/gophercloud/openstack/imageservice/v2/images
 github.com/gophercloud/gophercloud/openstack/imageservice/v2/tasks
+github.com/gophercloud/gophercloud/openstack/keymanager/v1/acls
+github.com/gophercloud/gophercloud/openstack/keymanager/v1/secrets
 github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/external
 github.com/gophercloud/gophercloud/openstack/networking/v2/networks
 github.com/gophercloud/gophercloud/openstack/networking/v2/ports
@@ -168,8 +162,6 @@ github.com/spf13/cast
 # github.com/spf13/cobra v1.8.0
 ## explicit; go 1.15
 github.com/spf13/cobra
-# github.com/spf13/jwalterweatherman v1.1.0
-## explicit
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
@@ -194,6 +186,9 @@ github.com/ulikunitz/xz
 github.com/ulikunitz/xz/internal/hash
 github.com/ulikunitz/xz/internal/xlog
 github.com/ulikunitz/xz/lzma
+# github.com/xhit/go-str2duration v1.2.0
+## explicit; go 1.14
+github.com/xhit/go-str2duration
 # go.uber.org/atomic v1.11.0
 ## explicit; go 1.18
 go.uber.org/atomic
@@ -244,10 +239,6 @@ golang.org/x/text/internal/utf8internal
 golang.org/x/text/runes
 golang.org/x/text/transform
 golang.org/x/text/unicode/norm
-# google.golang.org/appengine v1.6.7
-## explicit; go 1.11
-# google.golang.org/protobuf v1.33.0
-## explicit; go 1.17
 # gopkg.in/ini.v1 v1.67.0
 ## explicit
 gopkg.in/ini.v1

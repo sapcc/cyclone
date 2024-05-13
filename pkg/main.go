@@ -105,6 +105,7 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("timeout-share", "", "24h", "timeout to wait for a share status")
 	RootCmd.PersistentFlags().StringP("timeout-share-snapshot", "", "24h", "timeout to wait for a share snapshot status")
 	RootCmd.PersistentFlags().StringP("timeout-share-replica", "", "24h", "timeout to wait for a share replica status")
+	RootCmd.PersistentFlags().StringP("timeout-secret", "", "24h", "timeout to wait for a secret status")
 	RootCmd.PersistentFlags().BoolP("image-web-download", "", false, "use Glance web-download image import method")
 	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 	viper.BindPFlag("yes", RootCmd.PersistentFlags().Lookup("yes"))
@@ -126,6 +127,7 @@ func initRootCmdFlags() {
 	viper.BindPFlag("timeout-share", RootCmd.PersistentFlags().Lookup("timeout-share"))
 	viper.BindPFlag("timeout-share-snapshot", RootCmd.PersistentFlags().Lookup("timeout-share-snapshot"))
 	viper.BindPFlag("timeout-share-replica", RootCmd.PersistentFlags().Lookup("timeout-share-replica"))
+	viper.BindPFlag("timeout-secret", RootCmd.PersistentFlags().Lookup("timeout-secret"))
 	viper.BindPFlag("image-web-download", RootCmd.PersistentFlags().Lookup("image-web-download"))
 }
 
@@ -161,6 +163,7 @@ func parseTimeoutArgs() error {
 	parseTimeoutArg("timeout-share", &waitForShareSec, &errors)
 	parseTimeoutArg("timeout-share-snapshot", &waitForShareSnapshotSec, &errors)
 	parseTimeoutArg("timeout-share-replica", &waitForShareReplicaSec, &errors)
+	parseTimeoutArg("timeout-secret", &waitForSecretSec, &errors)
 	if len(errors) > 0 {
 		return fmt.Errorf("%q", errors)
 	}

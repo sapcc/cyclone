@@ -220,6 +220,12 @@ func newSharedFileSystemV2Client(provider *gophercloud.ProviderClient, region st
 	})
 }
 
+func newSecretManagerV1Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
+	return openstack.NewKeyManagerV1(provider, gophercloud.EndpointOpts{
+		Region: region,
+	})
+}
+
 func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstAZ *string, loc *Locations) error {
 	if *dstAZ == "" {
 		if strings.HasPrefix(srcAZ, loc.Dst.Region) {
