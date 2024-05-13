@@ -11,7 +11,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/keymanager/v1/secrets"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/xhit/go-str2duration"
+	"github.com/xhit/go-str2duration/v2"
 )
 
 var (
@@ -247,7 +247,7 @@ var SecretCmd = &cobra.Command{
 
 		if toExp != "" {
 			var err error
-			toExpiration, err = str2duration.Str2Duration(toExp)
+			toExpiration, err = str2duration.ParseDuration(toExp)
 			if err != nil {
 				return fmt.Errorf("failed to parse --to-add-expiration-duration value: %v", err)
 			}
