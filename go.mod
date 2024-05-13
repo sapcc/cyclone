@@ -15,7 +15,7 @@ require (
 	github.com/sapcc/swift-http-import v0.0.0-20240410093908-aa97664258da
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	github.com/xhit/go-str2duration v1.2.0
+	github.com/xhit/go-str2duration/v2 v2.1.0
 	golang.org/x/term v0.20.0
 )
 
