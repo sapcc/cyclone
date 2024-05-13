@@ -11,7 +11,7 @@ require (
 	github.com/klauspost/compress v1.17.8
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift v1.3.0
-	github.com/sapcc/go-bits v0.0.0-20240411072115-07d6ca906595
+	github.com/sapcc/go-bits v0.0.0-20240510133533-f59e074e0a64
 	github.com/sapcc/swift-http-import v0.0.0-20240410093908-aa97664258da
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
@@ -35,7 +35,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
-	github.com/sapcc/go-api-declarations v1.10.11 // indirect
+	github.com/sapcc/go-api-declarations v1.11.2 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
