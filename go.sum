@@ -66,6 +66,8 @@ github.com/sapcc/go-api-declarations v1.11.2 h1:CFVxgWqrs4WBJhbA0nJNQ/0mBpAxmNFu
 github.com/sapcc/go-api-declarations v1.11.2/go.mod h1:83R3hTANhuRXt/pXDby37IJetw8l7DG41s33Tp9NXxI=
 github.com/sapcc/go-bits v0.0.0-20240510133533-f59e074e0a64 h1:WUFe1LWMAEeoFLaiaDE8OFuPp9guOhjGfOyUuFUTR+U=
 github.com/sapcc/go-bits v0.0.0-20240510133533-f59e074e0a64/go.mod h1:Y7GPFH7hi5btdchBtmw/T0kSNBq1ingJl7SM/aOc9S8=
+github.com/sapcc/go-bits v0.0.0-20240516084938-1c041b7a84ce h1:cMrOXCHbUuxCJX3vkaXvMcmUKkQQ65BPwtCj7MMebCA=
+github.com/sapcc/go-bits v0.0.0-20240516084938-1c041b7a84ce/go.mod h1:dGC65DP50Yuu0P+DsrtXIZU+P0HluN7HXnAA3xNCVBk=
 github.com/sapcc/swift-http-import v0.0.0-20240510131904-46e49858d896 h1:0W096L0JYpC+QNLS2Gepi+l45uXdx4vFvODKdFmH8+E=
 github.com/sapcc/swift-http-import v0.0.0-20240510131904-46e49858d896/go.mod h1:A7DpoYex1ddwc6uEtPKW867SEz+BDX55z/NLYxcTAqQ=
 github.com/sergi/go-diff v1.3.1 h1:xkr+Oxo4BOQKmkn/B9eMK0g5Kg/983T9DqqPHwYqD+8=
