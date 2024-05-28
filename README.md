@@ -35,15 +35,16 @@ Usage:
   cyclone [command]
 
 Available Commands:
-  backup      
-  completion  Generate the autocompletion script for the specified shell
-  help        Help about any command
-  image       Clone an image
-  secret      Clone a secret
-  server      Clone a server
-  share       Clone a share
-  version     Print version information
-  volume      Clone a volume
+  backup
+  completion    Generate the autocompletion script for the specified shell
+  help          Help about any command
+  image         Clone an image
+  secret        Clone a secret
+  securitygroup Clone a securitygroup
+  server        Clone a server
+  share         Clone a share
+  version       Print version information
+  volume        Clone a volume
 
 Flags:
   -d, --debug                                     print out request and response objects
