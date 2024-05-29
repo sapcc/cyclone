@@ -40,7 +40,7 @@ Available Commands:
   help          Help about any command
   image         Clone an image
   secret        Clone a secret
-  securitygroup Clone a securitygroup
+  security-group Clone a security group
   server        Clone a server
   share         Clone a share
   version       Print version information
