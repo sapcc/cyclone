@@ -14,7 +14,7 @@ require (
 	github.com/sapcc/go-bits v0.0.0-20240510133533-f59e074e0a64
 	github.com/sapcc/swift-http-import v0.0.0-20240510131904-46e49858d896
 	github.com/spf13/cobra v1.8.0
-	github.com/spf13/viper v1.18.2
+	github.com/spf13/viper v1.19.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	golang.org/x/term v0.20.0
 )
@@ -32,7 +32,7 @@ require (
 	github.com/matryer/is v1.4.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sapcc/go-api-declarations v1.11.2 // indirect
