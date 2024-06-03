@@ -47,6 +47,8 @@ github.com/gophercloud/gophercloud/openstack/imageservice/v2/tasks
 github.com/gophercloud/gophercloud/openstack/keymanager/v1/acls
 github.com/gophercloud/gophercloud/openstack/keymanager/v1/secrets
 github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/external
+github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups
+github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules
 github.com/gophercloud/gophercloud/openstack/networking/v2/networks
 github.com/gophercloud/gophercloud/openstack/networking/v2/ports
 github.com/gophercloud/gophercloud/openstack/networking/v2/subnets

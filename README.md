@@ -35,15 +35,16 @@ Usage:
   cyclone [command]
 
 Available Commands:
-  backup      
-  completion  Generate the autocompletion script for the specified shell
-  help        Help about any command
-  image       Clone an image
-  secret      Clone a secret
-  server      Clone a server
-  share       Clone a share
-  version     Print version information
-  volume      Clone a volume
+  backup
+  completion     Generate the autocompletion script for the specified shell
+  help           Help about any command
+  image          Clone an image
+  secret         Clone a secret
+  security-group Clone a security group
+  server         Clone a server
+  share          Clone a share
+  version        Print version information
+  volume         Clone a volume
 
 Flags:
   -d, --debug                                     print out request and response objects
@@ -53,6 +54,7 @@ Flags:
       --timeout-backup string                     timeout to wait for a backup status (default "24h")
       --timeout-image string                      timeout to wait for an image status (default "24h")
       --timeout-secret string                     timeout to wait for a secret status (default "24h")
+      --timeout-security-group string             timeout to wait for a security group status (default "24h")
       --timeout-server string                     timeout to wait for a server status (default "24h")
       --timeout-share string                      timeout to wait for a share status (default "24h")
       --timeout-share-replica string              timeout to wait for a share replica status (default "24h")
