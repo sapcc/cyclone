@@ -6,12 +6,12 @@ toolchain go1.22.3
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud v1.11.0
+	github.com/gophercloud/gophercloud v1.12.0
 	github.com/gophercloud/utils v0.0.0-20231010081019-80377eca5d56
 	github.com/klauspost/compress v1.17.8
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift v1.3.0
-	github.com/sapcc/go-bits v0.0.0-20240510133533-f59e074e0a64
+	github.com/sapcc/go-bits v0.0.0-20240530080859-f4579fb3a074
 	github.com/sapcc/swift-http-import v0.0.0-20240510131904-46e49858d896
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.19.0
