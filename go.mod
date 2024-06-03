@@ -12,7 +12,7 @@ require (
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift v1.3.0
 	github.com/sapcc/go-bits v0.0.0-20240530080859-f4579fb3a074
-	github.com/sapcc/swift-http-import v0.0.0-20240510131904-46e49858d896
+	github.com/sapcc/swift-http-import v0.0.0-20240531043308-875f6bfa1088
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.19.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -23,6 +23,7 @@ require (
 	github.com/cactus/go-statsd-client/v5 v5.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/google/go-github/v61 v61.0.0 // indirect
+	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
