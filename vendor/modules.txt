@@ -114,6 +114,8 @@ github.com/majewsky/schwift
 github.com/majewsky/schwift/capabilities
 github.com/majewsky/schwift/gopherschwift
 github.com/majewsky/schwift/internal/errext
+# github.com/majewsky/schwift/v2 v2.0.0
+## explicit; go 1.22
 # github.com/matryer/is v1.4.1
 ## explicit; go 1.14
 # github.com/mitchellh/go-homedir v1.1.0

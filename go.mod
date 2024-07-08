@@ -11,6 +11,7 @@ require (
 	github.com/klauspost/compress v1.17.8
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift v1.3.0
+	github.com/majewsky/schwift/v2 v2.0.0
 	github.com/sapcc/go-bits v0.0.0-20240530080859-f4579fb3a074
 	github.com/sapcc/swift-http-import v0.0.0-20240605095849-0db239238e71
 	github.com/spf13/cobra v1.8.0
