@@ -108,6 +108,7 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("timeout-secret", "", "24h", "timeout to wait for a secret status")
 	RootCmd.PersistentFlags().StringP("timeout-security-group", "", "24h", "timeout to wait for a security group status")
 	RootCmd.PersistentFlags().BoolP("image-web-download", "", false, "use Glance web-download image import method")
+	RootCmd.PersistentFlags().BoolP("insecure", "k", false, "Allow insecure server connections (use if you understand the risks)")
 
 	err := viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
 	if err != nil {
@@ -198,6 +199,10 @@ func initRootCmdFlags() {
 		panic(err)
 	}
 	err = viper.BindPFlag("image-web-download", RootCmd.PersistentFlags().Lookup("image-web-download"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("insecure", RootCmd.PersistentFlags().Lookup("insecure"))
 	if err != nil {
 		panic(err)
 	}

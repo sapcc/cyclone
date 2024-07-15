@@ -2,6 +2,7 @@ package pkg
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
 	"golang.org/x/term"
 
 	"github.com/gophercloud/gophercloud/v2"
@@ -84,12 +86,19 @@ func newOpenStackClient(ctx context.Context, loc Location) (*gophercloud.Provide
 	}
 	provider.UserAgent.Prepend("cyclone/" + Version)
 
+	insecure := viper.GetBool("insecure")
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: insecure,
+	}
+
 	// debug logger is enabled by default and writes logs into a cyclone temp dir
 	provider.HTTPClient = http.Client{
 		Transport: &client.RoundTripper{
 			MaxRetries: 5,
-			Rt:         &http.Transport{},
-			Logger:     &logger{Prefix: loc.Origin},
+			Rt: &http.Transport{
+				TLSClientConfig: tlsConfig,
+			},
+			Logger: &logger{Prefix: loc.Origin},
 		},
 	}
 
