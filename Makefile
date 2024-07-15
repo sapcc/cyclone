@@ -8,9 +8,9 @@ LDFLAGS:=-X $(PKG)/pkg.Version=$(VERSION) -w -s
 export CGO_ENABLED:=0
 
 build: fmt vet
-	GOOS=linux go build -mod=vendor -trimpath -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME) ./cmd/$(APP_NAME)
-	GOOS=darwin go build -mod=vendor -trimpath -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME)_darwin ./cmd/$(APP_NAME)
-	GOOS=windows go build -mod=vendor -trimpath -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME).exe ./cmd/$(APP_NAME)
+	GOOS=linux go build -mod=mod -trimpath -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME) ./cmd/$(APP_NAME)
+	GOOS=darwin go build -mod=mod -trimpath -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME)_darwin ./cmd/$(APP_NAME)
+	GOOS=windows go build -mod=mod -trimpath -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME).exe ./cmd/$(APP_NAME)
 
 docker:
 	docker pull golang:latest
@@ -20,10 +20,10 @@ fmt:
 	gofmt -s -w cmd pkg
 
 vet:
-	go vet -mod=vendor ./cmd/... ./pkg/...
+	go vet -mod=mod ./cmd/... ./pkg/...
 
 static:
 	staticcheck ./cmd/... ./pkg/...
 
 mod:
-	go mod vendor
+	go mod tidy

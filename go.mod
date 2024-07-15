@@ -22,7 +22,6 @@ require (
 require (
 	github.com/cactus/go-statsd-client/v5 v5.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/google/go-github/v61 v61.0.0 // indirect
 	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
