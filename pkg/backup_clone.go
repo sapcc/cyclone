@@ -12,10 +12,10 @@ import (
 	"syscall"
 
 	"github.com/google/uuid"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/backups"
-	backups_utils "github.com/gophercloud/utils/openstack/blockstorage/extensions/backups"
-	"github.com/majewsky/schwift/gopherschwift"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
+	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
+	"github.com/majewsky/schwift/v2/gopherschwift"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/secrets"
 	"github.com/sapcc/swift-http-import/pkg/actors"
@@ -24,14 +24,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-func prepareSwiftConfig(srcObjectClient, dstObjectClient *gophercloud.ServiceClient, srcContainerName, dstContainerName, prefix string, threads uint) (*objects.Configuration, error) {
+func prepareSwiftConfig(ctx context.Context, srcObjectClient, dstObjectClient *gophercloud.ServiceClient, srcContainerName, dstContainerName, prefix string, threads uint) (*objects.Configuration, error) {
 	srcSchwift, err := gopherschwift.Wrap(srcObjectClient, &gopherschwift.Options{
 		UserAgent: srcObjectClient.ProviderClient.UserAgent.Join(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	srcContainer, err := srcSchwift.Container(srcContainerName).EnsureExists()
+	srcContainer, err := srcSchwift.Container(srcContainerName).EnsureExists(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func prepareSwiftConfig(srcObjectClient, dstObjectClient *gophercloud.ServiceCli
 	if err != nil {
 		return nil, err
 	}
-	dstContainer, err := dstSchwift.Container(dstContainerName).EnsureExists()
+	dstContainer, err := dstSchwift.Container(dstContainerName).EnsureExists(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -154,8 +154,8 @@ func runPipeline(ctx context.Context, config *objects.Configuration, report chan
 	// signal.Reset(os.Interrupt, syscall.SIGTERM)
 }
 
-func cloneBackup(srcVolumeClient, srcObjectClient, dstVolumeClient, dstObjectClient *gophercloud.ServiceClient, srcBackup *backups.Backup, toBackupName string, toContainerName string, threads uint) (*backups.Backup, error) {
-	backupExport, err := backups.Export(srcVolumeClient, srcBackup.ID).Extract()
+func cloneBackup(ctx context.Context, srcVolumeClient, srcObjectClient, dstVolumeClient, dstObjectClient *gophercloud.ServiceClient, srcBackup *backups.Backup, toBackupName string, toContainerName string, threads uint) (*backups.Backup, error) {
+	backupExport, err := backups.Export(ctx, srcVolumeClient, srcBackup.ID).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("failed to export a %q backup: %s", srcBackup.ID, err)
 	}
@@ -183,7 +183,7 @@ func cloneBackup(srcVolumeClient, srcObjectClient, dstVolumeClient, dstObjectCli
 	}
 
 	// TODO: recursive
-	config, err := prepareSwiftConfig(srcObjectClient, dstObjectClient, *backupRecord.Container, toContainerName, *backupRecord.ServiceMetadata, threads)
+	config, err := prepareSwiftConfig(ctx, srcObjectClient, dstObjectClient, *backupRecord.Container, toContainerName, *backupRecord.ServiceMetadata, threads)
 	if err != nil {
 		return nil, err
 	}
@@ -217,12 +217,12 @@ func cloneBackup(srcVolumeClient, srcObjectClient, dstVolumeClient, dstObjectCli
 		BackupURL:     backupURL,
 	}
 
-	importResponse, err := backups.Import(dstVolumeClient, backupImport).Extract()
+	importResponse, err := backups.Import(ctx, dstVolumeClient, backupImport).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("failed to import a backup: %s", err)
 	}
 
-	return waitForBackup(dstVolumeClient, importResponse.ID, waitForBackupSec)
+	return waitForBackup(ctx, dstVolumeClient, importResponse.ID, waitForBackupSec)
 }
 
 // BackupCmd represents the volume command
@@ -258,7 +258,7 @@ var BackupCloneCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := newOpenStackClient(loc.Src)
+		srcProvider, err := newOpenStackClient(cmd.Context(), loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
@@ -274,13 +274,13 @@ var BackupCloneCmd = &cobra.Command{
 		}
 
 		// resolve volume name to an ID
-		if v, err := backups_utils.IDFromName(srcVolumeClient, backup); err == nil {
+		if v, err := backups_utils.IDFromName(cmd.Context(), srcVolumeClient, backup); err == nil {
 			backup = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
 		}
 
-		dstProvider, err := newOpenStackClient(loc.Dst)
+		dstProvider, err := newOpenStackClient(cmd.Context(), loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
@@ -295,7 +295,7 @@ var BackupCloneCmd = &cobra.Command{
 			return fmt.Errorf("failed to destination source object storage client: %s", err)
 		}
 
-		srcBackup, err := waitForBackup(srcVolumeClient, backup, waitForBackupSec)
+		srcBackup, err := waitForBackup(cmd.Context(), srcVolumeClient, backup, waitForBackupSec)
 		if err != nil {
 			return fmt.Errorf("failed to wait for a %q backup: %s", backup, err)
 		}
@@ -306,7 +306,7 @@ var BackupCloneCmd = &cobra.Command{
 
 		defer measureTime()
 
-		dstBackup, err := cloneBackup(srcVolumeClient, srcObjectClient, dstVolumeClient, dstObjectClient, srcBackup, toName, toContainerName, threads)
+		dstBackup, err := cloneBackup(cmd.Context(), srcVolumeClient, srcObjectClient, dstVolumeClient, dstObjectClient, srcBackup, toName, toContainerName, threads)
 		if err != nil {
 			return err
 		}

@@ -1,32 +1,29 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"regexp"
 	"sort"
 	"strings"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedserverattributes"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/extendedstatus"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/startstop"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/volumeattach"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/external"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
-	"github.com/gophercloud/gophercloud/pagination"
-	servers_utils "github.com/gophercloud/utils/openstack/compute/v2/servers"
-	networks_utils "github.com/gophercloud/utils/openstack/networking/v2/networks"
-	subnets_utils "github.com/gophercloud/utils/openstack/networking/v2/subnets"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/attachinterfaces"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/flavors"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/keypairs"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/volumeattach"
+	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/external"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/networks"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/subnets"
+	"github.com/gophercloud/gophercloud/v2/pagination"
+	servers_utils "github.com/gophercloud/utils/v2/openstack/compute/v2/servers"
+	networks_utils "github.com/gophercloud/utils/v2/openstack/networking/v2/networks"
+	subnets_utils "github.com/gophercloud/utils/v2/openstack/networking/v2/subnets"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -35,13 +32,6 @@ var (
 	waitForServerSec float64
 	waitForPortSec   float64 = 60
 )
-
-type serverExtended struct {
-	servers.Server
-	availabilityzones.ServerAvailabilityZoneExt
-	extendedserverattributes.ServerAttributesExt
-	extendedstatus.ServerExtendedStatusExt
-}
 
 var serverNormalStates = []string{
 	"active",
@@ -70,16 +60,16 @@ var serverErrorStatuses = []string{
 	"ERROR",
 }
 
-func createServerSpeed(server *serverExtended) {
+func createServerSpeed(server *servers.Server) {
 	t := server.Updated.Sub(server.Created)
 	log.Printf("Time to create a server: %s", t)
 }
 
-func waitForServerDeleted(client *gophercloud.ServiceClient, id string, secs float64) error {
+func waitForServerDeleted(ctx context.Context, client *gophercloud.ServiceClient, id string, secs float64) error {
 	return NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		_, err := servers.Get(client, id).Extract()
+		_, err := servers.Get(ctx, client, id).Extract()
 		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); ok {
+			if gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
 				// server was removed
 				return true, nil
 			}
@@ -92,12 +82,12 @@ func waitForServerDeleted(client *gophercloud.ServiceClient, id string, secs flo
 	})
 }
 
-func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (*serverExtended, error) {
-	var server serverExtended
+func waitForServer(ctx context.Context, client *gophercloud.ServiceClient, id string, secs float64) (*servers.Server, error) {
+	var server servers.Server
 	var err error
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		var tmp serverExtended
-		err = servers.Get(client, id).ExtractInto(&tmp)
+		var tmp servers.Server
+		err = servers.Get(ctx, client, id).ExtractInto(&tmp)
 		if err != nil {
 			return false, err
 		}
@@ -129,11 +119,11 @@ func waitForServer(client *gophercloud.ServiceClient, id string, secs float64) (
 	return &server, err
 }
 
-func waitForPort(client *gophercloud.ServiceClient, id string, secs float64) (*ports.Port, error) {
+func waitForPort(ctx context.Context, client *gophercloud.ServiceClient, id string, secs float64) (*ports.Port, error) {
 	var port *ports.Port
 	var err error
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		port, err = ports.Get(client, id).Extract()
+		port, err = ports.Get(ctx, client, id).Extract()
 		if err != nil {
 			return false, err
 		}
@@ -150,8 +140,8 @@ func waitForPort(client *gophercloud.ServiceClient, id string, secs float64) (*p
 	return port, err
 }
 
-func serverVolumeAttachments(client *gophercloud.ServiceClient, server *serverExtended) ([]string, bool, error) {
-	allPages, err := volumeattach.List(client, server.ID).AllPages()
+func serverVolumeAttachments(ctx context.Context, client *gophercloud.ServiceClient, server *servers.Server) ([]string, bool, error) {
+	allPages, err := volumeattach.List(client, server.ID).AllPages(ctx)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to list server volume attachments: %s", err)
 	}
@@ -193,24 +183,24 @@ func serverVolumeAttachments(client *gophercloud.ServiceClient, server *serverEx
 	return vols, bootableVolume, nil
 }
 
-func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcObjectClient, dstObjectClient *gophercloud.ServiceClient, srcServer *serverExtended, loc Locations) (*images.Image, error) {
+func createServerSnapshot(ctx context.Context, srcServerClient, srcImageClient, dstImageClient, srcObjectClient, dstObjectClient *gophercloud.ServiceClient, srcServer *servers.Server, loc Locations) (*images.Image, error) {
 	createImageOpts := servers.CreateImageOpts{
 		Name: fmt.Sprintf("%s-server-snapshot", srcServer.Name),
 	}
-	imageID, err := servers.CreateImage(srcServerClient, srcServer.ID, &createImageOpts).ExtractImageID()
+	imageID, err := servers.CreateImage(ctx, srcServerClient, srcServer.ID, &createImageOpts).ExtractImageID()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a %q server snapshot", srcServer.Name)
 	}
 
 	deleteSourceOnReturn := func() {
 		log.Printf("Removing source server snapshot image %q", imageID)
-		if err := images.Delete(srcImageClient, imageID).ExtractErr(); err != nil {
+		if err := images.Delete(ctx, srcImageClient, imageID).ExtractErr(); err != nil {
 			log.Printf("Error deleting source server snapshot: %s", err)
 		}
 	}
 
 	var srcImage *images.Image
-	srcImage, err = waitForImage(srcImageClient, srcObjectClient, imageID, 0, waitForImageSec)
+	srcImage, err = waitForImage(ctx, srcImageClient, srcObjectClient, imageID, 0, waitForImageSec)
 	if err != nil {
 		deleteSourceOnReturn()
 		return nil, fmt.Errorf("failed to wait for a %q server snapshot image: %s", imageID, err)
@@ -226,13 +216,13 @@ func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcOb
 
 	// TODO: use the actual source image name from the server properties
 	var dstImage *images.Image
-	dstImage, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImage.Name)
+	dstImage, err = migrateImage(ctx, srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImage.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to migrate server snapshot: %s", err)
 	}
 
 	// image can still be in "TODO" state, we need to wait for "available" before defer func will delete it
-	_, err = waitForImage(srcImageClient, nil, imageID, 0, waitForImageSec)
+	_, err = waitForImage(ctx, srcImageClient, nil, imageID, 0, waitForImageSec)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +230,7 @@ func createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcOb
 	return dstImage, nil
 }
 
-func getPortOpts(client *gophercloud.ServiceClient, networkName, subnetName string) (*ports.CreateOpts, error) {
+func getPortOpts(ctx context.Context, client *gophercloud.ServiceClient, networkName, subnetName string) (*ports.CreateOpts, error) {
 	// TODO: support multiple destination networks/subnets
 
 	createOpts := &ports.CreateOpts{}
@@ -252,7 +242,7 @@ func getPortOpts(client *gophercloud.ServiceClient, networkName, subnetName stri
 			External:        &b,
 		}
 
-		allPages, err := networks.List(client, listOpts).AllPages()
+		allPages, err := networks.List(client, listOpts).AllPages(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -288,11 +278,11 @@ func getPortOpts(client *gophercloud.ServiceClient, networkName, subnetName stri
 	}
 
 	if networkName != "" {
-		networkID, err := networks_utils.IDFromName(client, networkName)
+		networkID, err := networks_utils.IDFromName(ctx, client, networkName)
 		if err != nil {
 			return nil, err
 		}
-		network, err := networks.Get(client, networkID).Extract()
+		network, err := networks.Get(ctx, client, networkID).Extract()
 		if err != nil {
 			return nil, err
 		}
@@ -311,7 +301,7 @@ func getPortOpts(client *gophercloud.ServiceClient, networkName, subnetName stri
 				NetworkID: networkID,
 			}
 
-			allPages, err := subnets.List(client, listOpts).AllPages()
+			allPages, err := subnets.List(client, listOpts).AllPages(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -338,11 +328,11 @@ func getPortOpts(client *gophercloud.ServiceClient, networkName, subnetName stri
 		return createOpts, nil
 	}
 
-	subnetID, err := subnets_utils.IDFromName(client, subnetName)
+	subnetID, err := subnets_utils.IDFromName(ctx, client, subnetName)
 	if err != nil {
 		return nil, err
 	}
-	subnet, err := subnets.Get(client, subnetID).Extract()
+	subnet, err := subnets.Get(ctx, client, subnetID).Extract()
 	if err != nil {
 		return nil, err
 	}
@@ -357,22 +347,22 @@ func getPortOpts(client *gophercloud.ServiceClient, networkName, subnetName stri
 	return createOpts, nil
 }
 
-func createServerPort(client *gophercloud.ServiceClient, networkName, subnetName string) (*ports.Port, error) {
+func createServerPort(ctx context.Context, client *gophercloud.ServiceClient, networkName, subnetName string) (*ports.Port, error) {
 	// TODO: support multiple destination networks/subnets
 
-	createOpts, err := getPortOpts(client, networkName, subnetName)
+	createOpts, err := getPortOpts(ctx, client, networkName, subnetName)
 	if err != nil {
 		return nil, err
 	}
 
-	port, err := ports.Create(client, createOpts).Extract()
+	port, err := ports.Create(ctx, client, createOpts).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("error creating destination server port: %s", err)
 	}
 
-	port, err = waitForPort(client, port.ID, waitForPortSec)
+	port, err = waitForPort(ctx, client, port.ID, waitForPortSec)
 	if err != nil {
-		if err := ports.Delete(client, port.ID).ExtractErr(); err != nil {
+		if err := ports.Delete(ctx, client, port.ID).ExtractErr(); err != nil {
 			log.Printf("Error deleting destination server port: %s", err)
 		}
 		return nil, fmt.Errorf("failed to wait for destination server port: %s", err)
@@ -381,18 +371,17 @@ func createServerPort(client *gophercloud.ServiceClient, networkName, subnetName
 	return port, nil
 }
 
-func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName, toAZ string, network servers.Network, dstVolumes []*volumes.Volume, dstImage *images.Image, bootableVolume bool, deleteVolOnTerm bool) servers.CreateOptsBuilder {
+func createServerOpts(srcServer *servers.Server, toServerName, flavorID, keyName, toAZ string, network servers.Network, dstVolumes []*volumes.Volume, dstImage *images.Image, bootableVolume bool, deleteVolOnTerm bool) servers.CreateOptsBuilder {
 	serverName := toServerName
 	if serverName == "" {
 		// use original server name
 		serverName = srcServer.Name
 	}
-	var createOpts servers.CreateOptsBuilder
 	var tags []string
 	if srcServer.Tags != nil {
 		tags = *srcServer.Tags
 	}
-	createOpts = &servers.CreateOpts{
+	createOpts := &servers.CreateOpts{
 		Name:             serverName,
 		FlavorRef:        flavorID,
 		AvailabilityZone: toAZ,
@@ -406,34 +395,27 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 		// TODO: scheduler hints
 	}
 
-	var blockDeviceOpts []bootfromvolume.BlockDevice
+	var blockDeviceOpts []servers.BlockDevice
 	if dstImage != nil {
 		if len(dstVolumes) > 0 {
-			bd := bootfromvolume.BlockDevice{
+			bd := servers.BlockDevice{
 				BootIndex:           0,
 				UUID:                dstImage.ID,
-				SourceType:          bootfromvolume.SourceImage,
-				DestinationType:     bootfromvolume.DestinationLocal,
+				SourceType:          servers.SourceImage,
+				DestinationType:     servers.DestinationLocal,
 				DeleteOnTermination: deleteVolOnTerm,
 			}
 			blockDeviceOpts = append(blockDeviceOpts, bd)
 		}
-		createOpts.(*servers.CreateOpts).ImageRef = dstImage.ID
-	}
-
-	if keyName != "" {
-		createOpts = &keypairs.CreateOptsExt{
-			CreateOptsBuilder: createOpts,
-			KeyName:           keyName,
-		}
+		createOpts.ImageRef = dstImage.ID
 	}
 
 	for i, v := range dstVolumes {
-		bd := bootfromvolume.BlockDevice{
+		bd := servers.BlockDevice{
 			BootIndex:       -1,
 			UUID:            v.ID,
-			SourceType:      bootfromvolume.SourceVolume,
-			DestinationType: bootfromvolume.DestinationVolume,
+			SourceType:      servers.SourceVolume,
+			DestinationType: servers.DestinationVolume,
 		}
 		if i == 0 && bootableVolume {
 			bd.BootIndex = 0
@@ -443,17 +425,22 @@ func createServerOpts(srcServer *serverExtended, toServerName, flavorID, keyName
 	}
 
 	if len(blockDeviceOpts) > 0 {
-		return &bootfromvolume.CreateOptsExt{
-			CreateOptsBuilder: createOpts,
-			BlockDevice:       blockDeviceOpts,
+		createOpts.BlockDevice = blockDeviceOpts
+	}
+
+	var createOptsBuilder servers.CreateOptsBuilder = createOpts
+	if keyName != "" {
+		createOptsBuilder = &keypairs.CreateOptsExt{
+			CreateOptsBuilder: createOptsBuilder,
+			KeyName:           keyName,
 		}
 	}
 
-	return createOpts
+	return createOptsBuilder
 }
 
-func getFlavorFromName(client *gophercloud.ServiceClient, name string) (*flavors.Flavor, error) {
-	allPages, err := flavors.ListDetail(client, nil).AllPages()
+func getFlavorFromName(ctx context.Context, client *gophercloud.ServiceClient, name string) (*flavors.Flavor, error) {
+	allPages, err := flavors.ListDetail(client, nil).AllPages(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -489,10 +476,10 @@ func getFlavorFromName(client *gophercloud.ServiceClient, name string) (*flavors
 	}
 }
 
-func checkFlavor(dstServerClient *gophercloud.ServiceClient, srcFlavor *flavors.Flavor, toFlavor *string) (*flavors.Flavor, error) {
+func checkFlavor(ctx context.Context, dstServerClient *gophercloud.ServiceClient, srcFlavor *flavors.Flavor, toFlavor *string) (*flavors.Flavor, error) {
 	// TODO: compare an old flavor to a new one
 	if *toFlavor == "" {
-		flavor, err := getFlavorFromName(dstServerClient, srcFlavor.Name)
+		flavor, err := getFlavorFromName(ctx, dstServerClient, srcFlavor.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 		}
@@ -500,7 +487,7 @@ func checkFlavor(dstServerClient *gophercloud.ServiceClient, srcFlavor *flavors.
 		return flavor, nil
 	}
 
-	flavor, err := getFlavorFromName(dstServerClient, *toFlavor)
+	flavor, err := getFlavorFromName(ctx, dstServerClient, *toFlavor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find destination flavor name (%q): %s", *toFlavor, err)
 	}
@@ -508,10 +495,10 @@ func checkFlavor(dstServerClient *gophercloud.ServiceClient, srcFlavor *flavors.
 	return flavor, nil
 }
 
-func getSrcFlavor(srcServerClient *gophercloud.ServiceClient, srcServer *serverExtended) (*flavors.Flavor, error) {
+func getSrcFlavor(ctx context.Context, srcServerClient *gophercloud.ServiceClient, srcServer *servers.Server) (*flavors.Flavor, error) {
 	if v, ok := srcServer.Flavor["id"]; ok {
 		if v, ok := v.(string); ok {
-			srcFlavor, err := flavors.Get(srcServerClient, v).Extract()
+			srcFlavor, err := flavors.Get(ctx, srcServerClient, v).Extract()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get source server flavor details: %s", err)
 			}
@@ -521,12 +508,12 @@ func getSrcFlavor(srcServerClient *gophercloud.ServiceClient, srcServer *serverE
 	return nil, fmt.Errorf("failed to detect source server flavor details")
 }
 
-func checKeyPair(client *gophercloud.ServiceClient, keyName string) error {
+func checKeyPair(ctx context.Context, client *gophercloud.ServiceClient, keyName string) error {
 	if keyName == "" {
 		return nil
 	}
 
-	return keypairs.List(client, nil).EachPage(func(page pagination.Page) (bool, error) {
+	return keypairs.List(client, nil).EachPage(ctx, func(ctx context.Context, page pagination.Page) (bool, error) {
 		keyPairs, err := keypairs.ExtractKeyPairs(page)
 		if err != nil {
 			return false, err
@@ -542,11 +529,11 @@ func checKeyPair(client *gophercloud.ServiceClient, keyName string) error {
 	})
 }
 
-func getServerInterfaces(client *gophercloud.ServiceClient, id string) ([]attachinterfaces.Interface, error) {
+func getServerInterfaces(ctx context.Context, client *gophercloud.ServiceClient, id string) ([]attachinterfaces.Interface, error) {
 	var interfaces []attachinterfaces.Interface
 
 	pager := attachinterfaces.List(client, id)
-	err := pager.EachPage(func(page pagination.Page) (bool, error) {
+	err := pager.EachPage(ctx, func(ctx context.Context, page pagination.Page) (bool, error) {
 		s, err := attachinterfaces.ExtractInterfaces(page)
 		if err != nil {
 			return false, err
@@ -561,8 +548,8 @@ func getServerInterfaces(client *gophercloud.ServiceClient, id string) ([]attach
 	return interfaces, nil
 }
 
-func getServerNetworkName(srcServerClient *gophercloud.ServiceClient, server *serverExtended) (string, error) {
-	ifaces, err := getServerInterfaces(srcServerClient, server.ID)
+func getServerNetworkName(ctx context.Context, srcServerClient *gophercloud.ServiceClient, server *servers.Server) (string, error) {
+	ifaces, err := getServerInterfaces(ctx, srcServerClient, server.ID)
 	if err != nil {
 		return "", fmt.Errorf("failed to detect source server interfaces: %s", err)
 	}
@@ -587,7 +574,7 @@ func getServerNetworkName(srcServerClient *gophercloud.ServiceClient, server *se
 	return "", fmt.Errorf("failed to identify source server interface name")
 }
 
-func checkServerStatus(srcServerClient *gophercloud.ServiceClient, srcServer *serverExtended) error {
+func checkServerStatus(ctx context.Context, srcServerClient *gophercloud.ServiceClient, srcServer *servers.Server) error {
 	if srcServer.Status == "ACTIVE" {
 		if no {
 			log.Printf("Skipping the VM shutdown")
@@ -607,11 +594,11 @@ func checkServerStatus(srcServerClient *gophercloud.ServiceClient, srcServer *se
 
 		if yes || ans == "y" || ans == "yes" {
 			log.Printf("Shutting down the %q VM", srcServer.ID)
-			err := startstop.Stop(srcServerClient, srcServer.ID).ExtractErr()
+			err := servers.Stop(ctx, srcServerClient, srcServer.ID).ExtractErr()
 			if err != nil {
 				return fmt.Errorf("failed to stop the %q source VM: %v", srcServer.ID, err)
 			}
-			srcServer, err = waitForServer(srcServerClient, srcServer.ID, waitForServerSec)
+			srcServer, err = waitForServer(ctx, srcServerClient, srcServer.ID, waitForServerSec)
 			if err != nil {
 				return fmt.Errorf("failed to wait for %q source server: %s", srcServer.ID, err)
 			}
@@ -623,12 +610,12 @@ func checkServerStatus(srcServerClient *gophercloud.ServiceClient, srcServer *se
 	return nil
 }
 
-func bootableToLocal(srcVolumeClient, srcImageClient, srcObjectClient, dstImageClient, dstObjectClient *gophercloud.ServiceClient, cloneViaSnapshot bool, toAZ string, loc Locations, flavor *flavors.Flavor, vols *[]string) (*images.Image, error) {
+func bootableToLocal(ctx context.Context, srcVolumeClient, srcImageClient, srcObjectClient, dstImageClient, dstObjectClient *gophercloud.ServiceClient, cloneViaSnapshot bool, toAZ string, loc Locations, flavor *flavors.Flavor, vols *[]string) (*images.Image, error) {
 	log.Printf("Forcing the %q bootable volume to be a local disk", (*vols)[0])
 
 	var err error
 	var srcVolume, newVolume *volumes.Volume
-	srcVolume, err = waitForVolume(srcVolumeClient, (*vols)[0], waitForVolumeSec)
+	srcVolume, err = waitForVolume(ctx, srcVolumeClient, (*vols)[0], waitForVolumeSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for a %q volume: %s", (*vols)[0], err)
 	}
@@ -639,16 +626,16 @@ func bootableToLocal(srcVolumeClient, srcImageClient, srcObjectClient, dstImageC
 
 	// clone the in-use volume before creating its snapshot
 	// it is impossible to convert a volume to a glance image, even with the force argument
-	newVolume, err = cloneVolume(srcVolumeClient, srcObjectClient, srcVolume, "", toAZ, cloneViaSnapshot, loc)
+	newVolume, err = cloneVolume(ctx, srcVolumeClient, srcObjectClient, srcVolume, "", toAZ, cloneViaSnapshot, loc)
 	if err != nil {
 		return nil, err
 	}
 
 	var srcImage, dstImage *images.Image
 	// converting a volume to an image
-	srcImage, err = volumeToImage(srcImageClient, srcVolumeClient, srcObjectClient, "", newVolume)
+	srcImage, err = volumeToImage(ctx, srcImageClient, srcVolumeClient, srcObjectClient, "", newVolume)
 	// delete the cloned volume just after the image was created
-	if err := volumes.Delete(srcVolumeClient, newVolume.ID, nil).ExtractErr(); err != nil {
+	if err := volumes.Delete(ctx, srcVolumeClient, newVolume.ID, nil).ExtractErr(); err != nil {
 		log.Printf("failed to delete a cloned volume: %s", err)
 	}
 	if err != nil {
@@ -659,9 +646,9 @@ func bootableToLocal(srcVolumeClient, srcImageClient, srcObjectClient, dstImageC
 		dstImage = srcImage
 	} else {
 		// migrate the image/volume within different regions
-		dstImage, err = migrateImage(srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImage.Name)
+		dstImage, err = migrateImage(ctx, srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcImage, srcImage.Name)
 		// remove source region transition image just after it was migrated
-		if err := images.Delete(srcImageClient, srcImage.ID).ExtractErr(); err != nil {
+		if err := images.Delete(ctx, srcImageClient, srcImage.ID).ExtractErr(); err != nil {
 			log.Printf("Failed to delete destination transition image: %s", err)
 		}
 		if err != nil {
@@ -722,7 +709,7 @@ var ServerCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := newOpenStackClient(loc.Src)
+		srcProvider, err := newOpenStackClient(cmd.Context(), loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
@@ -751,13 +738,13 @@ var ServerCmd = &cobra.Command{
 		}
 
 		// resolve server name to an ID
-		if v, err := servers_utils.IDFromName(srcServerClient, server); err == nil {
+		if v, err := servers_utils.IDFromName(cmd.Context(), srcServerClient, server); err == nil {
 			server = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
 		}
 
-		dstProvider, err := newOpenStackClient(loc.Dst)
+		dstProvider, err := newOpenStackClient(cmd.Context(), loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
@@ -787,34 +774,34 @@ var ServerCmd = &cobra.Command{
 			return fmt.Errorf("failed to create destination network client: %s", err)
 		}
 
-		srcServer, err := waitForServer(srcServerClient, server, waitForServerSec)
+		srcServer, err := waitForServer(cmd.Context(), srcServerClient, server, waitForServerSec)
 		if err != nil {
 			return fmt.Errorf("failed to wait for %q source server: %s", server, err)
 		}
 
-		err = checkServerStatus(srcServerClient, srcServer)
+		err = checkServerStatus(cmd.Context(), srcServerClient, srcServer)
 		if err != nil {
 			return err
 		}
 
 		// check server flavors
-		srcFlavor, err := getSrcFlavor(srcServerClient, srcServer)
+		srcFlavor, err := getSrcFlavor(cmd.Context(), srcServerClient, srcServer)
 		if err != nil {
 			return err
 		}
-		flavor, err := checkFlavor(dstServerClient, srcFlavor, &toFlavor)
+		flavor, err := checkFlavor(cmd.Context(), dstServerClient, srcFlavor, &toFlavor)
 		if err != nil {
 			return err
 		}
 
 		// check availability zones
-		err = checkAvailabilityZone(dstServerClient, srcServer.AvailabilityZone, &toAZ, &loc)
+		err = checkAvailabilityZone(cmd.Context(), dstServerClient, srcServer.AvailabilityZone, &toAZ, &loc)
 		if err != nil {
 			return err
 		}
 
 		// check destintation server keypair name
-		err = checKeyPair(dstServerClient, toKeyName)
+		err = checKeyPair(cmd.Context(), dstServerClient, toKeyName)
 		if err != nil {
 			return err
 		}
@@ -829,7 +816,7 @@ var ServerCmd = &cobra.Command{
 		if !skipServerCreation {
 			if toSubnetName != "" {
 				// TODO: a regular server deletion doesn't delete the port, find the way to hard bind server and port
-				port, err = createServerPort(dstNetworkClient, toNetworkName, toSubnetName)
+				port, err = createServerPort(cmd.Context(), dstNetworkClient, toNetworkName, toSubnetName)
 				if err != nil {
 					return err
 				}
@@ -837,7 +824,7 @@ var ServerCmd = &cobra.Command{
 				defer func() {
 					if err != nil {
 						// delete the port only on error
-						if err := ports.Delete(dstNetworkClient, port.ID).ExtractErr(); err != nil {
+						if err := ports.Delete(cmd.Context(), dstNetworkClient, port.ID).ExtractErr(); err != nil {
 							log.Printf("Error deleting target server port: %s", err)
 						}
 					}
@@ -845,13 +832,13 @@ var ServerCmd = &cobra.Command{
 			} else {
 				if toNetworkName == "" {
 					log.Printf("New server network name is empty, detecting the network name from the source server")
-					toNetworkName, err = getServerNetworkName(srcServerClient, srcServer)
+					toNetworkName, err = getServerNetworkName(cmd.Context(), srcServerClient, srcServer)
 					if err != nil {
 						return err
 					}
 					log.Printf("Detected %q network name from the source server", toNetworkName)
 				}
-				networkID, err = networks_utils.IDFromName(dstNetworkClient, toNetworkName)
+				networkID, err = networks_utils.IDFromName(cmd.Context(), dstNetworkClient, toNetworkName)
 				if err != nil {
 					return err
 				}
@@ -863,7 +850,7 @@ var ServerCmd = &cobra.Command{
 
 		var vols []string
 		var bootableVolume bool
-		vols, bootableVolume, err = serverVolumeAttachments(srcServerClient, srcServer)
+		vols, bootableVolume, err = serverVolumeAttachments(cmd.Context(), srcServerClient, srcServer)
 		if err != nil {
 			return fmt.Errorf("failed to detect server volume attachments: %s", err)
 		}
@@ -885,7 +872,7 @@ var ServerCmd = &cobra.Command{
 			log.Printf("The %q volume is a bootable volume", vols[0])
 
 			if forceLocal {
-				dstImage, err = bootableToLocal(srcVolumeClient, srcImageClient, srcObjectClient, dstImageClient, dstObjectClient, cloneViaSnapshot, toAZ, loc, flavor, &vols)
+				dstImage, err = bootableToLocal(cmd.Context(), srcVolumeClient, srcImageClient, srcObjectClient, dstImageClient, dstObjectClient, cloneViaSnapshot, toAZ, loc, flavor, &vols)
 				if err != nil {
 					return err
 				}
@@ -894,7 +881,7 @@ var ServerCmd = &cobra.Command{
 				dstImageID := dstImage.ID
 				if !skipServerCreation {
 					defer func() {
-						if err := images.Delete(dstImageClient, dstImageID).ExtractErr(); err != nil {
+						if err := images.Delete(cmd.Context(), dstImageClient, dstImageID).ExtractErr(); err != nil {
 							log.Printf("Error deleting migrated server snapshot: %s", err)
 						}
 					}()
@@ -909,7 +896,7 @@ var ServerCmd = &cobra.Command{
 			}
 
 			// TODO: image name must represent the original server source image name
-			dstImage, err = createServerSnapshot(srcServerClient, srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcServer, loc)
+			dstImage, err = createServerSnapshot(cmd.Context(), srcServerClient, srcImageClient, dstImageClient, srcObjectClient, dstObjectClient, srcServer, loc)
 			if err != nil {
 				return err
 			}
@@ -918,7 +905,7 @@ var ServerCmd = &cobra.Command{
 			dstImageID := dstImage.ID
 			if !skipServerCreation || forceBootable > 0 {
 				defer func() {
-					if err := images.Delete(dstImageClient, dstImageID).ExtractErr(); err != nil {
+					if err := images.Delete(cmd.Context(), dstImageClient, dstImageID).ExtractErr(); err != nil {
 						log.Printf("Error deleting migrated server snapshot: %s", err)
 					}
 				}()
@@ -931,7 +918,7 @@ var ServerCmd = &cobra.Command{
 				log.Printf("Forcing %s image to be converted to a bootable volume", dstImageID)
 				bootableVolume = true
 				var newBootableVolume *volumes.Volume
-				newBootableVolume, err = imageToVolume(dstVolumeClient, dstImageClient, dstImage.ID, "", fmt.Sprintf("bootable for %s", dstImage.Name), "", toAZ, int(forceBootable), nil)
+				newBootableVolume, err = imageToVolume(cmd.Context(), dstVolumeClient, dstImageClient, dstImage.ID, "", fmt.Sprintf("bootable for %s", dstImage.Name), "", toAZ, int(forceBootable), nil)
 				if err != nil {
 					return fmt.Errorf("failed to create a bootable volume for a VM: %s", err)
 				}
@@ -946,12 +933,12 @@ var ServerCmd = &cobra.Command{
 
 		for i, v := range vols {
 			var srcVolume, dstVolume *volumes.Volume
-			srcVolume, err = waitForVolume(srcVolumeClient, v, waitForVolumeSec)
+			srcVolume, err = waitForVolume(cmd.Context(), srcVolumeClient, v, waitForVolumeSec)
 			if err != nil {
 				return fmt.Errorf("failed to wait for a %q volume: %s", v, err)
 			}
 
-			dstVolume, err = migrateVolume(srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, dstObjectClient, srcVolume, srcVolume.Name, toVolumeType, toAZ, cloneViaSnapshot, loc)
+			dstVolume, err = migrateVolume(cmd.Context(), srcImageClient, srcVolumeClient, srcObjectClient, dstImageClient, dstVolumeClient, dstObjectClient, srcVolume, srcVolume.Name, toVolumeType, toAZ, cloneViaSnapshot, loc)
 			if err != nil {
 				// if we don't fail here, then the resulting VM may not boot because of insuficient of volumes
 				return fmt.Errorf("failed to clone the %q volume: %s", srcVolume.ID, err)
@@ -972,8 +959,8 @@ var ServerCmd = &cobra.Command{
 		}
 
 		createOpts := createServerOpts(srcServer, toName, flavor.ID, toKeyName, toAZ, network, dstVolumes, dstImage, bootableVolume, deleteVolOnTerm)
-		var dstServer *serverExtended
-		dstServer, err = createServerRetry(dstServerClient, createOpts, tries)
+		var dstServer *servers.Server
+		dstServer, err = createServerRetry(cmd.Context(), dstServerClient, createOpts, tries)
 		if err != nil {
 			// nil an error and don't delete the port
 			retErr := err
@@ -985,7 +972,7 @@ var ServerCmd = &cobra.Command{
 
 		if dstImage != nil {
 			// image can still be in "TODO" state, we need to wait for "available" before defer func will delete it
-			if _, err := waitForImage(dstImageClient, nil, dstImage.ID, 0, waitForImageSec); err != nil {
+			if _, err := waitForImage(cmd.Context(), dstImageClient, nil, dstImage.ID, 0, waitForImageSec); err != nil {
 				log.Printf("Error waiting for %q image: %s", dstImage.ID, err)
 			}
 		}
@@ -999,21 +986,21 @@ var ServerCmd = &cobra.Command{
 	},
 }
 
-func createServerRetry(dstServerClient *gophercloud.ServiceClient, createOpts servers.CreateOptsBuilder, tries int) (*serverExtended, error) {
+func createServerRetry(ctx context.Context, dstServerClient *gophercloud.ServiceClient, createOpts servers.CreateOptsBuilder, tries int) (*servers.Server, error) {
 	for i := 0; i <= tries; i++ {
 		// server creation may take a while, reauth in advance
-		reauthClient(dstServerClient, "createServerRetry")
+		reauthClient(ctx, dstServerClient, "createServerRetry")
 		if i > 0 {
 			log.Printf("Creating a new server, try %d of %d", i, tries)
 		}
-		dstServer := new(serverExtended)
-		err := servers.Create(dstServerClient, createOpts).ExtractInto(dstServer)
+		dstServer := new(servers.Server)
+		err := servers.Create(ctx, dstServerClient, createOpts, nil).ExtractInto(dstServer)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create a destination server: %s", err)
 		}
 		dstServerID := dstServer.ID
 
-		dstServer, err = waitForServer(dstServerClient, dstServerID, waitForServerSec)
+		dstServer, err = waitForServer(ctx, dstServerClient, dstServerID, waitForServerSec)
 		if err != nil {
 			if i == tries {
 				// no further tries, fail right away
@@ -1022,10 +1009,10 @@ func createServerRetry(dstServerClient *gophercloud.ServiceClient, createOpts se
 			// nil an error and don't delete the port
 			log.Printf("Failed to wait for %q target server: %s", dstServerID, err)
 			log.Printf("Deleting the failed %q server", dstServerID)
-			if err := servers.Delete(dstServerClient, dstServerID).ExtractErr(); err != nil {
+			if err := servers.Delete(ctx, dstServerClient, dstServerID).ExtractErr(); err != nil {
 				log.Printf("Error deleting the failed %q server: %s", dstServerID, err)
 			}
-			if err := waitForServerDeleted(dstServerClient, dstServerID, waitForServerSec); err != nil {
+			if err := waitForServerDeleted(ctx, dstServerClient, dstServerID, waitForServerSec); err != nil {
 				log.Printf("Error waiting for %q server to be deleted: %s", dstServerID, err)
 			}
 			continue

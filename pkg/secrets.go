@@ -1,14 +1,15 @@
 package pkg
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/keymanager/v1/acls"
-	"github.com/gophercloud/gophercloud/openstack/keymanager/v1/secrets"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/keymanager/v1/acls"
+	"github.com/gophercloud/gophercloud/v2/openstack/keymanager/v1/secrets"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/xhit/go-str2duration/v2"
@@ -21,10 +22,10 @@ var (
 	}
 )
 
-func secretsIDFromName(client *gophercloud.ServiceClient, name string) (string, error) {
+func secretsIDFromName(ctx context.Context, client *gophercloud.ServiceClient, name string) (string, error) {
 	pages, err := secrets.List(client, secrets.ListOpts{
 		Name: name,
-	}).AllPages()
+	}).AllPages(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -49,11 +50,11 @@ func secretsIDFromName(client *gophercloud.ServiceClient, name string) (string, 
 	}
 }
 
-func waitForSecret(client *gophercloud.ServiceClient, id string, secs float64) (*secrets.Secret, error) {
+func waitForSecret(ctx context.Context, client *gophercloud.ServiceClient, id string, secs float64) (*secrets.Secret, error) {
 	var secret *secrets.Secret
 	var err error
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		secret, err = secrets.Get(client, id).Extract()
+		secret, err = secrets.Get(ctx, client, id).Extract()
 		if err != nil {
 			return false, err
 		}
@@ -76,11 +77,11 @@ func waitForSecret(client *gophercloud.ServiceClient, id string, secs float64) (
 	return secret, err
 }
 
-func secretPayload(kmClient *gophercloud.ServiceClient, id, contentType string) (string, error) {
+func secretPayload(ctx context.Context, kmClient *gophercloud.ServiceClient, id, contentType string) (string, error) {
 	opts := secrets.GetPayloadOpts{
 		PayloadContentType: contentType,
 	}
-	payload, err := secrets.GetPayload(kmClient, id, opts).Extract()
+	payload, err := secrets.GetPayload(ctx, kmClient, id, opts).Extract()
 	if err != nil {
 		return "", fmt.Errorf("could not retrieve payload for secret with id %s: %v", id, err)
 	}
@@ -92,20 +93,20 @@ func secretPayload(kmClient *gophercloud.ServiceClient, id, contentType string) 
 	return string(payload), nil
 }
 
-func migrateSecret(srcSecretClient, dstSecretClient *gophercloud.ServiceClient, srcSecret *secrets.Secret, toSecretName string, toExpiration time.Duration) (*secrets.Secret, error) {
+func migrateSecret(ctx context.Context, srcSecretClient, dstSecretClient *gophercloud.ServiceClient, srcSecret *secrets.Secret, toSecretName string, toExpiration time.Duration) (*secrets.Secret, error) {
 	id := uuidFromSecretRef(srcSecret.SecretRef)
 	contentType := srcSecret.ContentTypes["default"]
-	payload, err := secretPayload(srcSecretClient, id, contentType)
+	payload, err := secretPayload(ctx, srcSecretClient, id, contentType)
 	if err != nil {
 		return nil, err
 	}
 
-	acl, err := acls.GetSecretACL(srcSecretClient, id).Extract()
+	acl, err := acls.GetSecretACL(ctx, srcSecretClient, id).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get %s secret acls: %v", id, err)
 	}
 
-	metadataMap, err := secrets.GetMetadata(srcSecretClient, id).Extract()
+	metadataMap, err := secrets.GetMetadata(ctx, srcSecretClient, id).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get %s secret metadata: %v", id, err)
 	}
@@ -136,7 +137,7 @@ func migrateSecret(srcSecretClient, dstSecretClient *gophercloud.ServiceClient, 
 		Expiration: &expiration,
 		SecretType: secrets.SecretType(srcSecret.SecretType),
 	}
-	dstSecret, err := secrets.Create(dstSecretClient, createOpts).Extract()
+	dstSecret, err := secrets.Create(ctx, dstSecretClient, createOpts).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("error creating the destination secret: %v", err)
 	}
@@ -149,7 +150,7 @@ func migrateSecret(srcSecretClient, dstSecretClient *gophercloud.ServiceClient, 
 
 		// cleanup partially created secret
 		log.Printf("cleanup partially created %s destination secret", dstID)
-		err := secrets.Delete(dstSecretClient, dstID).ExtractErr()
+		err := secrets.Delete(ctx, dstSecretClient, dstID).ExtractErr()
 		if err != nil {
 			log.Printf("failed to delete partially created %s destination secret", dstID)
 		}
@@ -157,7 +158,7 @@ func migrateSecret(srcSecretClient, dstSecretClient *gophercloud.ServiceClient, 
 	defer cleanup()
 
 	// populate the "dstSecret", since Create method returns only the SecretRef
-	dstSecret, err = waitForSecret(dstSecretClient, dstID, waitForSecretSec)
+	dstSecret, err = waitForSecret(ctx, dstSecretClient, dstID, waitForSecretSec)
 	if err != nil {
 		return nil, fmt.Errorf("error waiting for the destination secret: %v", err)
 	}
@@ -178,7 +179,7 @@ func migrateSecret(srcSecretClient, dstSecretClient *gophercloud.ServiceClient, 
 					ProjectAccess: &acl.ProjectAccess,
 				},
 			}
-			_, err = acls.SetSecretACL(dstSecretClient, dstID, setOpts).Extract()
+			_, err = acls.SetSecretACL(ctx, dstSecretClient, dstID, setOpts).Extract()
 			if err != nil {
 				return nil, fmt.Errorf("error settings ACLs for the destination secret: %v", err)
 			}
@@ -194,12 +195,12 @@ func migrateSecret(srcSecretClient, dstSecretClient *gophercloud.ServiceClient, 
 		ContentType:     contentType,
 		ContentEncoding: encoding,
 	}
-	err = secrets.Update(dstSecretClient, dstID, updateOpts).Err
+	err = secrets.Update(ctx, dstSecretClient, dstID, updateOpts).Err
 	if err != nil {
 		return nil, fmt.Errorf("error setting the destination secret payload: %v", err)
 	}
 
-	_, err = waitForSecret(dstSecretClient, dstID, waitForSecretSec)
+	_, err = waitForSecret(ctx, dstSecretClient, dstID, waitForSecretSec)
 	if err != nil {
 		return nil, fmt.Errorf("error waiting for the destination secret: %v", err)
 	}
@@ -208,12 +209,12 @@ func migrateSecret(srcSecretClient, dstSecretClient *gophercloud.ServiceClient, 
 		return dstSecret, nil
 	}
 
-	_, err = secrets.CreateMetadata(dstSecretClient, dstID, secrets.MetadataOpts(metadataMap)).Extract()
+	_, err = secrets.CreateMetadata(ctx, dstSecretClient, dstID, secrets.MetadataOpts(metadataMap)).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("error creating metadata for the destination secret: %v", err)
 	}
 
-	_, err = waitForSecret(dstSecretClient, dstID, waitForSecretSec)
+	_, err = waitForSecret(ctx, dstSecretClient, dstID, waitForSecretSec)
 	if err != nil {
 		return nil, fmt.Errorf("error waiting for the destination secret: %v", err)
 	}
@@ -259,7 +260,7 @@ var SecretCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := newOpenStackClient(loc.Src)
+		srcProvider, err := newOpenStackClient(cmd.Context(), loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %v", err)
 		}
@@ -270,22 +271,22 @@ var SecretCmd = &cobra.Command{
 		}
 
 		// resolve secret name to an ID
-		if v, err := secretsIDFromName(srcSecretClient, secret); err == nil {
+		if v, err := secretsIDFromName(cmd.Context(), srcSecretClient, secret); err == nil {
 			secret = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
 		}
 
-		srcSecret, err := waitForSecret(srcSecretClient, secret, waitForSecretSec)
+		srcSecret, err := waitForSecret(cmd.Context(), srcSecretClient, secret, waitForSecretSec)
 		if err != nil {
 			// try to get secret uuid from URL
-			srcSecret, err = waitForSecret(srcSecretClient, uuidFromSecretRef(secret), waitForSecretSec)
+			srcSecret, err = waitForSecret(cmd.Context(), srcSecretClient, uuidFromSecretRef(secret), waitForSecretSec)
 			if err != nil {
 				return fmt.Errorf("failed to wait for %q source image: %v", secret, err)
 			}
 		}
 
-		dstProvider, err := newOpenStackClient(loc.Dst)
+		dstProvider, err := newOpenStackClient(cmd.Context(), loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %v", err)
 		}
@@ -297,7 +298,7 @@ var SecretCmd = &cobra.Command{
 
 		defer measureTime()
 
-		dstSecret, err := migrateSecret(srcSecretClient, dstSecretClient, srcSecret, toName, toExpiration)
+		dstSecret, err := migrateSecret(cmd.Context(), srcSecretClient, dstSecretClient, srcSecret, toName, toExpiration)
 		if err != nil {
 			return err
 		}

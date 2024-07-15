@@ -1,12 +1,13 @@
 package pkg
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"net/http"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/rules"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/groups"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/rules"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -17,10 +18,10 @@ var (
 	disableDetection           bool
 )
 
-func securityGroupsIDFromName(client *gophercloud.ServiceClient, name string) (string, error) {
+func securityGroupsIDFromName(ctx context.Context, client *gophercloud.ServiceClient, name string) (string, error) {
 	pages, err := groups.List(client, groups.ListOpts{
 		Name: name,
-	}).AllPages()
+	}).AllPages(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -45,13 +46,12 @@ func securityGroupsIDFromName(client *gophercloud.ServiceClient, name string) (s
 	}
 }
 
-func retryRulesCreate(client *gophercloud.ServiceClient, opts rules.CreateOpts) (*rules.SecGroupRule, error) {
+func retryRulesCreate(ctx context.Context, client *gophercloud.ServiceClient, opts rules.CreateOpts) (*rules.SecGroupRule, error) {
 	var rule *rules.SecGroupRule
 	var err error
 	err = NewBackoff(int(waitForSecurityGroupSec), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		rule, err = rules.Create(client, opts).Extract()
-		var errDefault429 gophercloud.ErrDefault429
-		if errors.As(err, &errDefault429) {
+		rule, err = rules.Create(ctx, client, opts).Extract()
+		if gophercloud.ResponseCodeIs(err, http.StatusTooManyRequests) {
 			// 429 is a rate limit error, we should retry
 			return false, nil
 		}
@@ -83,7 +83,7 @@ var SecurityGroupCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := newOpenStackClient(loc.Src)
+		srcProvider, err := newOpenStackClient(cmd.Context(), loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %v", err)
 		}
@@ -94,13 +94,13 @@ var SecurityGroupCmd = &cobra.Command{
 		}
 
 		// resolve security group name to an ID
-		if v, err := securityGroupsIDFromName(srcNetworkClient, securityGroup); err == nil {
+		if v, err := securityGroupsIDFromName(cmd.Context(), srcNetworkClient, securityGroup); err == nil {
 			securityGroup = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
 		}
 
-		dstProvider, err := newOpenStackClient(loc.Dst)
+		dstProvider, err := newOpenStackClient(cmd.Context(), loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %v", err)
 		}
@@ -112,7 +112,7 @@ var SecurityGroupCmd = &cobra.Command{
 
 		defer measureTime()
 
-		dstSecurityGroup, err := migrateSecurityGroup(srcNetworkClient, dstNetworkClient, securityGroup, toName)
+		dstSecurityGroup, err := migrateSecurityGroup(cmd.Context(), srcNetworkClient, dstNetworkClient, securityGroup, toName)
 		if err != nil {
 			return err
 		}
@@ -123,8 +123,8 @@ var SecurityGroupCmd = &cobra.Command{
 	},
 }
 
-func migrateSecurityGroup(srcNetworkClient *gophercloud.ServiceClient, dstNetworkClient *gophercloud.ServiceClient, securityGroup string, toSecurityGroupName string) (*groups.SecGroup, error) {
-	sg, err := groups.Get(srcNetworkClient, securityGroup).Extract()
+func migrateSecurityGroup(ctx context.Context, srcNetworkClient *gophercloud.ServiceClient, dstNetworkClient *gophercloud.ServiceClient, securityGroup string, toSecurityGroupName string) (*groups.SecGroup, error) {
+	sg, err := groups.Get(ctx, srcNetworkClient, securityGroup).Extract()
 	if err != nil {
 		return nil, err
 	}
@@ -134,9 +134,9 @@ func migrateSecurityGroup(srcNetworkClient *gophercloud.ServiceClient, dstNetwor
 	}
 	if !disableDetection {
 		// check if security group with the same name already exists in the destination
-		if secGroupID, err := securityGroupsIDFromName(dstNetworkClient, toSecurityGroupName); err == nil {
+		if secGroupID, err := securityGroupsIDFromName(ctx, dstNetworkClient, toSecurityGroupName); err == nil {
 			// security group already exists
-			return groups.Get(dstNetworkClient, secGroupID).Extract()
+			return groups.Get(ctx, dstNetworkClient, secGroupID).Extract()
 		}
 	}
 
@@ -145,7 +145,7 @@ func migrateSecurityGroup(srcNetworkClient *gophercloud.ServiceClient, dstNetwor
 		Name:        toSecurityGroupName,
 		Description: sg.Description,
 	}
-	newSecurityGroup, err := groups.Create(dstNetworkClient, createOpts).Extract()
+	newSecurityGroup, err := groups.Create(ctx, dstNetworkClient, createOpts).Extract()
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func migrateSecurityGroup(srcNetworkClient *gophercloud.ServiceClient, dstNetwor
 	// delete default egress rules to get a clean slate
 	for _, rule := range newSecurityGroup.Rules {
 		if rule.Direction == "egress" {
-			if err = rules.Delete(dstNetworkClient, rule.ID).ExtractErr(); err != nil {
+			if err = rules.Delete(ctx, dstNetworkClient, rule.ID).ExtractErr(); err != nil {
 				return nil, err
 			}
 		}
@@ -171,7 +171,7 @@ func migrateSecurityGroup(srcNetworkClient *gophercloud.ServiceClient, dstNetwor
 				remoteGroupID = targetRemoteID
 			} else {
 				// create remote security group if it doesn't exist
-				remoteSecurityGroup, err := migrateSecurityGroup(srcNetworkClient, dstNetworkClient, rule.RemoteGroupID, "")
+				remoteSecurityGroup, err := migrateSecurityGroup(ctx, srcNetworkClient, dstNetworkClient, rule.RemoteGroupID, "")
 				if err != nil {
 					return nil, err
 				}
@@ -193,7 +193,7 @@ func migrateSecurityGroup(srcNetworkClient *gophercloud.ServiceClient, dstNetwor
 		}
 
 		// retry rule creation on 429 rate limit errors
-		if _, err = retryRulesCreate(dstNetworkClient, ruleCreateOpts); err != nil {
+		if _, err = retryRulesCreate(ctx, dstNetworkClient, ruleCreateOpts); err != nil {
 			return nil, err
 		}
 	}

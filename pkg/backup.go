@@ -17,15 +17,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/extensions/backups"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/imagedata"
-	"github.com/gophercloud/gophercloud/openstack/imageservice/v2/images"
-	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/containers"
-	"github.com/gophercloud/gophercloud/openstack/objectstorage/v1/objects"
-	backups_utils "github.com/gophercloud/utils/openstack/blockstorage/extensions/backups"
-	images_utils "github.com/gophercloud/utils/openstack/imageservice/v2/images"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/imagedata"
+	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
+	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/containers"
+	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
+	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
+	images_utils "github.com/gophercloud/utils/v2/openstack/image/v2/images"
 	"github.com/klauspost/compress/zlib"
 	"github.com/machinebox/progress"
 	"github.com/spf13/cobra"
@@ -57,9 +57,9 @@ type chunk struct {
 	errChan       chan error
 }
 
-func createBackupSpeed(client *gophercloud.ServiceClient, backup *backups.Backup) {
+func createBackupSpeed(ctx context.Context, client *gophercloud.ServiceClient, backup *backups.Backup) {
 	if client != nil {
-		container, err := containers.Get(client, backup.Container, nil).Extract()
+		container, err := containers.Get(ctx, client, backup.Container, nil).Extract()
 		if err != nil {
 			log.Printf("Failed to detect a backup container size: %s", err)
 			return
@@ -72,11 +72,11 @@ func createBackupSpeed(client *gophercloud.ServiceClient, backup *backups.Backup
 	}
 }
 
-func waitForBackup(client *gophercloud.ServiceClient, id string, secs float64) (*backups.Backup, error) {
+func waitForBackup(ctx context.Context, client *gophercloud.ServiceClient, id string, secs float64) (*backups.Backup, error) {
 	var backup *backups.Backup
 	var err error
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		backup, err = backups.Get(client, id).Extract()
+		backup, err = backups.Get(ctx, client, id).Extract()
 		if err != nil {
 			return false, err
 		}
@@ -151,7 +151,7 @@ func calcMd5Hash(myChunk []byte, meta *metadata, i int, done chan struct{}, chun
 	close(done)
 }
 
-func (c *chunk) process() {
+func (c *chunk) process(ctx context.Context) {
 	defer func() {
 		c.wg.Done()
 		// release the queue
@@ -216,7 +216,7 @@ func (c *chunk) process() {
 			// bytes.Buffer doesn't have UnreadAll method
 			Content: bytes.NewReader(rb.Bytes()),
 		}
-		err = objects.Create(c.objClient, c.containerName, chunkPath, uploadOpts).Err
+		err = objects.Create(ctx, c.objClient, c.containerName, chunkPath, uploadOpts).Err
 		if err != nil {
 			log.Printf("failed to upload %s/%s data in %d retry: %s: sleeping for %0.f seconds", c.containerName, chunkPath, j, err, sleep.Seconds())
 			time.Sleep(sleep)
@@ -238,8 +238,8 @@ func (c *chunk) process() {
 	myChunk = nil
 }
 
-func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gophercloud.ServiceClient, backupName, containerName, imageID, az string, properties map[string]string, size int, threads uint) (*backups.Backup, error) {
-	imageData, err := getSourceData(srcImgClient, srcObjClient, imageID)
+func uploadBackup(ctx context.Context, srcImgClient, srcObjClient, dstObjClient, dstVolClient *gophercloud.ServiceClient, backupName, containerName, imageID, az string, properties map[string]string, size int, threads uint) (*backups.Backup, error) {
+	imageData, err := getSourceData(ctx, srcImgClient, srcObjClient, imageID)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +317,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	}
 
 	// create container
-	_, err = containers.Create(dstObjClient, containerName, nil).Extract()
+	_, err = containers.Create(ctx, dstObjClient, containerName, nil).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a %q container: %s", containerName, err)
 	}
@@ -356,7 +356,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 					limitChan,
 					errChan,
 				}
-				go c.process()
+				go c.process(ctx)
 			}
 		}
 	}()
@@ -382,7 +382,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 		Content: bytes.NewReader(buf),
 	}
 	p := path + "_sha256file"
-	err = objects.Create(dstObjClient, containerName, p, createOpts).Err
+	err = objects.Create(ctx, dstObjClient, containerName, p, createOpts).Err
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload %s/%s data: %s", containerName, p, err)
 	}
@@ -401,7 +401,7 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 		Content: bytes.NewReader(buf),
 	}
 	p = path + "_metadata"
-	err = objects.Create(dstObjClient, containerName, p, createOpts).Err
+	err = objects.Create(ctx, dstObjClient, containerName, p, createOpts).Err
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload %s/%s data: %s", containerName, p, err)
 	}
@@ -435,12 +435,12 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 		BackupService: service,
 		BackupURL:     backupURL,
 	}
-	importResponse, err := backups.Import(dstVolClient, options).Extract()
+	importResponse, err := backups.Import(ctx, dstVolClient, options).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("failed to import the backup: %s", err)
 	}
 
-	backupObj, err := waitForBackup(dstVolClient, importResponse.ID, waitForBackupSec)
+	backupObj, err := waitForBackup(ctx, dstVolClient, importResponse.ID, waitForBackupSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for backup status: %s", err)
 	}
@@ -450,8 +450,8 @@ func uploadBackup(srcImgClient, srcObjClient, dstObjClient, dstVolClient *gopher
 	return backupObj, nil
 }
 
-func backupToVolume(dstVolClient *gophercloud.ServiceClient, backupObj *backups.Backup, volumeName, volumeType, az string) (*volumes.Volume, error) {
-	reauthClient(dstVolClient, "backupToVolume")
+func backupToVolume(ctx context.Context, dstVolClient *gophercloud.ServiceClient, backupObj *backups.Backup, volumeName, volumeType, az string) (*volumes.Volume, error) {
+	reauthClient(ctx, dstVolClient, "backupToVolume")
 
 	// create a volume from a backup
 	dstVolClient.Microversion = "3.47"
@@ -464,12 +464,12 @@ func backupToVolume(dstVolClient *gophercloud.ServiceClient, backupObj *backups.
 		VolumeType:       volumeType,
 	}
 
-	newVolume, err := volumes.Create(dstVolClient, volOpts).Extract()
+	newVolume, err := volumes.Create(ctx, dstVolClient, volOpts, nil).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a source volume from a backup: %s", err)
 	}
 
-	newVolume, err = waitForVolume(dstVolClient, newVolume.ID, waitForVolumeSec)
+	newVolume, err = waitForVolume(ctx, dstVolClient, newVolume.ID, waitForVolumeSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for a volume: %s", err)
 	}
@@ -484,7 +484,7 @@ type imageSource struct {
 	minDisk    int
 }
 
-func getSourceData(srcImgClient, srcObjClient *gophercloud.ServiceClient, imageID string) (*imageSource, error) {
+func getSourceData(ctx context.Context, srcImgClient, srcObjClient *gophercloud.ServiceClient, imageID string) (*imageSource, error) {
 	// read file
 	file, err := os.Open(imageID)
 	if err == nil {
@@ -498,7 +498,7 @@ func getSourceData(srcImgClient, srcObjClient *gophercloud.ServiceClient, imageI
 
 	log.Printf("Cannot read %q file: %s: fallback to Swift URL as a source", imageID, err)
 	// read Glance image metadata
-	image, err := images.Get(srcImgClient, imageID).Extract()
+	image, err := images.Get(ctx, srcImgClient, imageID).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("error getting the source image: %s", err)
 	}
@@ -506,7 +506,7 @@ func getSourceData(srcImgClient, srcObjClient *gophercloud.ServiceClient, imageI
 
 	if srcObjClient != nil {
 		// read Glance image Swift source
-		resp := objects.Download(srcObjClient, fmt.Sprintf("glance_%s", imageID), imageID, nil)
+		resp := objects.Download(ctx, srcObjClient, fmt.Sprintf("glance_%s", imageID), imageID, nil)
 		if resp.Err == nil {
 			if size, err := strconv.ParseInt(resp.Header.Get("Content-Length"), 10, 64); size > 0 {
 				return &imageSource{
@@ -531,7 +531,7 @@ func getSourceData(srcImgClient, srcObjClient *gophercloud.ServiceClient, imageI
 	}
 
 	// read Glance image
-	readCloser, err := imagedata.Download(srcImgClient, imageID).Extract()
+	readCloser, err := imagedata.Download(ctx, srcImgClient, imageID).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("error getting the source image reader: %s", err)
 	}
@@ -586,7 +586,7 @@ var BackupUploadCmd = &cobra.Command{
 			return err
 		}
 
-		srcProvider, err := newOpenStackClient(loc.Src)
+		srcProvider, err := newOpenStackClient(cmd.Context(), loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
@@ -603,13 +603,13 @@ var BackupUploadCmd = &cobra.Command{
 		}
 
 		// resolve image name to an ID
-		if v, err := images_utils.IDFromName(srcImageClient, image); err == nil {
+		if v, err := images_utils.IDFromName(cmd.Context(), srcImageClient, image); err == nil {
 			image = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
 		}
 
-		dstProvider, err := newOpenStackClient(loc.Dst)
+		dstProvider, err := newOpenStackClient(cmd.Context(), loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
@@ -624,14 +624,14 @@ var BackupUploadCmd = &cobra.Command{
 			return fmt.Errorf("failed to create destination object storage client, detailed image clone statistics will be unavailable: %s", err)
 		}
 
-		err = checkAvailabilityZone(dstVolumeClient, "", &toAZ, &loc)
+		err = checkAvailabilityZone(cmd.Context(), dstVolumeClient, "", &toAZ, &loc)
 		if err != nil {
 			return err
 		}
 
 		defer measureTime()
 
-		backup, err := uploadBackup(srcImageClient, srcObjectClient, dstObjectClient, dstVolumeClient, toBackupName, toContainerName, image, toAZ, properties, int(size), threads)
+		backup, err := uploadBackup(cmd.Context(), srcImageClient, srcObjectClient, dstObjectClient, dstVolumeClient, toBackupName, toContainerName, image, toAZ, properties, int(size), threads)
 		if err != nil {
 			return err
 		}
@@ -644,7 +644,7 @@ var BackupUploadCmd = &cobra.Command{
 
 		// reauth before the long-time task
 		dstVolumeClient.TokenID = ""
-		dstVolume, err := backupToVolume(dstVolumeClient, backup, toVolumeName, toVolumeType, toAZ)
+		dstVolume, err := backupToVolume(cmd.Context(), dstVolumeClient, backup, toVolumeName, toVolumeType, toAZ)
 		if err != nil {
 			return err
 		}
@@ -680,7 +680,7 @@ var BackupRestoreCmd = &cobra.Command{
 			return err
 		}
 
-		dstProvider, err := newOpenStackClient(loc.Dst)
+		dstProvider, err := newOpenStackClient(cmd.Context(), loc.Dst)
 		if err != nil {
 			return fmt.Errorf("failed to create a destination OpenStack client: %s", err)
 		}
@@ -690,19 +690,19 @@ var BackupRestoreCmd = &cobra.Command{
 			return fmt.Errorf("failed to create destination volume client: %s", err)
 		}
 
-		err = checkAvailabilityZone(dstVolumeClient, "", &toAZ, &loc)
+		err = checkAvailabilityZone(cmd.Context(), dstVolumeClient, "", &toAZ, &loc)
 		if err != nil {
 			return err
 		}
 
 		// resolve backup name to an ID
-		if v, err := backups_utils.IDFromName(dstVolumeClient, backup); err == nil {
+		if v, err := backups_utils.IDFromName(cmd.Context(), dstVolumeClient, backup); err == nil {
 			backup = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
 		}
 
-		backupObj, err := waitForBackup(dstVolumeClient, backup, waitForBackupSec)
+		backupObj, err := waitForBackup(cmd.Context(), dstVolumeClient, backup, waitForBackupSec)
 		if err != nil {
 			return fmt.Errorf("failed to wait for backup status: %s", err)
 		}
@@ -720,7 +720,7 @@ var BackupRestoreCmd = &cobra.Command{
 
 		defer measureTime()
 
-		dstVolume, err := backupToVolume(dstVolumeClient, backupObj, toVolumeName, toVolumeType, toAZ)
+		dstVolume, err := backupToVolume(cmd.Context(), dstVolumeClient, backupObj, toVolumeName, toVolumeType, toAZ)
 		if err != nil {
 			return err
 		}
