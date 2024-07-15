@@ -11,7 +11,7 @@ require (
 	github.com/majewsky/schwift/v2 v2.0.0
 	github.com/sapcc/go-bits v0.0.0-20240709125621-b1e90ef040ad
 	github.com/sapcc/swift-http-import v0.0.0-20240712085221-f33ec7ac8e34
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	golang.org/x/term v0.22.0
