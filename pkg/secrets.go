@@ -7,12 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud/v2"
-	"github.com/gophercloud/gophercloud/v2/openstack/keymanager/v1/acls"
-	"github.com/gophercloud/gophercloud/v2/openstack/keymanager/v1/secrets"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/xhit/go-str2duration/v2"
+
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/keymanager/v1/acls"
+	"github.com/gophercloud/gophercloud/v2/openstack/keymanager/v1/secrets"
 )
 
 var (
@@ -66,7 +67,7 @@ func waitForSecret(ctx context.Context, client *gophercloud.ServiceClient, id st
 			return true, nil
 		}
 
-		if !isSliceContainsStr(secretWaitStatuses, string(secret.Status)) {
+		if !isSliceContainsStr(secretWaitStatuses, secret.Status) {
 			return false, fmt.Errorf("secret status is %q", secret.Status)
 		}
 
@@ -228,7 +229,7 @@ func uuidFromSecretRef(ref string) string {
 	return ref[strings.LastIndex(ref, "/")+1:]
 }
 
-// SecretCmd represents the secret command
+// SecretCmd represents the secret command.
 var SecretCmd = &cobra.Command{
 	Use:   "secret <name|id|url>",
 	Args:  cobra.ExactArgs(1),

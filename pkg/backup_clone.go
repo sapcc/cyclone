@@ -12,9 +12,6 @@ import (
 	"syscall"
 
 	"github.com/google/uuid"
-	"github.com/gophercloud/gophercloud/v2"
-	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
-	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
 	"github.com/majewsky/schwift/v2/gopherschwift"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/secrets"
@@ -22,6 +19,10 @@ import (
 	"github.com/sapcc/swift-http-import/pkg/objects"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
+	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
 )
 
 func prepareSwiftConfig(ctx context.Context, srcObjectClient, dstObjectClient *gophercloud.ServiceClient, srcContainerName, dstContainerName, prefix string, threads uint) (*objects.Configuration, error) {
@@ -225,7 +226,7 @@ func cloneBackup(ctx context.Context, srcVolumeClient, srcObjectClient, dstVolum
 	return waitForBackup(ctx, dstVolumeClient, importResponse.ID, waitForBackupSec)
 }
 
-// BackupCmd represents the volume command
+// BackupCloneCmd represents the backup clone command.
 var BackupCloneCmd = &cobra.Command{
 	Use:   "clone <name|id>",
 	Args:  cobra.ExactArgs(1),

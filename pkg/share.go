@@ -7,13 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/replicas"
 	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/shares"
 	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/snapshots"
 	shares_utils "github.com/gophercloud/utils/v2/openstack/sharedfilesystems/v2/shares"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -146,7 +147,7 @@ func createShareSpeed(share *shares.Share) {
 	log.Printf("Speed of the share creation: %.2f Mb/sec", size/t.Seconds())
 }
 
-// findOrCreateShareReplica returns the new or existing inactive replica as the first return value and old active replica as the second one
+// findOrCreateShareReplica returns the new or existing inactive replica as the first return value and old active replica as the second one.
 func findOrCreateShareReplica(ctx context.Context, srcShareClient *gophercloud.ServiceClient, srcShare *shares.Share, netID, az string) (*replicas.Replica, *replicas.Replica, error) {
 	curReplica, allReplicas, err := findShareActiveReplica(ctx, srcShareClient, srcShare.ID)
 	if err != nil {
@@ -335,7 +336,7 @@ func moveShare(ctx context.Context, srcShareClient *gophercloud.ServiceClient, s
 	return newShare, nil
 }
 
-// ShareCmd represents the share command
+// ShareCmd represents the share command.
 var ShareCmd = &cobra.Command{
 	Use:   "share <name|id>",
 	Args:  cobra.ExactArgs(1),
@@ -408,7 +409,7 @@ var ShareCmd = &cobra.Command{
 	},
 }
 
-// ShareMoveCmd represents the share move command
+// ShareMoveCmd represents the share move command.
 var ShareMoveCmd = &cobra.Command{
 	Use:   "move <name|id>",
 	Args:  cobra.ExactArgs(1),
