@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -8,14 +9,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/availabilityzones"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/applicationcredentials"
-	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
-	shareAZ "github.com/gophercloud/gophercloud/openstack/sharedfilesystems/v2/availabilityzones"
-	"github.com/gophercloud/utils/client"
-	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/availabilityzones"
+	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/applicationcredentials"
+	"github.com/gophercloud/gophercloud/v2/openstack/identity/v3/tokens"
+	shareAZ "github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/availabilityzones"
+	"github.com/gophercloud/utils/v2/client"
+	"github.com/gophercloud/utils/v2/openstack/clientconfig"
 	"golang.org/x/term"
 )
 
@@ -33,7 +34,7 @@ func measureTime(caption ...string) {
 	}
 }
 
-func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
+func newOpenStackClient(ctx context.Context, loc Location) (*gophercloud.ProviderClient, error) {
 	envPrefix := "OS_"
 	if loc.Origin == "dst" {
 		envPrefix = "TO_OS_"
@@ -101,7 +102,7 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 		ao.Password = string(v)
 	}
 
-	err = openstack.Authenticate(provider, *ao)
+	err = openstack.Authenticate(ctx, provider, *ao)
 	if err != nil {
 		return nil, err
 	}
@@ -143,17 +144,18 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 				return
 			}
 
-			if err := applicationcredentials.Delete(identityClient, userID, ac.ID).ExtractErr(); err != nil {
-				if _, ok := err.(gophercloud.ErrDefault404); !ok {
+			if err := applicationcredentials.Delete(ctx, identityClient, userID, ac.ID).ExtractErr(); err != nil {
+				if !gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
 					log.Printf("Failed to delete a %q temp application credential: %s", acName, err)
 				}
 			}
 		})
-		ac, err = applicationcredentials.Create(identityClient, userID, createOpts).Extract()
+		ac, err = applicationcredentials.Create(ctx, identityClient, userID, createOpts).Extract()
 		acWait.Done()
 		if err != nil {
-			if v, ok := err.(gophercloud.ErrDefault404); ok {
-				return nil, fmt.Errorf("failed to create a temp application credential: %s", v.ErrUnexpectedResponseCode.Body)
+			if gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
+				err := err.(gophercloud.ErrUnexpectedResponseCode)
+				return nil, fmt.Errorf("failed to create a temp application credential: %s", err.Body)
 			}
 			return nil, fmt.Errorf("failed to create a temp application credential: %s", err)
 		}
@@ -166,7 +168,7 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 			AllowReauth:                 true,
 		}
 
-		err = openstack.Authenticate(provider, *ao)
+		err = openstack.Authenticate(ctx, provider, *ao)
 		if err != nil {
 			return nil, fmt.Errorf("failed to auth using just created application credentials: %s", err)
 		}
@@ -175,17 +177,17 @@ func newOpenStackClient(loc Location) (*gophercloud.ProviderClient, error) {
 	return provider, nil
 }
 
-func reauthClient(client *gophercloud.ServiceClient, funcName string) {
+func reauthClient(ctx context.Context, client *gophercloud.ServiceClient, funcName string) {
 	// reauth the client before the long running action to avoid openstack internal auth issues
 	if client.ProviderClient.ReauthFunc != nil {
-		if err := client.ProviderClient.Reauthenticate(client.ProviderClient.TokenID); err != nil {
+		if err := client.ProviderClient.Reauthenticate(ctx, client.ProviderClient.TokenID); err != nil {
 			log.Printf("Failed to re-authenticate the provider client in the %s func: %v", err, funcName)
 		}
 	}
 }
 
 func newGlanceV2Client(provider *gophercloud.ProviderClient, region string) (*gophercloud.ServiceClient, error) {
-	return openstack.NewImageServiceV2(provider, gophercloud.EndpointOpts{
+	return openstack.NewImageV2(provider, gophercloud.EndpointOpts{
 		Region: region,
 	})
 }
@@ -226,7 +228,7 @@ func newSecretManagerV1Client(provider *gophercloud.ProviderClient, region strin
 	})
 }
 
-func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstAZ *string, loc *Locations) error {
+func checkAvailabilityZone(ctx context.Context, client *gophercloud.ServiceClient, srcAZ string, dstAZ *string, loc *Locations) error {
 	if *dstAZ == "" {
 		if strings.HasPrefix(srcAZ, loc.Dst.Region) {
 			*dstAZ = srcAZ
@@ -242,7 +244,7 @@ func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstA
 	}
 
 	// check availability zone name
-	allPages, err := availabilityzones.List(client).AllPages()
+	allPages, err := availabilityzones.List(client).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("error retrieving availability zones: %s", err)
 	}
@@ -273,7 +275,7 @@ func checkAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstA
 	return nil
 }
 
-func checkShareAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string, dstAZ *string, loc *Locations) error {
+func checkShareAvailabilityZone(ctx context.Context, client *gophercloud.ServiceClient, srcAZ string, dstAZ *string, loc *Locations) error {
 	if *dstAZ == "" {
 		if strings.HasPrefix(srcAZ, loc.Dst.Region) {
 			*dstAZ = srcAZ
@@ -289,7 +291,7 @@ func checkShareAvailabilityZone(client *gophercloud.ServiceClient, srcAZ string,
 	}
 
 	// check availability zone name
-	allPages, err := shareAZ.List(client).AllPages()
+	allPages, err := shareAZ.List(client).AllPages(ctx)
 	if err != nil {
 		return fmt.Errorf("error retrieving availability zones: %s", err)
 	}

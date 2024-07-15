@@ -1,15 +1,17 @@
 package pkg
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/sharedfilesystems/v2/replicas"
-	"github.com/gophercloud/gophercloud/openstack/sharedfilesystems/v2/shares"
-	"github.com/gophercloud/gophercloud/openstack/sharedfilesystems/v2/snapshots"
-	shares_utils "github.com/gophercloud/utils/openstack/sharedfilesystems/v2/shares"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/replicas"
+	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/shares"
+	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/snapshots"
+	shares_utils "github.com/gophercloud/utils/v2/openstack/sharedfilesystems/v2/shares"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,11 +35,11 @@ var replicaNormalStatuses = []string{
 	"available",
 }
 
-func waitForShareSnapshot(client *gophercloud.ServiceClient, id string, secs float64) (*snapshots.Snapshot, error) {
+func waitForShareSnapshot(ctx context.Context, client *gophercloud.ServiceClient, id string, secs float64) (*snapshots.Snapshot, error) {
 	var snapshot *snapshots.Snapshot
 	var err error
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		snapshot, err = snapshots.Get(client, id).Extract()
+		snapshot, err = snapshots.Get(ctx, client, id).Extract()
 		if err != nil {
 			return false, err
 		}
@@ -58,11 +60,11 @@ func waitForShareSnapshot(client *gophercloud.ServiceClient, id string, secs flo
 	return snapshot, err
 }
 
-func waitForShareReplica(client *gophercloud.ServiceClient, id string, secs float64) (*replicas.Replica, error) {
+func waitForShareReplica(ctx context.Context, client *gophercloud.ServiceClient, id string, secs float64) (*replicas.Replica, error) {
 	var replica *replicas.Replica
 	var err error
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		replica, err = replicas.Get(client, id).Extract()
+		replica, err = replicas.Get(ctx, client, id).Extract()
 		if err != nil {
 			return false, err
 		}
@@ -83,11 +85,11 @@ func waitForShareReplica(client *gophercloud.ServiceClient, id string, secs floa
 	return replica, err
 }
 
-func waitForShareReplicaState(client *gophercloud.ServiceClient, id, state string, secs float64) (*replicas.Replica, error) {
+func waitForShareReplicaState(ctx context.Context, client *gophercloud.ServiceClient, id, state string, secs float64) (*replicas.Replica, error) {
 	var replica *replicas.Replica
 	var err error
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		replica, err = replicas.Get(client, id).Extract()
+		replica, err = replicas.Get(ctx, client, id).Extract()
 		if err != nil {
 			return false, err
 		}
@@ -109,11 +111,11 @@ func waitForShareReplicaState(client *gophercloud.ServiceClient, id, state strin
 	return replica, err
 }
 
-func waitForShare(client *gophercloud.ServiceClient, id string, secs float64) (*shares.Share, error) {
+func waitForShare(ctx context.Context, client *gophercloud.ServiceClient, id string, secs float64) (*shares.Share, error) {
 	var share *shares.Share
 	var err error
 	err = NewBackoff(int(secs), backoffFactor, backoffMaxInterval).WaitFor(func() (bool, error) {
-		share, err = shares.Get(client, id).Extract()
+		share, err = shares.Get(ctx, client, id).Extract()
 		if err != nil {
 			return false, err
 		}
@@ -145,8 +147,8 @@ func createShareSpeed(share *shares.Share) {
 }
 
 // findOrCreateShareReplica returns the new or existing inactive replica as the first return value and old active replica as the second one
-func findOrCreateShareReplica(srcShareClient *gophercloud.ServiceClient, srcShare *shares.Share, netID, az string) (*replicas.Replica, *replicas.Replica, error) {
-	curReplica, allReplicas, err := findShareActiveReplica(srcShareClient, srcShare.ID)
+func findOrCreateShareReplica(ctx context.Context, srcShareClient *gophercloud.ServiceClient, srcShare *shares.Share, netID, az string) (*replicas.Replica, *replicas.Replica, error) {
+	curReplica, allReplicas, err := findShareActiveReplica(ctx, srcShareClient, srcShare.ID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -175,11 +177,11 @@ func findOrCreateShareReplica(srcShareClient *gophercloud.ServiceClient, srcShar
 		AvailabilityZone: az,
 		ShareNetworkID:   netID,
 	}
-	replica, err := replicas.Create(srcShareClient, replicaOpts).Extract()
+	replica, err := replicas.Create(ctx, srcShareClient, replicaOpts).Extract()
 	if err != nil {
 		return nil, curReplica, fmt.Errorf("failed to create a new replica for a %q share: %s", srcShare.ID, err)
 	}
-	replica, err = waitForShareReplica(srcShareClient, replica.ID, waitForShareReplicaSec)
+	replica, err = waitForShareReplica(ctx, srcShareClient, replica.ID, waitForShareReplicaSec)
 	if err != nil {
 		return nil, curReplica, fmt.Errorf("failed to wait for a %q share replica status: %s", replica.ID, err)
 	}
@@ -189,12 +191,12 @@ func findOrCreateShareReplica(srcShareClient *gophercloud.ServiceClient, srcShar
 
 // findShareActiveReplica returns the current active replica if found and the list
 // of all replicas associated with a share.
-func findShareActiveReplica(srcShareClient *gophercloud.ServiceClient, shareID string) (*replicas.Replica,
+func findShareActiveReplica(ctx context.Context, srcShareClient *gophercloud.ServiceClient, shareID string) (*replicas.Replica,
 	[]replicas.Replica, error) {
 	listReplicasOpts := replicas.ListOpts{
 		ShareID: shareID,
 	}
-	pages, err := replicas.ListDetail(srcShareClient, listReplicasOpts).AllPages()
+	pages, err := replicas.ListDetail(srcShareClient, listReplicasOpts).AllPages(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to list %s share replicas: %s", shareID, err)
 	}
@@ -213,28 +215,28 @@ func findShareActiveReplica(srcShareClient *gophercloud.ServiceClient, shareID s
 	return nil, allReplicas, fmt.Errorf("failed to find a replica for a %q share", shareID)
 }
 
-func cloneShare(srcShareClient *gophercloud.ServiceClient, srcShare *shares.Share, name, shareType, proto, netID, az string) (*shares.Share, error) {
+func cloneShare(ctx context.Context, srcShareClient *gophercloud.ServiceClient, srcShare *shares.Share, name, shareType, proto, netID, az string) (*shares.Share, error) {
 	snapshotOpts := snapshots.CreateOpts{
 		ShareID:     srcShare.ID,
 		Description: fmt.Sprintf("Transition snapshot to clone a %q share", srcShare.ID),
 	}
-	srcSnapshot, err := snapshots.Create(srcShareClient, snapshotOpts).Extract()
+	srcSnapshot, err := snapshots.Create(ctx, srcShareClient, snapshotOpts).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a source share snapshot: %s", err)
 	}
 	log.Printf("Intermediate snapshot %q created", srcSnapshot.ID)
 
 	delSnapshot := func() {
-		if err := snapshots.Delete(srcShareClient, srcSnapshot.ID).ExtractErr(); err != nil {
+		if err := snapshots.Delete(ctx, srcShareClient, srcSnapshot.ID).ExtractErr(); err != nil {
 			// it is fine, when the volume was already removed.
-			if _, ok := err.(gophercloud.ErrDefault404); !ok {
+			if !gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
 				log.Printf("failed to delete a cloned volume: %s", err)
 			}
 		}
 	}
 	defer delSnapshot()
 
-	srcSnapshot, err = waitForShareSnapshot(srcShareClient, srcSnapshot.ID, waitForShareSnapshotSec)
+	srcSnapshot, err = waitForShareSnapshot(ctx, srcShareClient, srcSnapshot.ID, waitForShareSnapshotSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for a snapshot: %s", err)
 	}
@@ -265,14 +267,14 @@ func cloneShare(srcShareClient *gophercloud.ServiceClient, srcShare *shares.Shar
 		AvailabilityZone: srcShare.AvailabilityZone,
 	}
 
-	reauthClient(srcShareClient, "cloneShare")
+	reauthClient(ctx, srcShareClient, "cloneShare")
 
 	// create a share clone in the source AZ
-	newShare, err := shares.Create(srcShareClient, shareOpts).Extract()
+	newShare, err := shares.Create(ctx, srcShareClient, shareOpts).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a source share from a snapshot: %s", err)
 	}
-	newShare, err = waitForShare(srcShareClient, newShare.ID, waitForShareSec)
+	newShare, err = waitForShare(ctx, srcShareClient, newShare.ID, waitForShareSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for a %q share status: %s", newShare.ID, err)
 	}
@@ -280,39 +282,39 @@ func cloneShare(srcShareClient *gophercloud.ServiceClient, srcShare *shares.Shar
 	// delete intermediate snapshot right away
 	go delSnapshot()
 
-	return moveShare(srcShareClient, newShare, netID, az, true)
+	return moveShare(ctx, srcShareClient, newShare, netID, az, true)
 }
 
-func moveShare(srcShareClient *gophercloud.ServiceClient, srcShare *shares.Share, netID, az string, deleteOldReplica bool) (*shares.Share, error) {
+func moveShare(ctx context.Context, srcShareClient *gophercloud.ServiceClient, srcShare *shares.Share, netID, az string, deleteOldReplica bool) (*shares.Share, error) {
 	srcShareClient.Microversion = "2.60"
 	// detect current share replica
-	replica, oldReplica, err := findOrCreateShareReplica(srcShareClient, srcShare, netID, az)
+	replica, oldReplica, err := findOrCreateShareReplica(ctx, srcShareClient, srcShare, netID, az)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain a replica for a %q share: %s", srcShare.ID, err)
 	}
 
 	// resync replica in a new AZ
-	err = replicas.Resync(srcShareClient, replica.ID).ExtractErr()
+	err = replicas.Resync(ctx, srcShareClient, replica.ID).ExtractErr()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resync a %q share replica: %s", replica.ID, err)
 	}
-	replica, err = waitForShareReplicaState(srcShareClient, replica.ID, "in_sync", waitForShareReplicaSec)
+	replica, err = waitForShareReplicaState(ctx, srcShareClient, replica.ID, "in_sync", waitForShareReplicaSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for a %q share replica state: %s", replica.ID, err)
 	}
 
 	// promote replica in a new AZ
-	err = replicas.Promote(srcShareClient, replica.ID, replicas.PromoteOpts{}).ExtractErr()
+	err = replicas.Promote(ctx, srcShareClient, replica.ID, replicas.PromoteOpts{}).ExtractErr()
 	if err != nil {
 		return nil, fmt.Errorf("failed to promote a %q share replica: %s", replica.ID, err)
 	}
-	replica, err = waitForShareReplicaState(srcShareClient, replica.ID, "active", waitForShareReplicaSec)
+	replica, err = waitForShareReplicaState(ctx, srcShareClient, replica.ID, "active", waitForShareReplicaSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for a %q share replica state: %s", replica.ID, err)
 	}
 
 	// checking the expected share AZ
-	newShare, err := waitForShare(srcShareClient, srcShare.ID, waitForShareSec)
+	newShare, err := waitForShare(ctx, srcShareClient, srcShare.ID, waitForShareSec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to wait for a share: %s", err)
 	}
@@ -322,7 +324,7 @@ func moveShare(srcShareClient *gophercloud.ServiceClient, srcShare *shares.Share
 
 	// remove old replica
 	if deleteOldReplica && oldReplica != nil {
-		err = replicas.Delete(srcShareClient, oldReplica.ID).ExtractErr()
+		err = replicas.Delete(ctx, srcShareClient, oldReplica.ID).ExtractErr()
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete an old %q replica: %s", oldReplica.ID, err)
 		}
@@ -366,7 +368,7 @@ var ShareCmd = &cobra.Command{
 			return fmt.Errorf("shares can be copied only within the same OpenStack region and project")
 		}
 
-		srcProvider, err := newOpenStackClient(loc.Src)
+		srcProvider, err := newOpenStackClient(cmd.Context(), loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
@@ -377,25 +379,25 @@ var ShareCmd = &cobra.Command{
 		}
 
 		// resolve share name to an ID
-		if v, err := shares_utils.IDFromName(srcShareClient, share); err == nil {
+		if v, err := shares_utils.IDFromName(cmd.Context(), srcShareClient, share); err == nil {
 			share = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
 		}
 
-		srcShare, err := waitForShare(srcShareClient, share, waitForShareSec)
+		srcShare, err := waitForShare(cmd.Context(), srcShareClient, share, waitForShareSec)
 		if err != nil {
 			return fmt.Errorf("failed to wait for a %q share: %s", share, err)
 		}
 
-		err = checkShareAvailabilityZone(srcShareClient, srcShare.AvailabilityZone, &toAZ, &loc)
+		err = checkShareAvailabilityZone(cmd.Context(), srcShareClient, srcShare.AvailabilityZone, &toAZ, &loc)
 		if err != nil {
 			return err
 		}
 
 		defer measureTime()
 
-		dstShare, err := cloneShare(srcShareClient, srcShare, toShareName, toShareType, toShareProto, toShareNetworkID, toAZ)
+		dstShare, err := cloneShare(cmd.Context(), srcShareClient, srcShare, toShareName, toShareType, toShareProto, toShareNetworkID, toAZ)
 		if err != nil {
 			return err
 		}
@@ -437,7 +439,7 @@ var ShareMoveCmd = &cobra.Command{
 			return fmt.Errorf("shares can be copied only within the same OpenStack region and project")
 		}
 
-		srcProvider, err := newOpenStackClient(loc.Src)
+		srcProvider, err := newOpenStackClient(cmd.Context(), loc.Src)
 		if err != nil {
 			return fmt.Errorf("failed to create a source OpenStack client: %s", err)
 		}
@@ -448,25 +450,25 @@ var ShareMoveCmd = &cobra.Command{
 		}
 
 		// resolve share name to an ID
-		if v, err := shares_utils.IDFromName(srcShareClient, share); err == nil {
+		if v, err := shares_utils.IDFromName(cmd.Context(), srcShareClient, share); err == nil {
 			share = v
 		} else if err, ok := err.(gophercloud.ErrMultipleResourcesFound); ok {
 			return err
 		}
 
-		srcShare, err := waitForShare(srcShareClient, share, waitForShareSec)
+		srcShare, err := waitForShare(cmd.Context(), srcShareClient, share, waitForShareSec)
 		if err != nil {
 			return fmt.Errorf("failed to wait for a %q share: %s", share, err)
 		}
 
-		err = checkShareAvailabilityZone(srcShareClient, srcShare.AvailabilityZone, &toAZ, &loc)
+		err = checkShareAvailabilityZone(cmd.Context(), srcShareClient, srcShare.AvailabilityZone, &toAZ, &loc)
 		if err != nil {
 			return err
 		}
 
 		defer measureTime()
 
-		dstShare, err := moveShare(srcShareClient, srcShare, toShareNetworkID, toAZ, deleteOldReplica)
+		dstShare, err := moveShare(cmd.Context(), srcShareClient, srcShare, toShareNetworkID, toAZ, deleteOldReplica)
 		if err != nil {
 			return err
 		}

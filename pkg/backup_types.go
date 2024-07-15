@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/v2"
 )
 
 type sha256file struct {
