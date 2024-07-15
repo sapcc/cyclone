@@ -8,6 +8,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/machinebox/progress"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/imagedata"
 	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/imageimport"
@@ -17,9 +21,6 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
 	"github.com/gophercloud/gophercloud/v2/pagination"
 	images_utils "github.com/gophercloud/utils/v2/openstack/image/v2/images"
-	"github.com/machinebox/progress"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -147,7 +148,7 @@ func waitForImageTask(ctx context.Context, client, swiftClient *gophercloud.Serv
 	return img, err
 }
 
-// this function may show confused size results due to Swift eventual consistency
+// this function may show confused size results due to Swift eventual consistency.
 func getContainerSize(ctx context.Context, client *gophercloud.ServiceClient, id string, srcSizeBytes int64) string {
 	if client != nil {
 		container, err := containers.Get(ctx, client, "glance_"+id, nil).Extract()
@@ -226,7 +227,7 @@ func expandImageProperties(v map[string]interface{}) map[string]string {
 	return properties
 }
 
-func generateTmpUrlKey(n int) string {
+func generateTmpURLKey(n int) string {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -244,20 +245,20 @@ func migrateImage(ctx context.Context, srcImageClient, dstImageClient, srcObject
 	objectName := srcImg.ID
 
 	if imageWebDownload {
-		tempUrlKey := containers.UpdateOpts{
-			TempURLKey: generateTmpUrlKey(20),
+		tempURLKey := containers.UpdateOpts{
+			TempURLKey: generateTmpURLKey(20),
 		}
-		_, err := containers.Update(ctx, srcObjectClient, containerName, tempUrlKey).Extract()
+		_, err := containers.Update(ctx, srcObjectClient, containerName, tempURLKey).Extract()
 		if err != nil {
 			return nil, fmt.Errorf("unable to set container temporary url key: %s", err)
 		}
 
-		tmpUrlOptions := objects.CreateTempURLOpts{
+		tmpURLOptions := objects.CreateTempURLOpts{
 			Method: "GET",
 			TTL:    swiftTempURLTTL,
 		}
 
-		url, err = objects.CreateTempURL(ctx, srcObjectClient, containerName, objectName, tmpUrlOptions)
+		url, err = objects.CreateTempURL(ctx, srcObjectClient, containerName, objectName, tmpURLOptions)
 		if err != nil {
 			return nil, fmt.Errorf("unable to generate a temporary url for the %q container: %s", containerName, err)
 		}
@@ -315,7 +316,6 @@ func migrateImage(ctx context.Context, srcImageClient, dstImageClient, srcObject
 		err = imageimport.Create(ctx, dstImageClient, dstImg.ID, importOpts).ExtractErr()
 		if err != nil {
 			return nil, fmt.Errorf("error while importing url %q: %s", url, err)
-
 		}
 
 		dstImg, err = waitForImageTask(ctx, dstImageClient, dstObjectClient, dstImg.ID, srcImg.SizeBytes, waitForImageSec)
@@ -374,7 +374,7 @@ func migrateImage(ctx context.Context, srcImageClient, dstImageClient, srcObject
 	return dstImg, nil
 }
 
-// ImageCmd represents the image command
+// ImageCmd represents the image command.
 var ImageCmd = &cobra.Command{
 	Use:   "image <name|id>",
 	Args:  cobra.ExactArgs(1),

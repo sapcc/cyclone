@@ -105,7 +105,7 @@ func (r *metadata) MarshalJSON() ([]byte, error) {
 	}
 	sort.Ints(keys)
 
-	var obj []backupChunkEntry
+	obj := make([]backupChunkEntry, 0, len(keys))
 	for _, k := range keys {
 		obj = append(obj, r.Objects[k])
 		r.Objects[k] = nil

@@ -8,6 +8,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/attachinterfaces"
@@ -24,8 +27,6 @@ import (
 	servers_utils "github.com/gophercloud/utils/v2/openstack/compute/v2/servers"
 	networks_utils "github.com/gophercloud/utils/v2/openstack/networking/v2/networks"
 	subnets_utils "github.com/gophercloud/utils/v2/openstack/networking/v2/subnets"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -395,6 +396,7 @@ func createServerOpts(srcServer *servers.Server, toServerName, flavorID, keyName
 		// TODO: scheduler hints
 	}
 
+	//nolint:prealloc // not necessary for one alloc
 	var blockDeviceOpts []servers.BlockDevice
 	if dstImage != nil {
 		if len(dstVolumes) > 0 {
@@ -666,7 +668,7 @@ func bootableToLocal(ctx context.Context, srcVolumeClient, srcImageClient, srcOb
 	return dstImage, nil
 }
 
-// ServerCmd represents the server command
+// ServerCmd represents the server command.
 var ServerCmd = &cobra.Command{
 	Use:   "server <name|id>",
 	Args:  cobra.ExactArgs(1),

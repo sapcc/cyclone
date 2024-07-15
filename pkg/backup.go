@@ -17,6 +17,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/klauspost/compress/zlib"
+	"github.com/machinebox/progress"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
@@ -26,10 +31,6 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
 	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
 	images_utils "github.com/gophercloud/utils/v2/openstack/image/v2/images"
-	"github.com/klauspost/compress/zlib"
-	"github.com/machinebox/progress"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -97,11 +98,11 @@ func waitForBackup(ctx context.Context, client *gophercloud.ServiceClient, id st
 	return backup, err
 }
 
-// calculate sha256 hashes in parallel
+// calculate sha256 hashes in parallel.
 func calcSha256Hash(myChunk []byte, sha256meta *sha256file, i int, done chan struct{}) {
-	var lenght int = len(myChunk)
+	var length int = len(myChunk)
 	var hashes int
-	if n, mod := lenght/sha256chunk, lenght%sha256chunk; mod > 0 {
+	if n, mod := length/sha256chunk, length%sha256chunk; mod > 0 {
 		hashes = n + 1
 	} else {
 		hashes = n
@@ -112,8 +113,8 @@ func calcSha256Hash(myChunk []byte, sha256meta *sha256file, i int, done chan str
 		defer wg.Done()
 		start := j * sha256chunk
 		end := start + sha256chunk
-		if end > lenght {
-			end = lenght
+		if end > length {
+			end = length
 		}
 		h[j] = sha256.Sum256(myChunk[start:end])
 	}
@@ -133,7 +134,7 @@ func calcSha256Hash(myChunk []byte, sha256meta *sha256file, i int, done chan str
 	close(done)
 }
 
-// calculate md5 hashes
+// calculate md5 hashes.
 func calcMd5Hash(myChunk []byte, meta *metadata, i int, done chan struct{}, chunkPath string) {
 	hash := md5.Sum(myChunk)
 	object := backupChunkEntry{
@@ -235,6 +236,7 @@ func (c *chunk) process(ctx context.Context) {
 	<-md5done
 	<-sha256done
 
+	//nolint:ineffassign
 	myChunk = nil
 }
 
@@ -387,6 +389,7 @@ func uploadBackup(ctx context.Context, srcImgClient, srcObjClient, dstObjClient,
 		return nil, fmt.Errorf("failed to upload %s/%s data: %s", containerName, p, err)
 	}
 	// free up the heap
+	//nolint:ineffassign
 	buf = nil
 	runtime.GC()
 
@@ -406,6 +409,7 @@ func uploadBackup(ctx context.Context, srcImgClient, srcObjClient, dstObjClient,
 		return nil, fmt.Errorf("failed to upload %s/%s data: %s", containerName, p, err)
 	}
 	// free up the heap
+	//nolint:ineffassign
 	buf = nil
 	runtime.GC()
 
@@ -544,7 +548,7 @@ func getSourceData(ctx context.Context, srcImgClient, srcObjClient *gophercloud.
 	}, nil
 }
 
-// BackupCmd represents the backup command
+// BackupCmd represents the backup command.
 var BackupCmd = &cobra.Command{
 	Use: "backup",
 }

@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/extensions/security/rules"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -60,7 +61,7 @@ func retryRulesCreate(ctx context.Context, client *gophercloud.ServiceClient, op
 	return rule, err
 }
 
-// SecurityGroupCmd represents the security group command
+// SecurityGroupCmd represents the security group command.
 var SecurityGroupCmd = &cobra.Command{
 	Use:   "security-group <name|id>",
 	Args:  cobra.ExactArgs(1),

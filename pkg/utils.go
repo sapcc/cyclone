@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/term"
+
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack"
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/availabilityzones"
@@ -17,7 +19,6 @@ import (
 	shareAZ "github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/availabilityzones"
 	"github.com/gophercloud/utils/v2/client"
 	"github.com/gophercloud/utils/v2/openstack/clientconfig"
-	"golang.org/x/term"
 )
 
 var (
@@ -300,7 +301,7 @@ func checkShareAvailabilityZone(ctx context.Context, client *gophercloud.Service
 		return fmt.Errorf("error extracting availability zones from response: %s", err)
 	}
 
-	var zonesNames []string
+	zonesNames := make([]string, 0, len(zones))
 	var found bool
 	for _, z := range zones {
 		zonesNames = append(zonesNames, z.Name)
@@ -378,7 +379,7 @@ func getAuthProjectID(client *gophercloud.ProviderClient) (string, error) {
 	}
 }
 
-// isSliceContainsStr returns true if the string exists in given slice
+// isSliceContainsStr returns true if the string exists in given slice.
 func isSliceContainsStr(sl []string, str string) bool {
 	for _, s := range sl {
 		if s == str {
@@ -452,7 +453,7 @@ func (eb *Backoff) WaitFor(predicate func() (bool, error)) error {
 	}
 }
 
-// joinSkipEmpty helper joins only non empty strings
+// joinSkipEmpty helper joins only non empty strings.
 func joinSkipEmpty(sep string, args ...string) string {
 	var a []string
 	for _, s := range args {

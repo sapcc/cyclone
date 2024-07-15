@@ -35,16 +35,16 @@ type Location struct {
 }
 
 var (
-	// RootCmd represents the base command when called without any subcommands
+	// RootCmd represents the base command when called without any subcommands.
 	RootCmd = &cobra.Command{
 		Use:          "cyclone",
 		Short:        "Clone OpenStack entities easily",
 		SilenceUsage: true,
 	}
 	cleanupFuncs []func(*sync.WaitGroup)
-	// unattended mode, assume yes to all questions
+	// unattended mode, assume yes to all questions.
 	yes bool
-	// unattended mode, assume no to all questions
+	// unattended mode, assume no to all questions.
 	no bool
 )
 
@@ -108,29 +108,99 @@ func initRootCmdFlags() {
 	RootCmd.PersistentFlags().StringP("timeout-secret", "", "24h", "timeout to wait for a secret status")
 	RootCmd.PersistentFlags().StringP("timeout-security-group", "", "24h", "timeout to wait for a security group status")
 	RootCmd.PersistentFlags().BoolP("image-web-download", "", false, "use Glance web-download image import method")
-	viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
-	viper.BindPFlag("yes", RootCmd.PersistentFlags().Lookup("yes"))
-	viper.BindPFlag("no", RootCmd.PersistentFlags().Lookup("no"))
-	viper.BindPFlag("to-auth-url", RootCmd.PersistentFlags().Lookup("to-auth-url"))
-	viper.BindPFlag("to-region", RootCmd.PersistentFlags().Lookup("to-region"))
-	viper.BindPFlag("to-domain", RootCmd.PersistentFlags().Lookup("to-domain"))
-	viper.BindPFlag("to-project", RootCmd.PersistentFlags().Lookup("to-project"))
-	viper.BindPFlag("to-username", RootCmd.PersistentFlags().Lookup("to-username"))
-	viper.BindPFlag("to-password", RootCmd.PersistentFlags().Lookup("to-password"))
-	viper.BindPFlag("to-application-credential-name", RootCmd.PersistentFlags().Lookup("to-application-credential-name"))
-	viper.BindPFlag("to-application-credential-id", RootCmd.PersistentFlags().Lookup("to-application-credential-id"))
-	viper.BindPFlag("to-application-credential-secret", RootCmd.PersistentFlags().Lookup("to-application-credential-secret"))
-	viper.BindPFlag("timeout-image", RootCmd.PersistentFlags().Lookup("timeout-image"))
-	viper.BindPFlag("timeout-volume", RootCmd.PersistentFlags().Lookup("timeout-volume"))
-	viper.BindPFlag("timeout-server", RootCmd.PersistentFlags().Lookup("timeout-server"))
-	viper.BindPFlag("timeout-snapshot", RootCmd.PersistentFlags().Lookup("timeout-snapshot"))
-	viper.BindPFlag("timeout-backup", RootCmd.PersistentFlags().Lookup("timeout-backup"))
-	viper.BindPFlag("timeout-share", RootCmd.PersistentFlags().Lookup("timeout-share"))
-	viper.BindPFlag("timeout-share-snapshot", RootCmd.PersistentFlags().Lookup("timeout-share-snapshot"))
-	viper.BindPFlag("timeout-share-replica", RootCmd.PersistentFlags().Lookup("timeout-share-replica"))
-	viper.BindPFlag("timeout-secret", RootCmd.PersistentFlags().Lookup("timeout-secret"))
-	viper.BindPFlag("timeout-security-group", RootCmd.PersistentFlags().Lookup("timeout-security-group"))
-	viper.BindPFlag("image-web-download", RootCmd.PersistentFlags().Lookup("image-web-download"))
+
+	err := viper.BindPFlag("debug", RootCmd.PersistentFlags().Lookup("debug"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("yes", RootCmd.PersistentFlags().Lookup("yes"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("no", RootCmd.PersistentFlags().Lookup("no"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-auth-url", RootCmd.PersistentFlags().Lookup("to-auth-url"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-region", RootCmd.PersistentFlags().Lookup("to-region"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-domain", RootCmd.PersistentFlags().Lookup("to-domain"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-project", RootCmd.PersistentFlags().Lookup("to-project"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-username", RootCmd.PersistentFlags().Lookup("to-username"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-password", RootCmd.PersistentFlags().Lookup("to-password"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-application-credential-name", RootCmd.PersistentFlags().Lookup("to-application-credential-name"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-application-credential-id", RootCmd.PersistentFlags().Lookup("to-application-credential-id"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("to-application-credential-secret", RootCmd.PersistentFlags().Lookup("to-application-credential-secret"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-image", RootCmd.PersistentFlags().Lookup("timeout-image"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-volume", RootCmd.PersistentFlags().Lookup("timeout-volume"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-server", RootCmd.PersistentFlags().Lookup("timeout-server"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-snapshot", RootCmd.PersistentFlags().Lookup("timeout-snapshot"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-backup", RootCmd.PersistentFlags().Lookup("timeout-backup"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-share", RootCmd.PersistentFlags().Lookup("timeout-share"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-share-snapshot", RootCmd.PersistentFlags().Lookup("timeout-share-snapshot"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-share-replica", RootCmd.PersistentFlags().Lookup("timeout-share-replica"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-secret", RootCmd.PersistentFlags().Lookup("timeout-secret"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("timeout-security-group", RootCmd.PersistentFlags().Lookup("timeout-security-group"))
+	if err != nil {
+		panic(err)
+	}
+	err = viper.BindPFlag("image-web-download", RootCmd.PersistentFlags().Lookup("image-web-download"))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func parseTimeoutArg(arg string, dst *float64, errors *[]error) {
