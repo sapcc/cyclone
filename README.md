@@ -66,9 +66,9 @@ Flags:
       --to-application-credential-name string     destination application credential name
       --to-application-credential-secret string   destination application credential secret
       --to-auth-url string                        destination auth URL (if not provided, detected automatically from the source auth URL and destination region)
-      --to-domain string                          destination domain
+      --to-domain string                          destination domain name
       --to-password string                        destination username password
-      --to-project string                         destination project
+      --to-project string                         destination project name
       --to-region string                          destination region
       --to-username string                        destination username
   -y, --yes                                       assume "yes" to all questions
