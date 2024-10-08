@@ -4,8 +4,8 @@ go 1.22
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud/v2 v2.1.0
-	github.com/gophercloud/utils/v2 v2.0.0-20240912080913-c094a6e5b7da
+	github.com/gophercloud/gophercloud/v2 v2.1.1
+	github.com/gophercloud/utils/v2 v2.0.0-20241008104625-7cbb8fd76bb7
 	github.com/klauspost/compress v1.17.10
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
@@ -47,7 +47,7 @@ require (
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
