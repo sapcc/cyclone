@@ -1,16 +1,18 @@
 module github.com/sapcc/cyclone
 
-go 1.22
+go 1.23
+
+toolchain go1.23.2
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud/v2 v2.1.0
-	github.com/gophercloud/utils/v2 v2.0.0-20240912080913-c094a6e5b7da
+	github.com/gophercloud/gophercloud/v2 v2.1.1
+	github.com/gophercloud/utils/v2 v2.0.0-20240919072936-a66ae2ba6ef0
 	github.com/klauspost/compress v1.17.10
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20240709125621-b1e90ef040ad
-	github.com/sapcc/swift-http-import v0.0.0-20240712085221-f33ec7ac8e34
+	github.com/sapcc/go-bits v0.0.0-20241003120606-28dc119912ca
+	github.com/sapcc/swift-http-import v0.0.0-20241010154047-1c93cdc98f31
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -22,6 +24,7 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gofrs/uuid/v5 v5.3.0 // indirect
 	github.com/google/go-github/v63 v63.0.0 // indirect
+	github.com/google/go-github/v65 v65.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -33,7 +36,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
-	github.com/sapcc/go-api-declarations v1.11.3 // indirect
+	github.com/sapcc/go-api-declarations v1.12.6 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
@@ -42,10 +45,10 @@ require (
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.25.0 // indirect
+	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/oauth2 v0.21.0 // indirect
+	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
