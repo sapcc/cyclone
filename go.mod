@@ -9,7 +9,7 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20240709125621-b1e90ef040ad
+	github.com/sapcc/go-bits v0.0.0-20241212034813-27ef1bf5d5d2
 	github.com/sapcc/swift-http-import v0.0.0-20240712085221-f33ec7ac8e34
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
@@ -33,7 +33,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
-	github.com/sapcc/go-api-declarations v1.11.3 // indirect
+	github.com/sapcc/go-api-declarations v1.13.1 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
@@ -44,7 +44,7 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.30.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/net v0.32.0 // indirect
 	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
