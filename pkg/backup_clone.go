@@ -194,7 +194,7 @@ func cloneBackup(ctx context.Context, srcVolumeClient, srcObjectClient, dstVolum
 		return nil, fmt.Errorf("error while transferring objects")
 	}
 
-	expectedObjectsCount := int64(*backupRecord.ObjectCount) + 2 // + metadata and sha256file
+	expectedObjectsCount := uint64(*backupRecord.ObjectCount) + 2 // + metadata and sha256file
 	// TODO: stats.FilesFound vs stats.FilesTransferred
 	if stats.FilesFound != expectedObjectsCount {
 		return nil, fmt.Errorf("error while transferring objects: an amount of transferred files doesn't correspond to an amount of file in the record: %d != %d", stats.FilesFound, expectedObjectsCount)
