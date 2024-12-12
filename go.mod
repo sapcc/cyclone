@@ -10,7 +10,7 @@ require (
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
 	github.com/sapcc/go-bits v0.0.0-20241212142854-05ca4ed3590b
-	github.com/sapcc/swift-http-import v0.0.0-20241211164212-201fb1677052
+	github.com/sapcc/swift-http-import v0.0.0-20241212125029-976b5324ebb1
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -43,7 +43,7 @@ require (
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.30.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/net v0.32.0 // indirect
 	golang.org/x/oauth2 v0.24.0 // indirect
