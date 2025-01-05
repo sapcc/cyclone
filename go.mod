@@ -9,8 +9,8 @@ require (
 	github.com/klauspost/compress v1.17.11
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20241213102058-cb5d877d1274
-	github.com/sapcc/swift-http-import v0.0.0-20241213125747-4eca4a7d0bec
+	github.com/sapcc/go-bits v0.0.0-20250103114947-94e7d6a69f41
+	github.com/sapcc/swift-http-import v0.0.0-20250103123258-94ae677bdf90
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -34,7 +34,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
-	github.com/sapcc/go-api-declarations v1.13.1 // indirect
+	github.com/sapcc/go-api-declarations v1.13.2 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
@@ -52,6 +52,6 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	pault.ag/go/debian v0.17.0 // indirect
+	pault.ag/go/debian v0.18.0 // indirect
 	pault.ag/go/topsort v0.1.1 // indirect
 )
