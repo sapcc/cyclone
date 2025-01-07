@@ -5,12 +5,12 @@ go 1.23
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.4.0
-	github.com/gophercloud/utils/v2 v2.0.0-20241220104409-2e0af06694a1
+	github.com/gophercloud/utils/v2 v2.0.0-20250106080359-c8704d65b4fa
 	github.com/klauspost/compress v1.17.11
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20250103114947-94e7d6a69f41
-	github.com/sapcc/swift-http-import v0.0.0-20250103123258-94ae677bdf90
+	github.com/sapcc/go-bits v0.0.0-20250106143146-7dd7037a9917
+	github.com/sapcc/swift-http-import v0.0.0-20250107131201-b8fe6613b09d
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -23,6 +23,7 @@ require (
 	github.com/gofrs/uuid/v5 v5.3.0 // indirect
 	github.com/google/go-github/v63 v63.0.0 // indirect
 	github.com/google/go-github/v67 v67.0.0 // indirect
+	github.com/google/go-github/v68 v68.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -43,10 +44,10 @@ require (
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/net v0.32.0 // indirect
-	golang.org/x/oauth2 v0.24.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
+	golang.org/x/oauth2 v0.25.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
