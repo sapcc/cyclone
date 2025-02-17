@@ -11,7 +11,7 @@ require (
 	github.com/majewsky/schwift/v2 v2.0.0
 	github.com/sapcc/go-bits v0.0.0-20250214102218-9d3698f376b3
 	github.com/sapcc/swift-http-import v0.0.0-20250110100603-5251131bfffe
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.19.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
 	golang.org/x/term v0.29.0
@@ -36,7 +36,7 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
