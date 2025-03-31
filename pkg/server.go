@@ -1005,10 +1005,10 @@ func createServerRetry(ctx context.Context, dstServerClient *gophercloud.Service
 		if err != nil {
 			if i == tries {
 				// no further tries, fail right away
-				return nil, fmt.Errorf("failed to wait for %q target server: %s", dstServerID, err)
+				return nil, fmt.Errorf("failed to wait for %q target server: %s: %s", dstServerID, err, dstServer.Fault.Message)
 			}
 			// nil an error and don't delete the port
-			log.Printf("Failed to wait for %q target server: %s", dstServerID, err)
+			log.Printf("Failed to wait for %q target server: %s: %s", dstServerID, err, dstServer.Fault.Message)
 			log.Printf("Deleting the failed %q server", dstServerID)
 			if err := servers.Delete(ctx, dstServerClient, dstServerID).ExtractErr(); err != nil {
 				log.Printf("Error deleting the failed %q server: %s", dstServerID, err)
