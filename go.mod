@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud/v2 v2.5.0
+	github.com/gophercloud/gophercloud/v2 v2.7.0
 	github.com/gophercloud/utils/v2 v2.0.0-20250106080359-c8704d65b4fa
 	github.com/klauspost/compress v1.17.11
 	github.com/machinebox/progress v0.2.0
