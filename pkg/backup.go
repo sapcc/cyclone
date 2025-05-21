@@ -17,11 +17,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/klauspost/compress/zlib"
-	"github.com/machinebox/progress"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
@@ -31,6 +26,10 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
 	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
 	images_utils "github.com/gophercloud/utils/v2/openstack/image/v2/images"
+	"github.com/klauspost/compress/zlib"
+	"github.com/machinebox/progress"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -100,7 +99,7 @@ func waitForBackup(ctx context.Context, client *gophercloud.ServiceClient, id st
 
 // calculate sha256 hashes in parallel.
 func calcSha256Hash(myChunk []byte, sha256meta *sha256file, i int, done chan struct{}) {
-	var length int = len(myChunk)
+	var length = len(myChunk)
 	var hashes int
 	if n, mod := length/sha256chunk, length%sha256chunk; mod > 0 {
 		hashes = n + 1
@@ -209,8 +208,8 @@ func (c *chunk) process(ctx context.Context) {
 
 	// TODO: check if the remote object exists
 	// upload and retry when upload fails
-	var retries int = 5
-	var sleep time.Duration = 15 * time.Second
+	var retries = 5
+	var sleep = 15 * time.Second
 	for j := 0; j < retries; j++ {
 		uploadOpts := objects.CreateOpts{
 			// this is needed for retries

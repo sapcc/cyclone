@@ -7,14 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/replicas"
 	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/shares"
 	"github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/snapshots"
 	shares_utils "github.com/gophercloud/utils/v2/openstack/sharedfilesystems/v2/shares"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
