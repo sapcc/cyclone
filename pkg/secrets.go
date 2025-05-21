@@ -7,13 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"github.com/xhit/go-str2duration/v2"
-
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/keymanager/v1/acls"
 	"github.com/gophercloud/gophercloud/v2/openstack/keymanager/v1/secrets"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"github.com/xhit/go-str2duration/v2"
 )
 
 var (

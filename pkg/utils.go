@@ -10,9 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/viper"
-	"golang.org/x/term"
-
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack"
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/availabilityzones"
@@ -21,6 +18,8 @@ import (
 	shareAZ "github.com/gophercloud/gophercloud/v2/openstack/sharedfilesystems/v2/availabilityzones"
 	"github.com/gophercloud/utils/v2/client"
 	"github.com/gophercloud/utils/v2/openstack/clientconfig"
+	"github.com/spf13/viper"
+	"golang.org/x/term"
 )
 
 var (
@@ -189,8 +188,8 @@ func newOpenStackClient(ctx context.Context, loc Location) (*gophercloud.Provide
 
 func reauthClient(ctx context.Context, client *gophercloud.ServiceClient, funcName string) {
 	// reauth the client before the long running action to avoid openstack internal auth issues
-	if client.ProviderClient.ReauthFunc != nil {
-		if err := client.ProviderClient.Reauthenticate(ctx, client.ProviderClient.TokenID); err != nil {
+	if client.ReauthFunc != nil {
+		if err := client.Reauthenticate(ctx, client.TokenID); err != nil {
 			log.Printf("Failed to re-authenticate the provider client in the %s func: %v", err, funcName)
 		}
 	}

@@ -8,10 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/machinebox/progress"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/imagedata"
 	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/imageimport"
@@ -21,6 +17,9 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/objectstorage/v1/objects"
 	"github.com/gophercloud/gophercloud/v2/pagination"
 	images_utils "github.com/gophercloud/utils/v2/openstack/image/v2/images"
+	"github.com/machinebox/progress"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (

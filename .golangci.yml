@@ -1,42 +1,19 @@
-run:
-  deadline: 5m
+version: "2"
 
-linters-settings:
-  staticcheck:
-    go: '1.23'
-  stylecheck:
-    go: '1.23'
-  gci:
-    local-prefixes: github.com/gophercloud
-  goimports:
-    local-prefixes: github.com/gophercloud
-  depguard:
-    rules:
-      prevent_unmaintained_packages:
-        list-mode: lax
-        files:
-          - $all
-          - "!$test"
-        deny:
-          - pkg: io/ioutil
-            desc: "replaced by io and os packages since Go 1.16: https://tip.golang.org/doc/go1.16#ioutil"
+run:
+  timeout: 5m
 
 linters:
-  fast: false
-  disable-all: true
+  default: none
   enable:
     - asciicheck
     - bodyclose
-    - depguard
+    - copyloopvar
     - dogsled
     - errcheck
     - exhaustive
-    - exportloopref
-    - gci
     - godot
-    - gofmt
     - goheader
-    - goimports
     - gomodguard
     - goprintffuncname
     - govet
@@ -46,8 +23,6 @@ linters:
     - nolintlint
     - prealloc
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unused
     - whitespace
@@ -98,12 +73,29 @@ linters:
 #    - wastedassign
 #    - wrapcheck
 #    - wsl
-
-issues:
-  exclude-rules:
-    - linters:
-        - staticcheck
-      text: "SA1019:"
-    - linters:
-        - stylecheck
-      text: "ST1005:"
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    #rules:
+    #  - linters:
+    #      - staticcheck
+    #    text: "SA1019: (x509.EncryptPEMBlock|strings.Title)"
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+    - gci
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

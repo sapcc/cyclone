@@ -8,9 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/snapshots"
@@ -18,6 +15,8 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
 	volumes_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/volumes"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var skipVolumeAttributes = []string{
