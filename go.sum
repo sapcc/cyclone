@@ -41,6 +41,7 @@ github.com/gophercloud/utils/v2 v2.0.0-20250606082759-66f28657aaaa h1:OOEwidtCeV
 github.com/gophercloud/utils/v2 v2.0.0-20250606082759-66f28657aaaa/go.mod h1:/P5PTywPbaqHL9PCkZo3K0SbXyrghWvxSZdJL9ooJIo=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
+github.com/hashicorp/hcl v1.0.1-vault-7/go.mod h1:XYhtn6ijBSAj6n4YqAaf7RBPS4I06AItNorpy+MoQNM=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
@@ -90,6 +91,8 @@ github.com/sapcc/go-bits v0.0.0-20250519145235-ff15acf81904 h1:9E9GAKwZBuwQVY0Lp
 github.com/sapcc/go-bits v0.0.0-20250519145235-ff15acf81904/go.mod h1:LqJWSwArb4faPLSyPE2B8guOf0f/taCOZRS1g4qQWHA=
 github.com/sapcc/go-bits v0.0.0-20250523091838-d2760e792019 h1:oKwhbKBoWC5cN0Vb0VpC/e9V1AmdHXsxGrj6Lec0ySw=
 github.com/sapcc/go-bits v0.0.0-20250523091838-d2760e792019/go.mod h1:/fZN48fSUp+Q5KxRymu0UYyIaPygc7XhiG6/+2K4iho=
+github.com/sapcc/go-bits v0.0.0-20250610142447-2f207b5e212b h1:eMOFS71RreVeaewSt9mfAe06tOEUgDwPGyFX6OT8HtM=
+github.com/sapcc/go-bits v0.0.0-20250610142447-2f207b5e212b/go.mod h1:/E+XIJ82e8q3At34hUdDuXTQpt5Gsbw/6P8T8e82rcQ=
 github.com/sapcc/swift-http-import v0.0.0-20250110100603-5251131bfffe h1:sxNWv2cQQ+O8Tgn/BeVO5qTSdJ5/dyocSXmHhyTgqRQ=
 github.com/sapcc/swift-http-import v0.0.0-20250110100603-5251131bfffe/go.mod h1:UkkQ4uh+QFMVUZekDN92CTp8I2flLsbig/S/RXab+rU=
 github.com/sapcc/swift-http-import v0.0.0-20250519153110-b7bf408ce850 h1:2t7VjRpqbEWe6m9s8WIu6ot93gEAQsr85OMhZoDw2wU=

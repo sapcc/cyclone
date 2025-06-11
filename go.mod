@@ -9,7 +9,7 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20250523091838-d2760e792019
+	github.com/sapcc/go-bits v0.0.0-20250610142447-2f207b5e212b
 	github.com/sapcc/swift-http-import v0.0.0-20250602145343-3ff3e61c86cc
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
@@ -25,7 +25,7 @@ require (
 	github.com/google/go-github/v68 v68.0.0 // indirect
 	github.com/google/go-github/v72 v72.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/hashicorp/hcl v1.0.1-vault-7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
