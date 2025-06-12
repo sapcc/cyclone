@@ -93,6 +93,8 @@ github.com/sapcc/go-bits v0.0.0-20250523091838-d2760e792019 h1:oKwhbKBoWC5cN0Vb0
 github.com/sapcc/go-bits v0.0.0-20250523091838-d2760e792019/go.mod h1:/fZN48fSUp+Q5KxRymu0UYyIaPygc7XhiG6/+2K4iho=
 github.com/sapcc/go-bits v0.0.0-20250610142447-2f207b5e212b h1:eMOFS71RreVeaewSt9mfAe06tOEUgDwPGyFX6OT8HtM=
 github.com/sapcc/go-bits v0.0.0-20250610142447-2f207b5e212b/go.mod h1:/E+XIJ82e8q3At34hUdDuXTQpt5Gsbw/6P8T8e82rcQ=
+github.com/sapcc/go-bits v0.0.0-20250612150039-67ead56083c6 h1:xN2z2Kbc8t+5agEAS2nAWaNSmnuJAVtIbRR7pWwoVPk=
+github.com/sapcc/go-bits v0.0.0-20250612150039-67ead56083c6/go.mod h1:/E+XIJ82e8q3At34hUdDuXTQpt5Gsbw/6P8T8e82rcQ=
 github.com/sapcc/swift-http-import v0.0.0-20250110100603-5251131bfffe h1:sxNWv2cQQ+O8Tgn/BeVO5qTSdJ5/dyocSXmHhyTgqRQ=
 github.com/sapcc/swift-http-import v0.0.0-20250110100603-5251131bfffe/go.mod h1:UkkQ4uh+QFMVUZekDN92CTp8I2flLsbig/S/RXab+rU=
 github.com/sapcc/swift-http-import v0.0.0-20250519153110-b7bf408ce850 h1:2t7VjRpqbEWe6m9s8WIu6ot93gEAQsr85OMhZoDw2wU=
