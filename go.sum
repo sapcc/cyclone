@@ -39,6 +39,8 @@ github.com/gophercloud/utils/v2 v2.0.0-20250506092640-af27464b6166 h1:U82pil2tMV
 github.com/gophercloud/utils/v2 v2.0.0-20250506092640-af27464b6166/go.mod h1:WypkO28BNmRXS8EPyW6I58L3qrBUy3w60schxwx7ZVc=
 github.com/gophercloud/utils/v2 v2.0.0-20250606082759-66f28657aaaa h1:OOEwidtCeVPoRJamjOqgqMiQq1jTsFUPnkqF0NOOIGA=
 github.com/gophercloud/utils/v2 v2.0.0-20250606082759-66f28657aaaa/go.mod h1:/P5PTywPbaqHL9PCkZo3K0SbXyrghWvxSZdJL9ooJIo=
+github.com/gophercloud/utils/v2 v2.0.0-20250617123236-b0c67de63928 h1:V/rII3GfXXuqmNnOAm1ECo8l7iAN4qgCo6EgKlFTyOI=
+github.com/gophercloud/utils/v2 v2.0.0-20250617123236-b0c67de63928/go.mod h1:/P5PTywPbaqHL9PCkZo3K0SbXyrghWvxSZdJL9ooJIo=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hashicorp/hcl v1.0.1-vault-7/go.mod h1:XYhtn6ijBSAj6n4YqAaf7RBPS4I06AItNorpy+MoQNM=
