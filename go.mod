@@ -5,12 +5,12 @@ go 1.24
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.7.0
-	github.com/gophercloud/utils/v2 v2.0.0-20250606082759-66f28657aaaa
+	github.com/gophercloud/utils/v2 v2.0.0-20250617123236-b0c67de63928
 	github.com/klauspost/compress v1.18.0
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20250617112601-cd60ffbdaa8d
-	github.com/sapcc/swift-http-import v0.0.0-20250618143146-9e49690b1895
+	github.com/sapcc/go-bits v0.0.0-20250619083208-447294241e22
+	github.com/sapcc/swift-http-import v0.0.0-20250623152031-48da88155302
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/xhit/go-str2duration/v2 v2.1.0
