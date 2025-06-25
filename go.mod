@@ -10,7 +10,7 @@ require (
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
 	github.com/sapcc/go-bits v0.0.0-20250619083208-447294241e22
-	github.com/sapcc/swift-http-import v0.0.0-20250623152031-48da88155302
+	github.com/sapcc/swift-http-import v0.0.0-20250625080853-ba942c09ce42
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/viper v1.20.1
 	github.com/xhit/go-str2duration/v2 v2.1.0
