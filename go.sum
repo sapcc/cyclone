@@ -131,6 +131,8 @@ github.com/sapcc/go-bits v0.0.0-20250722084227-7a82273f02ae h1:7/gIhLbZqB2OA5IkE
 github.com/sapcc/go-bits v0.0.0-20250722084227-7a82273f02ae/go.mod h1:wjpTRJuananJJzggsHO+GiTzUTYQFbbjgKCd+WM1UAY=
 github.com/sapcc/go-bits v0.0.0-20250731191043-57f08bbe1dce h1:rFboTNWC+bSGaxxo1nT7IWD363klkkrXXN4tRsGSRY4=
 github.com/sapcc/go-bits v0.0.0-20250731191043-57f08bbe1dce/go.mod h1:U7i1vkpKohgYVays/01CL9uN9eH8bmvef21+NcKPqMk=
+github.com/sapcc/go-bits v0.0.0-20250804090407-8c55156bef1d h1:E6bcJb3VysS5JXK3yptuj/snehXaciQOinl9+8n5dcE=
+github.com/sapcc/go-bits v0.0.0-20250804090407-8c55156bef1d/go.mod h1:rig1jkKQiui4bmcKucdF699UAVmRsKIYe2qNoSNYDG0=
 github.com/sapcc/swift-http-import v0.0.0-20250110100603-5251131bfffe h1:sxNWv2cQQ+O8Tgn/BeVO5qTSdJ5/dyocSXmHhyTgqRQ=
 github.com/sapcc/swift-http-import v0.0.0-20250110100603-5251131bfffe/go.mod h1:UkkQ4uh+QFMVUZekDN92CTp8I2flLsbig/S/RXab+rU=
 github.com/sapcc/swift-http-import v0.0.0-20250519153110-b7bf408ce850 h1:2t7VjRpqbEWe6m9s8WIu6ot93gEAQsr85OMhZoDw2wU=
@@ -163,6 +165,8 @@ github.com/sapcc/swift-http-import v0.0.0-20250725132701-fe4f4565a619 h1:uk56MLk
 github.com/sapcc/swift-http-import v0.0.0-20250725132701-fe4f4565a619/go.mod h1:sk2z0z8BRWETvoY9yzC4XR5e5nRPej5Grw5b6Fyxqtw=
 github.com/sapcc/swift-http-import v0.0.0-20250731190853-14eee56c8ea0 h1:bDSLrkHTMfLeXy5K1jTNBMVIyVryjumpmzkWsw9W2v4=
 github.com/sapcc/swift-http-import v0.0.0-20250731190853-14eee56c8ea0/go.mod h1:M1XjQbDqNMiTgrR/++Vnd+zp6/E4fB4FFiPmDHHFadU=
+github.com/sapcc/swift-http-import v0.0.0-20250804094524-454a72187382 h1:5YCjJBnGmiMZ/qX2+L90VlY9vjAhTs9Ld+tn2Pp8G68=
+github.com/sapcc/swift-http-import v0.0.0-20250804094524-454a72187382/go.mod h1:QBSl8LfZMBSoFRmgjvSBedtQ8WlJw7039sEOXuPtF3I=
 github.com/sergi/go-diff v1.3.1 h1:xkr+Oxo4BOQKmkn/B9eMK0g5Kg/983T9DqqPHwYqD+8=
 github.com/sergi/go-diff v1.3.1/go.mod h1:aMJSSKb2lpPvRNec0+w3fl7LP9IOFzdc9Pa4NFbPK1I=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
