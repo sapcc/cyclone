@@ -9,7 +9,7 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20250902110123-0c7843c14899
+	github.com/sapcc/go-bits v0.0.0-20250904120357-fc660754039e
 	github.com/sapcc/swift-http-import v0.0.0-20250821190856-a128c8d08271
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.20.1
