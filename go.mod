@@ -5,12 +5,12 @@ go 1.24
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.8.0
-	github.com/gophercloud/utils/v2 v2.0.0-20250808094129-719028187fb5
+	github.com/gophercloud/utils/v2 v2.0.0-20250819195638-e4fc39f0eda4
 	github.com/klauspost/compress v1.18.0
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
 	github.com/sapcc/go-bits v0.0.0-20250904120357-fc660754039e
-	github.com/sapcc/swift-http-import v0.0.0-20250821190856-a128c8d08271
+	github.com/sapcc/swift-http-import v0.0.0-20250902110356-164d858d9904
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.20.1
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -42,7 +42,7 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/ulikunitz/xz v0.5.12 // indirect
+	github.com/ulikunitz/xz v0.5.15 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
