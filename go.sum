@@ -191,6 +191,8 @@ github.com/sapcc/swift-http-import v0.0.0-20250821190856-a128c8d08271 h1:SKb3MRf
 github.com/sapcc/swift-http-import v0.0.0-20250821190856-a128c8d08271/go.mod h1:jQhPM7M6FSQH24WtUiyOQLjh376YJgHeB5X1IPHhADY=
 github.com/sapcc/swift-http-import v0.0.0-20250902110356-164d858d9904 h1:5m/Zz//ieJmLc92Q9zNfjp0eYhN+LdLoRw971m8BPDU=
 github.com/sapcc/swift-http-import v0.0.0-20250902110356-164d858d9904/go.mod h1:1QXS0fZFnS4JYraKccweEnvLcAl/YtwpOHH6uZUwU4M=
+github.com/sapcc/swift-http-import v0.0.0-20250911190522-0ae94ede973f h1:fRWZQ4OECTufvcJqCT1+LaeRqXLY4jWlbHj2ZC8wlAk=
+github.com/sapcc/swift-http-import v0.0.0-20250911190522-0ae94ede973f/go.mod h1:YU8y1eD/zYwaT0UzCIZ3gWgEeP0L/F82/cGydmt5Guc=
 github.com/sergi/go-diff v1.3.1 h1:xkr+Oxo4BOQKmkn/B9eMK0g5Kg/983T9DqqPHwYqD+8=
 github.com/sergi/go-diff v1.3.1/go.mod h1:aMJSSKb2lpPvRNec0+w3fl7LP9IOFzdc9Pa4NFbPK1I=
 github.com/sourcegraph/conc v0.3.0 h1:OQTbbt6P72L20UqAkXXuLOj79LfEanQ+YQFNpLA9ySo=
