@@ -1,6 +1,6 @@
 module github.com/sapcc/cyclone
 
-go 1.24
+go 1.25
 
 require (
 	github.com/google/uuid v1.6.0
@@ -9,8 +9,8 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20250904120357-fc660754039e
-	github.com/sapcc/swift-http-import v0.0.0-20250902110356-164d858d9904
+	github.com/sapcc/go-bits v0.0.0-20250911190512-4d3226a57454
+	github.com/sapcc/swift-http-import v0.0.0-20250918191052-213d318e858b
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.20.1
 	github.com/xhit/go-str2duration/v2 v2.1.0
