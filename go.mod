@@ -1,24 +1,25 @@
 module github.com/sapcc/cyclone
 
-go 1.24
+go 1.25
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.8.0
-	github.com/gophercloud/utils/v2 v2.0.0-20250819195638-e4fc39f0eda4
+	github.com/gophercloud/utils/v2 v2.0.0-20250908160916-88fadeedd0ca
 	github.com/klauspost/compress v1.18.0
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20250904120357-fc660754039e
-	github.com/sapcc/swift-http-import v0.0.0-20250902110356-164d858d9904
+	github.com/sapcc/go-bits v0.0.0-20250924092957-bcc75ecf4553
+	github.com/sapcc/swift-http-import v0.0.0-20250925190523-98d6bc90af40
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.20.1
 	github.com/xhit/go-str2duration/v2 v2.1.0
-	golang.org/x/term v0.34.0
+	golang.org/x/term v0.35.0
 )
 
 require (
 	github.com/cactus/go-statsd-client/v5 v5.1.0 // indirect
+	github.com/cactus/go-statsd-client/v6 v6.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/gofrs/uuid/v5 v5.3.2 // indirect
@@ -45,12 +46,12 @@ require (
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/crypto v0.42.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/net v0.43.0 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/net v0.44.0 // indirect
+	golang.org/x/oauth2 v0.31.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
