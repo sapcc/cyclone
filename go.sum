@@ -16,6 +16,8 @@ github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/google/go-github/v75 v75.0.0 h1:k7q8Bvg+W5KxRl9Tjq16a9XEgVY1pwuiG5sIL7435Ic=
 github.com/google/go-github/v75 v75.0.0/go.mod h1:H3LUJEA1TCrzuUqtdAQniBNwuKiQIqdGKgBo1/M/uqI=
+github.com/google/go-github/v79 v79.0.0 h1:MdodQojuFPBhmtwHiBcIGLw/e/wei2PvFX9ndxK0X4Y=
+github.com/google/go-github/v79 v79.0.0/go.mod h1:OAFbNhq7fQwohojb06iIIQAB9CBGYLq999myfUFnrS4=
 github.com/google/go-querystring v1.1.0 h1:AnCroh3fv4ZBgVIf1Iwtovgjaw/GiKJo8M8yD/fhyJ8=
 github.com/google/go-querystring v1.1.0/go.mod h1:Kcdr2DB4koayq7X8pmAG4sNG59So17icRSOU623lUBU=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
@@ -57,6 +59,8 @@ github.com/sapcc/swift-http-import v0.0.0-20251121125341-27bbda386802 h1:4TJs2Xo
 github.com/sapcc/swift-http-import v0.0.0-20251121125341-27bbda386802/go.mod h1:Tkm2AL6JtNYggS833ocISxPq1K+uAKQwoHpESyxk9uM=
 github.com/sapcc/swift-http-import v0.0.0-20251121132954-52f7206b2a09 h1:Q78wSfRHo+KHpWacHJA1LUw4QDq6NlnsSDWaL5sTDaQ=
 github.com/sapcc/swift-http-import v0.0.0-20251121132954-52f7206b2a09/go.mod h1:Tkm2AL6JtNYggS833ocISxPq1K+uAKQwoHpESyxk9uM=
+github.com/sapcc/swift-http-import v0.0.0-20251121144326-1bce6a9dc8ba h1:bQyU3m4CUtMOjilBJUxFgbuOHjZjqP1Pd6162V0M6Ko=
+github.com/sapcc/swift-http-import v0.0.0-20251121144326-1bce6a9dc8ba/go.mod h1:ZWELHHaiTUiq3vpNa5DOI0F4q2TkDoQ95/npORxcET0=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=
 github.com/sergi/go-diff v1.4.0/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
