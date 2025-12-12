@@ -206,10 +206,29 @@ func waitForImage(ctx context.Context, client, swiftClient *gophercloud.ServiceC
 }
 
 var skipImageAttributes = []string{
+	// https://github.com/openstack/glance/blob/ba82d3591d8a69f6eef62ad03f764d3385b85dba/glance/api/v2/images.py#L1254-L1259
+	// disallowed properties
 	"direct_url",
-	"boot_roles",
+	"self",
+	"file",
+	"schema",
+	"stores",
+	// readonly properties
+	"created_at",
+	"updated_at",
+	"status",
+	"checksum",
+	"size",
+	"virtual_size",
+	"direct_url",
+	"self",
+	"file",
+	"schema",
+	"id",
 	"os_hash_algo",
 	"os_hash_value",
+	// other
+	"boot_roles",
 }
 
 func expandImageProperties(v map[string]interface{}) map[string]string {
