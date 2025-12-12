@@ -206,10 +206,28 @@ func waitForImage(ctx context.Context, client, swiftClient *gophercloud.ServiceC
 }
 
 var skipImageAttributes = []string{
+	// disallowed properties
 	"direct_url",
-	"boot_roles",
+	"self",
+	"file",
+	"schema",
+	"stores",
+	// readonly properties
+	"created_at",
+	"updated_at",
+	"status",
+	"checksum",
+	"size",
+	"virtual_size",
+	"direct_url",
+	"self",
+	"file",
+	"schema",
+	"id",
 	"os_hash_algo",
 	"os_hash_value",
+	// other
+	"boot_roles",
 }
 
 func expandImageProperties(v map[string]interface{}) map[string]string {
