@@ -26,6 +26,8 @@ github.com/gophercloud/gophercloud/v2 v2.10.0 h1:NRadC0aHNvy4iMoFXj5AFiPmut/Sj3h
 github.com/gophercloud/gophercloud/v2 v2.10.0/go.mod h1:Ki/ILhYZr/5EPebrPL9Ej+tUg4lqx71/YH2JWVeU+Qk=
 github.com/gophercloud/utils/v2 v2.0.0-20251103115625-7dba497d90f8 h1:F3kGkwROpZHylGYJjecvx0+OQWMCSCjHmbazzeoeukc=
 github.com/gophercloud/utils/v2 v2.0.0-20251103115625-7dba497d90f8/go.mod h1:2e2v79VFnqidqjhRr7hmJOsoJkeaU1mEoDd1p9c1eaU=
+github.com/gophercloud/utils/v2 v2.0.0-20260107124036-1d7954eb9711 h1:LgYkb/jttJKwFwZHZjaT8zA/Ef4HMtrosABO/pnSaJI=
+github.com/gophercloud/utils/v2 v2.0.0-20260107124036-1d7954eb9711/go.mod h1:X6Plvu4Iot+ebr3g7tmw439sin+eGzDbO3tdjUOOP2I=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 h1:1dSBUfGlorLAua2CRx0zFN7kQsTpE2DQSmr7rrTNgY8=

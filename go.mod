@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.10.0
-	github.com/gophercloud/utils/v2 v2.0.0-20251103115625-7dba497d90f8
+	github.com/gophercloud/utils/v2 v2.0.0-20260107124036-1d7954eb9711
 	github.com/klauspost/compress v1.18.2
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
