@@ -9,8 +9,8 @@ require (
 	github.com/klauspost/compress v1.18.4
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20260205162534-c193fd73ad83
-	github.com/sapcc/swift-http-import v0.0.0-20260116110245-4a6c32c223b4
+	github.com/sapcc/go-bits v0.0.0-20260212180203-791f29d90b4b
+	github.com/sapcc/swift-http-import v0.0.0-20260212190115-d19c6364e1bd
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -25,8 +25,10 @@ require (
 	github.com/google/go-github/v75 v75.0.0 // indirect
 	github.com/google/go-github/v80 v80.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
+	github.com/majewsky/gg v1.5.0 // indirect
 	github.com/matryer/is v1.4.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
