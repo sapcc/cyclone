@@ -213,6 +213,8 @@ var skipImageAttributes = []string{
 	"file",
 	"schema",
 	"stores",
+	"os_glance_stores",
+	"os_glance_importing_to_stores",
 	// readonly properties
 	"created_at",
 	"updated_at",
@@ -220,10 +222,6 @@ var skipImageAttributes = []string{
 	"checksum",
 	"size",
 	"virtual_size",
-	"direct_url",
-	"self",
-	"file",
-	"schema",
 	"id",
 	"os_hash_algo",
 	"os_hash_value",
@@ -291,6 +289,7 @@ func migrateImage(ctx context.Context, srcImageClient, dstImageClient, srcObject
 
 	// create an empty image
 	visibility := images.ImageVisibilityPrivate
+
 	createOpts := &images.CreateOpts{
 		Name:            imageName,
 		ContainerFormat: srcImg.ContainerFormat,
