@@ -1,6 +1,6 @@
 module github.com/sapcc/cyclone
 
-go 1.25
+go 1.26
 
 require (
 	github.com/google/uuid v1.6.0
@@ -10,7 +10,7 @@ require (
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/schwift/v2 v2.0.0
 	github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776
-	github.com/sapcc/swift-http-import v0.0.0-20260116110245-4a6c32c223b4
+	github.com/sapcc/swift-http-import v0.0.0-20260224085924-2f3056e5fb80
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -22,11 +22,10 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/gofrs/uuid/v5 v5.4.0 // indirect
-	github.com/google/go-github/v75 v75.0.0 // indirect
-	github.com/google/go-github/v80 v80.0.0 // indirect
-	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
+	github.com/majewsky/gg v1.5.0 // indirect
 	github.com/matryer/is v1.4.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
@@ -38,11 +37,10 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/oauth2 v0.34.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	pault.ag/go/debian v0.19.0 // indirect
