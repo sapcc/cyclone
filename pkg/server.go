@@ -395,7 +395,6 @@ func createServerOpts(srcServer *servers.Server, toServerName, flavorID, keyName
 		// TODO: scheduler hints
 	}
 
-	//nolint:prealloc // not necessary for one alloc
 	var blockDeviceOpts []servers.BlockDevice
 	if dstImage != nil {
 		if len(dstVolumes) > 0 {

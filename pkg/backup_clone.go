@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -16,7 +15,7 @@ import (
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
 	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
-	. "github.com/majewsky/gg/option"
+	"github.com/majewsky/gg/option"
 	"github.com/majewsky/schwift/v2/gopherschwift"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/regexpext"
@@ -73,7 +72,7 @@ func prepareSwiftConfig(ctx context.Context, srcObjectClient, dstObjectClient *g
 				},
 				Target: &target,
 				Matcher: objects.Matcher{
-					IncludeRx: Some(regexpext.PlainRegexp(regexp.QuoteMeta(filepath.Base(prefix)) + ".*")),
+					IncludeRx: option.Some(regexpext.PlainRegexp(regexp.QuoteMeta(filepath.Base(prefix)) + ".*")),
 				},
 			},
 		},
