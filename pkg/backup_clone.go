@@ -15,8 +15,10 @@ import (
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
 	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
+	"github.com/majewsky/gg/option"
 	"github.com/majewsky/schwift/v2/gopherschwift"
 	"github.com/sapcc/go-bits/logg"
+	"github.com/sapcc/go-bits/regexpext"
 	"github.com/sapcc/go-bits/secrets"
 	"github.com/sapcc/swift-http-import/pkg/actors"
 	"github.com/sapcc/swift-http-import/pkg/objects"
@@ -62,10 +64,6 @@ func prepareSwiftConfig(ctx context.Context, srcObjectClient, dstObjectClient *g
 	}
 
 	// TODO: fail, when target file exists
-	rx, err := regexp.Compile(fmt.Sprintf("%s.*", filepath.Base(prefix)))
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile a regexp: %v", err)
-	}
 	config := &objects.Configuration{
 		Jobs: []*objects.Job{
 			{
@@ -74,7 +72,7 @@ func prepareSwiftConfig(ctx context.Context, srcObjectClient, dstObjectClient *g
 				},
 				Target: &target,
 				Matcher: objects.Matcher{
-					IncludeRx: rx,
+					IncludeRx: option.Some(regexpext.PlainRegexp(regexp.QuoteMeta(filepath.Base(prefix)) + ".*")),
 				},
 			},
 		},
