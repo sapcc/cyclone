@@ -161,20 +161,32 @@ func (c *chunk) process(ctx context.Context) {
 	myChunk, err := io.ReadAll(io.LimitReader(c.reader, backupChunk))
 	if err != nil {
 		if err != io.EOF {
-			c.errChan <- fmt.Errorf("failed to read file: %s", err)
+			select {
+			case c.errChan <- fmt.Errorf("failed to read file: %s", err):
+			case <-ctx.Done():
+			}
 			return
 		}
 	}
 	if len(myChunk) == 0 {
 		// stop further reading, no data
-		c.contChan <- false
+		select {
+		case c.contChan <- false:
+		case <-ctx.Done():
+		}
 		return
 	} else if err == io.EOF {
 		// EOF, but we still need to process some data
-		c.contChan <- false
+		select {
+		case c.contChan <- false:
+		case <-ctx.Done():
+		}
 	} else {
 		// allow next go routine to process the input
-		c.contChan <- true
+		select {
+		case c.contChan <- true:
+		case <-ctx.Done():
+		}
 	}
 
 	chunkPath := fmt.Sprintf("%s-%05d", c.path, c.i)
@@ -190,17 +202,26 @@ func (c *chunk) process(ctx context.Context) {
 	rb := new(bytes.Buffer)
 	zf, err := zlib.NewWriterLevel(rb, compressionLevel)
 	if err != nil {
-		c.errChan <- fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err)
+		select {
+		case c.errChan <- fmt.Errorf("failed to set zlib %d compression level: %s", compressionLevel, err):
+		case <-ctx.Done():
+		}
 		return
 	}
 	_, err = zf.Write(myChunk)
 	if err != nil {
-		c.errChan <- fmt.Errorf("failed to write zlib compressed data: %s", err)
+		select {
+		case c.errChan <- fmt.Errorf("failed to write zlib compressed data: %s", err):
+		case <-ctx.Done():
+		}
 		return
 	}
 	err = zf.Close()
 	if err != nil {
-		c.errChan <- fmt.Errorf("failed to flush and close zlib compressed data: %s", err)
+		select {
+		case c.errChan <- fmt.Errorf("failed to flush and close zlib compressed data: %s", err):
+		case <-ctx.Done():
+		}
 		return
 	}
 	// free up the compressor
@@ -228,7 +249,10 @@ func (c *chunk) process(ctx context.Context) {
 	rb.Reset()
 
 	if err != nil {
-		c.errChan <- fmt.Errorf("failed to upload %s/%s data: %s", c.containerName, chunkPath, err)
+		select {
+		case c.errChan <- fmt.Errorf("failed to upload %s/%s data: %s", c.containerName, chunkPath, err):
+		case <-ctx.Done():
+		}
 		return
 	}
 
