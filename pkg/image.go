@@ -346,6 +346,7 @@ func migrateImage(ctx context.Context, srcImageClient, dstImageClient, srcObject
 		if err != nil {
 			return nil, fmt.Errorf("error getting the source image reader: %s", err)
 		}
+		defer imageReader.Close()
 
 		progressReader := progress.NewReader(imageReader)
 		go func() {
@@ -359,7 +360,6 @@ func migrateImage(ctx context.Context, srcImageClient, dstImageClient, srcObject
 		if err != nil {
 			return nil, fmt.Errorf("failed to upload an image: %s", err)
 		}
-		imageReader.Close()
 
 		dstImg, err = waitForImage(ctx, dstImageClient, dstObjectClient, dstImg.ID, srcImg.SizeBytes, waitForImageSec)
 		if err != nil {
