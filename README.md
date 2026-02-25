@@ -4,13 +4,13 @@ Clone OpenStack entities easily.
 
 ## Why?
 
-In modern clusters compute instances are considered as a Cattle, but there are exceptions, when a compute instance is a Pet and needs care, especially when you need to migrate or clone it to a new OpenStack region or availability zone.
+In modern clusters, compute instances are considered Cattle, but there are exceptions when a compute instance is a Pet and needs care, especially when you need to migrate or clone it to a new OpenStack region or availability zone.
 
-Here comes cyclone (**C**loud **Clone** or cclone) to help you with this task. It takes care about all volumes attached to a VM and clones them with all required intermediate type conversions.
+Here comes cyclone (**C**loud **Clone** or cclone) to help you with this task. It takes care of all volumes attached to a VM and clones them with all required intermediate type conversions.
 
 ## Help
 
-By default Glance image data will be streamed through cyclone and the traffic will be consumed on the execution side. To enable the Glance V2 [web-download](https://docs.openstack.org/glance/latest/admin/interoperable-image-import.html#image-import-methods) method, set the `--image-web-download` flag. This method allows Glance to download an image using a remote URL. It is not recommended to use **web-download** method for images bigger than 1-10GiB, since Glance service will try to download the image to its intermediate local storage and may cause insufficient disk space error.
+By default, Glance image data will be streamed through cyclone and the traffic will be consumed on the execution side. To enable the Glance V2 [web-download](https://docs.openstack.org/glance/latest/admin/interoperable-image-import.html#image-import-methods) method, set the `--image-web-download` flag. This method allows Glance to download an image using a remote URL. It is not recommended to use the **web-download** method for images bigger than 1-10GiB, since the Glance service will try to download the image to its intermediate local storage and may cause an insufficient disk space error.
 
 A remote URL can be generated using a Swift [Temporary URL](https://docs.openstack.org/swift/latest/api/temporary_url_middleware.html).
 
@@ -20,13 +20,13 @@ A volume migration within the same region is performed using a [Volume Transfer]
 
 By default the tool uses the same credentials from environment variables for the source and destination projects, but for the destination you can define different region, domain and project name. It is also possible to override destination credentials via OpenStack environment variables with the `TO_` prefix or via CLI parameters.
 
-~> **Note:** Be aware about the quota, especially the source project quota, when cloning a volume. It requires up to 2x source volume size Cinder (Block Storage) quota. If a `--clone-via-snapshot` flag is specified, the quota requirement increases up to 3x source volume size.
+~> **Note:** Be aware of the quota, especially the source project quota, when cloning a volume. It requires up to 2x the source volume size in Cinder (Block Storage) quota. If a `--clone-via-snapshot` flag is specified, the quota requirement increases up to 3x the source volume size.
 
-~> **Note:** Cloning a volume within the same region, but different availability zones requires an extra Swift storage quota. If you don't have an ability to use Swift in this case, you can specify a `--clone-via-snapshot` flag.
+~> **Note:** Cloning a volume within the same region, but in different availability zones, requires extra Swift storage quota. If you don't have the ability to use Swift in this case, you can specify a `--clone-via-snapshot` flag.
 
 ~> **Note:** It is strongly recommended to shut down the VM before you start a migration of a VM or its volumes.
 
-~> **Note:** By default cyclone writes all OpenStack request/response logs into a `cyclone` directory, located in System Temporary Directory. Define `-d` or `--debug` flag if you want to see these logs in console output.
+~> **Note:** By default, cyclone writes all OpenStack request/response logs into a `cyclone` directory located in the System Temporary Directory. Define the `-d` or `--debug` flag if you want to see these logs in the console output.
 
 ```sh
 Clone OpenStack entities easily
