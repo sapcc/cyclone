@@ -350,7 +350,7 @@ func migrateImage(ctx context.Context, srcImageClient, dstImageClient, srcObject
 
 		progressReader := progress.NewReader(imageReader)
 		go func() {
-			for p := range progress.NewTicker(context.Background(), progressReader, srcImg.SizeBytes, 1*time.Second) {
+			for p := range progress.NewTicker(ctx, progressReader, srcImg.SizeBytes, 1*time.Second) {
 				log.Printf("Image size: %d/%d (%.2f%%), remaining: %s", p.N(), p.Size(), p.Percent(), p.Remaining().Round(time.Second))
 			}
 		}()

@@ -264,7 +264,7 @@ func uploadBackup(ctx context.Context, srcImgClient, srcObjClient, dstObjClient,
 	progressReader := progress.NewReader(imageData.readCloser)
 	go func() {
 		var s int64
-		for p := range progress.NewTicker(context.Background(), progressReader, imageData.size, 1*time.Second) {
+		for p := range progress.NewTicker(ctx, progressReader, imageData.size, 1*time.Second) {
 			s = p.N() - s
 			speed := s / (1024 * 1024)
 			s = p.N()
