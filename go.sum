@@ -52,8 +52,8 @@ github.com/sapcc/go-api-declarations v1.19.0 h1:AdCHBhoDGC1REMJF6Rc/XLIcf4qMqjUX
 github.com/sapcc/go-api-declarations v1.19.0/go.mod h1:eiRrXXUeQS5C/1kKn8/KMjk0Y0goUzgDQswj30rH0Zc=
 github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776 h1:WFpq3qAk60WUoqCMYOkTRiFkpKyjQ/Wq6xUslz/3y7g=
 github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776/go.mod h1:AYC4f8FYO9DllSt4TyMwm1e5iPn32/DGIrlgXtuEsJ0=
-github.com/sapcc/swift-http-import v0.0.0-20260224085924-2f3056e5fb80 h1:uN0WfErQADB17JP9IOnrEEfMiTmuTnx/pOCXT6ANDhs=
-github.com/sapcc/swift-http-import v0.0.0-20260224085924-2f3056e5fb80/go.mod h1:efk4YyyxIB0r6LhEL0C2usCoKrmGX3lR1p+VjYdAbOM=
+github.com/sapcc/swift-http-import v0.0.0-20260226110945-aa1df6c87e80 h1:JoAyBbmwAoR7nI9McAQZ0MwPSB/Len/oM4hapxcDSUc=
+github.com/sapcc/swift-http-import v0.0.0-20260226110945-aa1df6c87e80/go.mod h1:efk4YyyxIB0r6LhEL0C2usCoKrmGX3lR1p+VjYdAbOM=
 github.com/sergi/go-diff v1.4.0 h1:n/SP9D5ad1fORl+llWyN+D6qoUETXNZARKjyY2/KVCw=
 github.com/sergi/go-diff v1.4.0/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
