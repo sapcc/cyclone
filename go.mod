@@ -8,7 +8,7 @@ require (
 	github.com/gophercloud/utils/v2 v2.0.0-20260107124036-1d7954eb9711
 	github.com/klauspost/compress v1.18.4
 	github.com/machinebox/progress v0.2.0
-	github.com/majewsky/gg v1.5.0
+	github.com/majewsky/gg v1.6.0
 	github.com/majewsky/schwift/v2 v2.0.0
 	github.com/sapcc/go-bits v0.0.0-20260219121224-1c2b75dbf776
 	github.com/sapcc/swift-http-import v0.0.0-20260226110945-aa1df6c87e80
