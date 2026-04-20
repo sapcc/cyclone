@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
 	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
 	"github.com/majewsky/gg/option"
-	"github.com/majewsky/schwift/v2/gopherschwift"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/regexpext"
 	"github.com/sapcc/go-bits/secrets"
@@ -24,6 +24,7 @@ import (
 	"github.com/sapcc/swift-http-import/pkg/objects"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.xyrillian.de/schwift/v2/gopherschwift"
 )
 
 func prepareSwiftConfig(ctx context.Context, srcObjectClient, dstObjectClient *gophercloud.ServiceClient, srcContainerName, dstContainerName, prefix string, threads uint) (*objects.Configuration, error) {
