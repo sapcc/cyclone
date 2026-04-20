@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	std_log "log" // imported with different name to avoid conflict with variable `log` declared in pkg/logger.go
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -310,7 +310,7 @@ var BackupCloneCmd = &cobra.Command{
 			return err
 		}
 
-		log.Printf("Migrated target backup name is %q (id: %q)", dstBackup.Name, dstBackup.ID)
+		std_log.Printf("Migrated target backup name is %q (id: %q)", dstBackup.Name, dstBackup.ID)
 
 		return nil
 	},
