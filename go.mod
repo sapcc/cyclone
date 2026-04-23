@@ -4,14 +4,14 @@ go 1.26
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud/v2 v2.11.1
-	github.com/gophercloud/utils/v2 v2.0.0-20260107124036-1d7954eb9711
+	github.com/gophercloud/gophercloud/v2 v2.12.0
+	github.com/gophercloud/utils/v2 v2.0.0-20260409164906-cd2167a8681a
 	github.com/klauspost/compress v1.18.5
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/gg v1.6.0
 	github.com/majewsky/schwift/v2 v2.0.0
-	github.com/sapcc/go-bits v0.0.0-20260410082200-20a228a480cb
-	github.com/sapcc/swift-http-import v0.0.0-20260409190454-312477b85b4a
+	github.com/sapcc/go-bits v0.0.0-20260423021225-fb5e4523b6c5
+	github.com/sapcc/swift-http-import v0.0.0-20260423190343-eaf91165ab74
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -36,11 +36,12 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
+	go.xyrillian.de/schwift/v2 v2.1.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.49.0 // indirect
-	golang.org/x/net v0.52.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	pault.ag/go/debian v0.19.0 // indirect
