@@ -4,8 +4,8 @@ go 1.26
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud/v2 v2.11.1
-	github.com/gophercloud/utils/v2 v2.0.0-20260107124036-1d7954eb9711
+	github.com/gophercloud/gophercloud/v2 v2.12.0
+	github.com/gophercloud/utils/v2 v2.0.0-20260424064311-2eeed4ceb3e9
 	github.com/klauspost/compress v1.18.5
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/gg v1.6.0
