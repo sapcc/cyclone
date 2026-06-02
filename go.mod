@@ -9,7 +9,7 @@ require (
 	github.com/klauspost/compress v1.18.6
 	github.com/machinebox/progress v0.2.0
 	github.com/majewsky/gg v1.6.0
-	github.com/sapcc/go-bits v0.0.0-20260416170349-9b32d8192041
+	github.com/sapcc/go-bits v0.0.0-20260601123916-73f1197496ff
 	github.com/sapcc/swift-http-import v0.0.0-20260420111637-e9ed28d6fea0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
@@ -29,18 +29,19 @@ require (
 	github.com/matryer/is v1.4.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/sapcc/go-api-declarations v1.21.0 // indirect
+	github.com/sapcc/go-api-declarations v1.22.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
+	go.xyrillian.de/gg v1.7.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.50.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	pault.ag/go/debian v0.19.0 // indirect
