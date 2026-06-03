@@ -16,7 +16,6 @@ import (
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/backups"
 	backups_utils "github.com/gophercloud/utils/v2/openstack/blockstorage/v3/backups"
-	"github.com/majewsky/gg/option"
 	"github.com/sapcc/go-bits/logg"
 	"github.com/sapcc/go-bits/regexpext"
 	"github.com/sapcc/go-bits/secrets"
@@ -24,6 +23,7 @@ import (
 	"github.com/sapcc/swift-http-import/pkg/objects"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.xyrillian.de/gg/option"
 	"go.xyrillian.de/schwift/v2/gopherschwift"
 )
 
