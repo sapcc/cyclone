@@ -8,7 +8,7 @@ require (
 	github.com/gophercloud/utils/v2 v2.0.0-20260424064311-2eeed4ceb3e9
 	github.com/klauspost/compress v1.18.6
 	github.com/machinebox/progress v0.2.0
-	github.com/sapcc/go-bits v0.0.0-20260608142217-2dabd1599d54
+	github.com/sapcc/go-bits v0.0.0-20260609114743-3bf4546d2a8d
 	github.com/sapcc/swift-http-import v0.0.0-20260601121600-82cffd11db3a
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
