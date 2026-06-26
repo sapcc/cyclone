@@ -153,7 +153,9 @@ func newOpenStackClient(ctx context.Context, loc Location) (*gophercloud.Provide
 				return
 			}
 
-			if err := applicationcredentials.Delete(ctx, identityClient, userID, ac.ID).ExtractErr(); err != nil {
+			// Use background context for cleanup since parent ctx may be cancelled
+			cleanupCtx := context.Background()
+			if err := applicationcredentials.Delete(cleanupCtx, identityClient, userID, ac.ID).ExtractErr(); err != nil {
 				if !gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
 					log.Printf("Failed to delete a %q temp application credential: %s", acName, err)
 				}
@@ -190,7 +192,7 @@ func reauthClient(ctx context.Context, client *gophercloud.ServiceClient, funcNa
 	// reauth the client before the long running action to avoid openstack internal auth issues
 	if client.ReauthFunc != nil {
 		if err := client.Reauthenticate(ctx, client.TokenID); err != nil {
-			log.Printf("Failed to re-authenticate the provider client in the %s func: %v", err, funcName)
+			log.Printf("Failed to re-authenticate the provider client in the %s func: %v", funcName, err)
 		}
 	}
 }

@@ -138,7 +138,9 @@ func (r *volumeMeta) MarshalJSON() ([]byte, error) {
 	if r.VolumeGlanceMetadata == nil {
 		r.VolumeGlanceMetadata = make(map[string]string)
 	}
-	return json.Marshal(r)
+	// Use type alias to avoid infinite recursion
+	type t volumeMeta
+	return json.Marshal((*t)(r))
 }
 
 type volumeBaseMeta struct {

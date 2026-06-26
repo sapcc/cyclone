@@ -121,7 +121,7 @@ func migrateSecret(ctx context.Context, srcSecretClient, dstSecretClient *gopher
 	expiration := now.AddDate(0, 1, 0)
 	// if source expiration is not expired, use its expiration date
 	if srcSecret.Expiration.After(now) {
-		log.Printf("The expiration date for the source secret (%s) has already passed", srcSecret.Expiration)
+		log.Printf("The source secret has not expired yet (expiration: %s), using its expiration date", srcSecret.Expiration)
 		expiration = srcSecret.Expiration
 	}
 	// if custom expiration is set, enforce it
