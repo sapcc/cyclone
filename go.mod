@@ -9,7 +9,7 @@ require (
 	github.com/klauspost/compress v1.19.1
 	github.com/machinebox/progress v0.2.0
 	github.com/sapcc/go-bits v0.0.0-20260716112359-12c1e998f741
-	github.com/sapcc/swift-http-import v0.0.0-20260601121600-82cffd11db3a
+	github.com/sapcc/swift-http-import v0.0.0-20260716190210-6e4a3b1b167f
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
@@ -45,6 +45,6 @@ require (
 	golang.org/x/text v0.40.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	pault.ag/go/debian v0.19.0 // indirect
+	pault.ag/go/debian v0.21.0 // indirect
 	pault.ag/go/topsort v0.1.1 // indirect
 )
