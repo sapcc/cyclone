@@ -1,19 +1,19 @@
 module github.com/sapcc/cyclone
 
-go 1.26
+go 1.27
 
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.14.0
-	github.com/gophercloud/utils/v2 v2.0.0-20260626221802-4ae35253ac13
+	github.com/gophercloud/utils/v2 v2.0.0-20260824073324-42b9474d09d4
 	github.com/klauspost/compress v1.19.2
 	github.com/machinebox/progress v0.2.0
-	github.com/sapcc/go-bits v0.0.0-20260716112359-12c1e998f741
-	github.com/sapcc/swift-http-import v0.0.0-20260601121600-82cffd11db3a
+	github.com/sapcc/go-bits v0.0.0-20260827091731-7669cbdb53fb
+	github.com/sapcc/swift-http-import v0.0.0-20260827094628-debac2a3be0f
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.1.0
-	go.xyrillian.de/gg v1.11.1
+	go.xyrillian.de/gg v1.14.0
 	go.xyrillian.de/schwift/v2 v2.2.1
 	golang.org/x/term v0.45.0
 )
@@ -24,27 +24,27 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/gofrs/uuid/v5 v5.4.0 // indirect
+	github.com/gofrs/uuid/v5 v5.5.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jpillora/longestcommon v0.0.0-20161227235612-adb9d91ee629 // indirect
 	github.com/matryer/is v1.4.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/sapcc/go-api-declarations v1.24.0 // indirect
+	github.com/sapcc/go-api-declarations v1.25.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/ulikunitz/xz v0.5.15 // indirect
+	github.com/ulikunitz/xz v0.5.16 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	pault.ag/go/debian v0.19.0 // indirect
+	pault.ag/go/debian v0.21.0 // indirect
 	pault.ag/go/topsort v0.1.1 // indirect
 )
