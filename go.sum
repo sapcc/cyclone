@@ -52,8 +52,8 @@ github.com/sapcc/go-api-declarations v1.25.0 h1:vLkSVV8oaZExoBMEkwX31AqUjZIjwxKk
 github.com/sapcc/go-api-declarations v1.25.0/go.mod h1:7NrwidCCv/MxwBpb/qqYLbQb/eY6rlnYkXwWMGx/wlI=
 github.com/sapcc/go-bits v0.0.0-20260908173957-572b68774a1c h1:YbC9anwoorrpRB81cqHEmaV1GqPmEFXmmRsjOBJ7+3c=
 github.com/sapcc/go-bits v0.0.0-20260908173957-572b68774a1c/go.mod h1:AtxdH4JGpevt5HK/E+x7rAgwI8znwDNyDZjjzv/GN8I=
-github.com/sapcc/swift-http-import v0.0.0-20260827094628-debac2a3be0f h1:FjO0hP1DL3Pm7mtpbF8EZQ7MTYLaVxcJnUSiY+wXNRE=
-github.com/sapcc/swift-http-import v0.0.0-20260827094628-debac2a3be0f/go.mod h1:MF0KyZkzLreJwIGBSH3QrFZr+NiN5chnd2bvaTz1uVU=
+github.com/sapcc/swift-http-import v0.0.0-20260907131039-c1dc87151405 h1:2MfVCtthLvJMpQp2IunSO2guK4+u0cKWNFL2Z4tsVO4=
+github.com/sapcc/swift-http-import v0.0.0-20260907131039-c1dc87151405/go.mod h1:BW6f4H0umI6O5Nd4Isx1RVR0Ws7x+AKuV5z9Ar1n4vs=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8/go.mod h1:3n1Cwaq1E1/1lhQhtRK2ts/ZwZEhjcQeJQ1RuC6Q/8U=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
@@ -81,8 +81,8 @@ go.xyrillian.de/schwift/v2 v2.2.1 h1:uzw9Fe2ftiB4oUiEfxh2zTWxBRwFOAtVuyGZwAaAnNQ
 go.xyrillian.de/schwift/v2 v2.2.1/go.mod h1:LeYCnGM3IAf22o5AkQTpzSoL38BZ2ytkQawfx8A63Wo=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=
 go.yaml.in/yaml/v3 v3.0.4/go.mod h1:DhzuOOF2ATzADvBadXxruRBLzYTpT36CKvDb3+aBEFg=
-golang.org/x/crypto v0.55.0 h1:+KWHjbgOaAQ66dh/YlkZKHlz9ZUlq61AFirAR9ntP8M=
-golang.org/x/crypto v0.55.0/go.mod h1:uq0V9dE/fzQuJtbnL+2EhWOE63vo164FY8xqEnV9xis=
+golang.org/x/crypto v0.56.0 h1:GUh5Ii4J5jtcseSMiRqr1jXCNHoxjeV9Fmekc2oLy6Y=
+golang.org/x/crypto v0.56.0/go.mod h1:OMW5y6CY9l38uPLmxU6l6pwcXp1obtLo3e6gT7gQR2I=
 golang.org/x/net v0.58.0 h1:ynWG7rqYi4ccpTEuPZ2QGWHktVEM9DMCj9yzDE0Q7To=
 golang.org/x/net v0.58.0/go.mod h1:YwCddHnFlT7eLQqVprV19OnhLGtc5xOKgE0RyqgfWAU=
 golang.org/x/sys v0.48.0 h1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=
