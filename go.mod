@@ -4,8 +4,8 @@ go 1.27
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud/v2 v2.14.0
-	github.com/gophercloud/utils/v2 v2.0.0-20260824073324-42b9474d09d4
+	github.com/gophercloud/gophercloud/v2 v2.15.0
+	github.com/gophercloud/utils/v2 v2.0.0-20260922174841-b4759ea0529b
 	github.com/klauspost/compress v1.20.0
 	github.com/machinebox/progress v0.2.0
 	github.com/sapcc/go-bits v0.0.0-20260908173957-572b68774a1c
