@@ -4,16 +4,16 @@ go 1.27
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gophercloud/gophercloud/v2 v2.14.0
+	github.com/gophercloud/gophercloud/v2 v2.15.0
 	github.com/gophercloud/utils/v2 v2.0.0-20260824073324-42b9474d09d4
 	github.com/klauspost/compress v1.20.0
 	github.com/machinebox/progress v0.2.0
-	github.com/sapcc/go-bits v0.0.0-20260908173957-572b68774a1c
+	github.com/sapcc/go-bits v0.0.0-20260924170438-e0aa5c665ed9
 	github.com/sapcc/swift-http-import v0.0.0-20260911115316-970f23aae9b7
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.2.0
-	go.xyrillian.de/gg v1.15.0
+	go.xyrillian.de/gg v1.16.0
 	go.xyrillian.de/schwift/v2 v2.2.1
 	golang.org/x/term v0.46.0
 )
@@ -31,7 +31,7 @@ require (
 	github.com/matryer/is v1.4.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
-	github.com/sapcc/go-api-declarations v1.25.0 // indirect
+	github.com/sapcc/go-api-declarations v1.25.1 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
