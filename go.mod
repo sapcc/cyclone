@@ -5,11 +5,11 @@ go 1.27
 require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.15.0
-	github.com/gophercloud/utils/v2 v2.0.0-20260824073324-42b9474d09d4
+	github.com/gophercloud/utils/v2 v2.0.0-20260922174841-b4759ea0529b
 	github.com/klauspost/compress v1.20.1
 	github.com/machinebox/progress v0.2.0
 	github.com/sapcc/go-bits v0.0.0-20260924170438-e0aa5c665ed9
-	github.com/sapcc/swift-http-import v0.0.0-20260911115316-970f23aae9b7
+	github.com/sapcc/swift-http-import v0.0.0-20260925100413-50f6eba91efe
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.2.0
@@ -19,7 +19,7 @@ require (
 )
 
 require (
-	github.com/ProtonMail/go-crypto v1.4.1 // indirect
+	github.com/ProtonMail/go-crypto v1.5.1 // indirect
 	github.com/cactus/go-statsd-client/v6 v6.0.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -37,7 +37,7 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/ulikunitz/xz v0.5.16 // indirect
+	github.com/ulikunitz/xz v0.5.17 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
