@@ -48,10 +48,10 @@ github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/f
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/sagikazarmark/locafero v0.11.0 h1:1iurJgmM9G3PA/I+wWYIOw/5SyBtxapeHDcg+AAIFXc=
 github.com/sagikazarmark/locafero v0.11.0/go.mod h1:nVIGvgyzw595SUSUE6tvCp3YYTeHs15MvlmU87WwIik=
-github.com/sapcc/go-api-declarations v1.25.0 h1:vLkSVV8oaZExoBMEkwX31AqUjZIjwxKkxXr4q2sAAOg=
-github.com/sapcc/go-api-declarations v1.25.0/go.mod h1:7NrwidCCv/MxwBpb/qqYLbQb/eY6rlnYkXwWMGx/wlI=
-github.com/sapcc/go-bits v0.0.0-20260908173957-572b68774a1c h1:YbC9anwoorrpRB81cqHEmaV1GqPmEFXmmRsjOBJ7+3c=
-github.com/sapcc/go-bits v0.0.0-20260908173957-572b68774a1c/go.mod h1:AtxdH4JGpevt5HK/E+x7rAgwI8znwDNyDZjjzv/GN8I=
+github.com/sapcc/go-api-declarations v1.25.1 h1:Lrbf8TZY/ARg0J9IrlrObqnXjrzSzmYKQd/L/a71Lsg=
+github.com/sapcc/go-api-declarations v1.25.1/go.mod h1:bJkK8wphzlmUmN5lxBv8BbfxUXMOkW+UiC10xBHXsFs=
+github.com/sapcc/go-bits v0.0.0-20260924170438-e0aa5c665ed9 h1:kiBHnl3JAkhVLYu8zJmTdAN6jQEDoJAIn6N2wfpQxEs=
+github.com/sapcc/go-bits v0.0.0-20260924170438-e0aa5c665ed9/go.mod h1:N5yzjZM9RPw2WEr/8MfvhdUKWp1N9iB+fz4SkzBqFpQ=
 github.com/sapcc/swift-http-import v0.0.0-20260911115316-970f23aae9b7 h1:F37bwnbUrzVg6fxeRLi34B5fmosuPKdIxZFjoh8ceaI=
 github.com/sapcc/swift-http-import v0.0.0-20260911115316-970f23aae9b7/go.mod h1:rZo3WkgmWNKmrvDeruuTFhR/8Nl5r+WnqFQm8+2wKtk=
 github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 h1:+jumHNA0Wrelhe64i8F6HNlS8pkoyMv5sreGx2Ry5Rw=
