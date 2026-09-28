@@ -149,29 +149,30 @@ func waitForImageTask(ctx context.Context, client, swiftClient *gophercloud.Serv
 
 // this function may show confused size results due to Swift eventual consistency.
 func getContainerSize(ctx context.Context, client *gophercloud.ServiceClient, id string, srcSizeBytes int64) string {
-	if client != nil {
-		container, err := containers.Get(ctx, client, "glance_"+id, nil).Extract()
-		if err != nil {
-			if !gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
-				log.Printf("Failed to get Swift container status: %s", err)
-			}
-			return ""
-		}
-
-		var containerSize, percent int64
-		if container != nil {
-			containerSize = container.BytesUsed
-		}
-
-		if srcSizeBytes > 0 {
-			percent = 100 * containerSize / srcSizeBytes
-			return fmt.Sprintf("image size: %d/%d (%d%%)", containerSize, srcSizeBytes, percent)
-		}
-
-		// container size in Mb
-		return fmt.Sprintf("image size: %.2f Mb", float64(containerSize/(1024*1024)))
+	if client == nil || client.ProviderClient == nil {
+		return ""
 	}
-	return ""
+
+	container, err := containers.Get(ctx, client, "glance_"+id, nil).Extract()
+	if err != nil {
+		if !gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
+			log.Printf("Failed to get Swift container status: %s", err)
+		}
+		return ""
+	}
+
+	var containerSize, percent int64
+	if container != nil {
+		containerSize = container.BytesUsed
+	}
+
+	if srcSizeBytes > 0 {
+		percent = 100 * containerSize / srcSizeBytes
+		return fmt.Sprintf("image size: %d/%d (%d%%)", containerSize, srcSizeBytes, percent)
+	}
+
+	// container size in Mb
+	return fmt.Sprintf("image size: %.2f Mb", float64(containerSize/(1024*1024)))
 }
 
 func waitForImage(ctx context.Context, client, swiftClient *gophercloud.ServiceClient, id string, srcSizeBytes int64, secs float64) (*images.Image, error) {
