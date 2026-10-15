@@ -6,20 +6,20 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.15.0
 	github.com/gophercloud/utils/v2 v2.0.0-20260922174841-b4759ea0529b
-	github.com/klauspost/compress v1.20.1
+	github.com/klauspost/compress v1.20.3
 	github.com/machinebox/progress v0.2.0
-	github.com/sapcc/go-bits v0.0.0-20260924170438-e0aa5c665ed9
-	github.com/sapcc/swift-http-import v0.0.0-20260925100413-50f6eba91efe
+	github.com/sapcc/go-bits v0.0.0-20261013222358-416f3ade2c19
+	github.com/sapcc/swift-http-import v0.0.0-20261015190608-91e1640e2be4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.2.0
-	go.xyrillian.de/gg v1.16.0
+	go.xyrillian.de/gg v1.19.0
 	go.xyrillian.de/schwift/v2 v2.2.1
-	golang.org/x/term v0.46.0
+	golang.org/x/term v0.47.0
 )
 
 require (
-	github.com/ProtonMail/go-crypto v1.5.1 // indirect
+	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/cactus/go-statsd-client/v6 v6.0.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -39,10 +39,10 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.17 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	pault.ag/go/debian v0.21.0 // indirect
