@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.15.0
 	github.com/gophercloud/utils/v2 v2.0.0-20260922174841-b4759ea0529b
-	github.com/klauspost/compress v1.20.1
+	github.com/klauspost/compress v1.20.3
 	github.com/machinebox/progress v0.2.0
 	github.com/sapcc/go-bits v0.0.0-20260924170438-e0aa5c665ed9
 	github.com/sapcc/swift-http-import v0.0.0-20260925100413-50f6eba91efe
