@@ -9,7 +9,7 @@ require (
 	github.com/klauspost/compress v1.20.4
 	github.com/machinebox/progress v0.2.0
 	github.com/sapcc/go-bits v0.0.0-20261105181628-13886743d3a7
-	github.com/sapcc/swift-http-import v0.0.0-20260925100413-50f6eba91efe
+	github.com/sapcc/swift-http-import v0.0.0-20261111095756-f59d0993764f
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/xhit/go-str2duration/v2 v2.2.0
@@ -19,9 +19,9 @@ require (
 )
 
 require (
-	github.com/ProtonMail/go-crypto v1.5.1 // indirect
+	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/cactus/go-statsd-client/v6 v6.0.0 // indirect
-	github.com/cloudflare/circl v1.6.3 // indirect
+	github.com/cloudflare/circl v1.6.5 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/gofrs/uuid/v5 v5.5.1 // indirect
@@ -45,6 +45,6 @@ require (
 	golang.org/x/text v0.43.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	pault.ag/go/debian v0.21.0 // indirect
+	pault.ag/go/debian v0.21.3 // indirect
 	pault.ag/go/topsort v0.1.1 // indirect
 )
