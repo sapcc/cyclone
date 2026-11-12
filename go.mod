@@ -8,7 +8,7 @@ require (
 	github.com/gophercloud/utils/v2 v2.0.0-20260922174841-b4759ea0529b
 	github.com/klauspost/compress v1.20.4
 	github.com/machinebox/progress v0.2.0
-	github.com/sapcc/go-bits v0.0.0-20261105181628-13886743d3a7
+	github.com/sapcc/go-bits v0.0.0-20261112131659-2726a2c437f4
 	github.com/sapcc/swift-http-import v0.0.0-20261111095756-f59d0993764f
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
@@ -42,7 +42,7 @@ require (
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
-	golang.org/x/text v0.43.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	pault.ag/go/debian v0.21.3 // indirect
